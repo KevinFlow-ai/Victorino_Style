@@ -1,0 +1,144 @@
+Video1: 🔐 ¿Qué es JWT?
+        https://www.youtube.com/watch?v=P8i2ily6tyE
+
+Video2: 🔐Ciclo de vida de JWT
+        https://www.youtube.com/watch?v=capnr5ULxGQ
+
+
+
+
+
+
+El token está compuesto por tres partes:
+
+1) Header: indica el tipo de token y el algoritmo de firma.
+2) Payload: contiene los claims, es decir, los datos del usuario u otra información relevante.
+3) Signature: garantiza que el token no fue alterado durante su transferencia, combinando header + payload codificados en Base64 + una clave secreta.
+
+
+¿Qué es JWT?
+Un JWT (JSON Web Token) es un token firmado que tu backend genera cuando un usuario inicia sesión.
+Ese token viaja en cada petición desde Flutter hacia Spring Boot y permite:
+
+• Identificar quién es el usuario
+• Saber qué rol tiene (admin, empleado, cliente)
+• Autorizar qué puede hacer
+• Evitar mantener sesiones en el servidor
+
+Qué es exactamente un JWT
+Un JWT es un string con tres partes:
+
+• Header → tipo de token + algoritmo de firma
+• Payload → datos del usuario (id, email, rol, expiración…)
+• Signature → firma que garantiza que nadie lo ha modificado
+
+Ejemplo visual: xxxxx.yyyyy.zzzzz
+El backend lo firma con una clave secreta. Flutter no puede modificarlo sin romper la firma.
+
+
+
+🔐 Cómo se integra en tu app (flujo completo)
+1. El cliente inicia sesión (Flutter)
+El usuario escribe email + contraseña → Flutter envía esto a Spring Boot:
+
+POST /auth/login
+{
+  "email": "cliente@correo.com",
+  "password": "1234"
+}
+
+2. Spring Boot valida y genera el JWT
+Si las credenciales son correctas:
+• Busca al usuario en MySQL
+• Obtiene su rol (admin, empleado, cliente)
+• Genera un JWT con esos datos
+• Lo devuelve a Flutter
+
+Ejemplo de payload:
+
+json
+{
+  "nombre": "Paco",
+  "email": "cliente@correo.com",
+  "role": "CLIENTE",
+  "exp": 1712345678
+}
+
+
+3. Flutter guarda el JWT
+Normalmente en:
+
+• SecureStorage (Android/iOS)
+
+• O en memoria si es temporal
+
+4. Flutter envía el JWT en cada petición
+Cada vez que Flutter llama al backend:
+
+Código
+GET /citas/mis-citas
+Authorization: Bearer <token>
+
+
+
+5. Spring Boot valida el token
+
+Spring Boot:
+
+• Verifica la firma
+• Comprueba que no esté expirado
+• Extrae el rol
+• Decide si el usuario puede acceder
+
+Ejemplo:
+
+Un cliente no puede acceder a /admin/usuarios
+Un empleado sí puede ver citas pero no gestionar usuarios
+Un admin puede hacer todo
+
+🧱 Cómo se usa en tu arquitectura
+
+🔸 Flutter
+Pantalla de login → recibe token
+Guarda token
+Lo envía en cada petición
+Si expira → redirige a login
+
+🔸 Spring Boot
+Filtro JWT (OncePerRequestFilter)
+Servicio para generar y validar tokens
+Configuración de seguridad (SecurityConfig)
+Anotaciones como:
+    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('EMPLEADO','ADMIN')")
+
+🔸 MySQL
+• Tabla usuarios con columna rol
+• No guarda tokens, solo credenciales
+
+🧠 Por qué usar JWT en tu app
+Porque tu app tiene roles y múltiples clientes (Flutter, quizá web en el futuro). JWT te da:
+
+✔ Autenticación sin sesiones
+✔ Escalabilidad
+✔ Seguridad
+✔ Control de roles
+✔ Integración perfecta con Flutter
+
+🏁 Qué deberías implementar en tu proyecto
+Te dejo una lista clara:
+
+En Spring Boot
+Controlador /auth/login
+Servicio JwtService
+Filtro JwtAuthenticationFilter
+Configuración de roles en SecurityConfig
+Entidad Usuario con campo rol
+
+En Flutter
+Pantalla de login
+Guardar token en flutter_secure_storage
+Interceptor HTTP que añada el token
+Manejo de expiración
+
+
