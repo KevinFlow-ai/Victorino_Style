@@ -1,5 +1,5 @@
-// Home placeholder del cliente. Sirve para verificar el flujo de auth end-to-end.
-// Las pantallas reales (calendario, reservas, perfil) se implementarán en otras tareas.
+// Home placeholder del administrador. Pendiente de implementar gestión de
+// empleados, servicios, configuración y métricas.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,8 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colores.dart';
 import '../../../shared/providers/sesion_provider.dart';
 
-class HomeCliente extends ConsumerWidget {
-  const HomeCliente({super.key});
+class HomeAdmin extends ConsumerWidget {
+  const HomeAdmin({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -18,7 +18,7 @@ class HomeCliente extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: Text('Bienvenido${sesion != null ? ', ${sesion.nombreCompleto}' : ''}'),
+        title: Text('Admin${sesion != null ? ' · ${sesion.nombreCompleto}' : ''}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -36,12 +36,12 @@ class HomeCliente extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Home Cliente',
+              'Panel de administración',
               style: GoogleFonts.poppins(fontSize: 28, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'Aquí irán el calendario de reservas y el perfil.',
+              'Aquí irán empleados, servicios, métricas y configuración.',
               style: GoogleFonts.roboto(fontSize: 16, color: AppColors.textMuted),
             ),
           ],
