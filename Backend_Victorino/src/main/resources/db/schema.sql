@@ -1,5 +1,5 @@
 -- =====================================================================
--- VICTORINO STYLE — SCRIPT COMPLETO (SCHEMA + SEED(datos inciales)
+-- VICTORINO STYLE — SCRIPT COMPLETO (SCHEMA + SEED(datos inciales) //15 TABLAS//
 -- MySQL 8.0.x version de mysql
 -- Motor InnoDB 
 -- Charset utf8mb4 Los datos que envías están codificados en UTF-8 multibyte, es la codificación recomendada porque soporta todos los caracteres Unicode, incluidos emojis.
