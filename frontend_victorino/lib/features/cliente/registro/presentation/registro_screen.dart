@@ -132,7 +132,7 @@ class _RegistroScreenState extends ConsumerState<RegistroScreen> {
                 const SizedBox(height: 8),
                 _campo(
                   controller: _telefonoCtrl,
-                  hintText: '+600000000',
+                  hintText: '600000000',
                   prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
                 ),
