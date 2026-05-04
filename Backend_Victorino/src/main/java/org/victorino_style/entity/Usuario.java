@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.ColumnDefault;
+import org.victorino_style.entity.enums.RolUsuario;
 
 import java.time.Instant;
 
@@ -29,10 +30,12 @@ public class Usuario {
     @Column(name = "contrasena_usuario", nullable = false, length = 60)
     private String contrasenaUsuario;
 
+    // Mapeo del ENUM de MySQL a una enumeración Java type-safe.
     @NotNull
-    @Lob
-    @Column(name = "rol_usuario", nullable = false)
-    private String rolUsuario;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "rol_usuario", nullable = false,
+            columnDefinition = "ENUM('CLIENTE','EMPLEADO','ADMINISTRADOR')")
+    private RolUsuario rolUsuario;
 
     @NotNull
     @ColumnDefault("CURRENT_TIMESTAMP(6)")
