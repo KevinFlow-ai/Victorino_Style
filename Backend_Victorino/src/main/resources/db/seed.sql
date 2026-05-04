@@ -4,8 +4,10 @@
 
 USE victorino_style_bbdd_tfg_2dam_2025_2026_puig;
 
--- Hash BCrypt de la contraseña 'Admin1234!'
-SET @pwd := '$2a$10$eK3VjRyMvrq8Q3J0K8e4d.q5n6gF2w9YcXfE3zU1p8KxE6w0V.aGy';
+-- Hash BCrypt REAL de la contraseña 'Admin1234!'
+-- Generado con BCryptPasswordEncoder. Si lo cambias, regenera el hash con la
+-- misma utilidad que usa el backend (clase PasswordEncoderConfig).
+SET @pwd := '$2a$10$6pJhA2nQuYkCzldhtuJTi.JFI/DCum8iwkffdaqWTCWs86RjrPTvi';
 
 -- =====================================================================
 -- 1. Peluquería (singleton)
@@ -37,15 +39,18 @@ INSERT INTO peluqueria (
 -- 2. Usuarios (jerarquía JOINED) 1 admin y dos empleados
 -- =====================================================================
 
--- 2.1 Administrador
+-- 2.1 Administrador (Victorino Admin)
+-- Por la jerarquía JOINED via @MapsId, un administrador requiere 3 filas:
+-- una en usuario, una en empleado (con sus datos visibles) y una en administrador.
+-- Login: correo='victorino@admin.com', password='Admin1234!'.
 INSERT INTO usuario (id_usuario, correo_usuario, contrasena_usuario, rol_usuario)
 VALUES (1, 'victorino@admin.com', @pwd, 'ADMINISTRADOR');
 
--- 2.2 Empleado Leonardo
 INSERT INTO empleado (id_empleado, nombre_empleado, apellidos_empleado, foto_empleado)
-VALUES (1, 'Leonardo', 'García López', '/uploads/empleados/barbero_1.png');
+VALUES (1, 'Victorino', 'Admin', '/uploads/empleados/admin.jpg');
 
 INSERT INTO administrador (id_administrador) VALUES (1);
+
 INSERT INTO horario_empleado (id_empleado, descanso_inicio_horario, descanso_duracion_horario)
 VALUES (1, '11:30', 30);
 
