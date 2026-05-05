@@ -13,11 +13,21 @@ import '../../domain/repositorios/agenda_admin_repositorio.dart';
 import '../modelos/agenda_dtos.dart';
 
 
-// -----------------------------------------------------------------------------
-// IMPLEMENTACIÓN DEL REPOSITORIO
-// -----------------------------------------------------------------------------
-// Esta clase es la que realmente se comunica con el backend.
-// Los casos de uso llaman a este repositorio para obtener datos.
+// ============================================================================
+// REPOSITORIO HTTP PARA LA AGENDA-CITAS
+// ============================================================================
+//
+// Este archivo implementa un "repositorio". En programación, un repositorio es
+// una clase que se encarga de hablar con el servidor (backend) para obtener,
+// crear, editar o borrar datos.
+//
+// Aquí usamos la librería "Dio" para hacer peticiones HTTP (GET, POST, PUT, DELETE).
+// Cada vez que algo falla, convertimos el error en un ApiException para que
+// el resto de la app pueda manejarlo de forma uniforme.
+//
+// También convertimos los JSON del backend en objetos de Dart (DTO → Entidad).
+// ============================================================================
+
 
 class AgendaAdminRepositorioImpl implements AgendaAdminRepositorio {
   // Constructor: recibe Dio y un ErrorMapper opcional.
