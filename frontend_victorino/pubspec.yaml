@@ -87,6 +87,9 @@ dependencies:
   otp_autofill: ^4.1.0 # Autocompletado inteligente de códigos OTP (One-Time Password).
   # Detecta automáticamente el código SMS entrante y lo inserta en el campo, mejorando la experiencia de verificación.
 
+  image_picker: ^1.1.2 # Selector de imágenes desde galería/cámara.
+  # Necesario para subir la foto del empleado, servicio o perfil del cliente.
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -147,6 +150,7 @@ flutter:
   assets:
     - assets/
     - assets/logos_app/
+    - assets/imagenes/
 
 #flutter:
 #  assets:

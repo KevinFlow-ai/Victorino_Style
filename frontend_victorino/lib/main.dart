@@ -1,19 +1,22 @@
 // Punto de entrada de la app. Solo se encarga de:
 // 1. Inicializar Flutter.
-// 2. Envolver la app en un ProviderScope para que Riverpod funcione.
-// 3. Lanzar el widget raíz definido en app.dart.
+// 2. Inicializar los datos de localización (intl) para el español de España.
+// 3. Envolver la app en un ProviderScope para que Riverpod funcione.
+// 4. Lanzar el widget raíz definido en app.dart.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 import 'app.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Asegura que Flutter está completamente inicializado.
   // Necesario si usas plugins o inicializaciones antes de runApp().
 
-
-
+  // Carga los datos de DateFormat para los locales que usamos. Sin esto,
+  // DateFormat.yMMMd('es') lanza LocaleDataException en runtime.
+  await initializeDateFormatting('es_ES');
 
   runApp(const ProviderScope(child: VictorinoApp()));
   // ProviderScope es el contenedor raíz de Riverpod.
