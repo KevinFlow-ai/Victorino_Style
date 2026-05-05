@@ -22,6 +22,37 @@ class ApiEndpoints {
   static const authLogin = '/auth/login';
   static const authRefresh = '/auth/refresh';
   static const authLogout = '/auth/logout';
+
+  // ==========================================================================
+  // RUTAS DEL PANEL ADMIN
+  // ==========================================================================
+
+  // Empleados
+  static const adminEmpleados = '/admin/empleados';
+  static String adminEmpleadoPorId(int id) => '/admin/empleados/$id';
+  static String adminEmpleadoFoto(int id) => '/admin/empleados/$id/foto';
+  static String adminEmpleadoCancelarCitas(int id) => '/admin/empleados/$id/cancelar-citas';
+  static String adminEmpleadoDescanso(int id) => '/admin/empleados/$id/descanso';
+
+  // Servicios
+  static const adminServicios = '/admin/servicios';
+  static String adminServicioPorId(int id) => '/admin/servicios/$id';
+  static String adminServicioFoto(int id) => '/admin/servicios/$id/foto';
+
+  // Configuración: horario, festivos, cierre anual.
+  static const adminHorario = '/admin/horario';
+  static const adminFestivos = '/admin/festivos';
+  static String adminFestivoPorId(int id) => '/admin/festivos/$id';
+  static const adminCierreAnual = '/admin/cierre-anual';
+
+  // Agenda y walk-in.
+  static const adminAgenda = '/admin/agenda';
+  static String adminHistorialCliente(int id) => '/admin/clientes/$id/historial';
+  static const adminCitasWalkIn = '/admin/citas/walk-in';
+  static const adminAvisosCancelaciones = '/admin/avisos/cancelaciones-frecuentes';
+
+  // Métricas.
+  static const adminMetricasResumen = '/admin/metricas/resumen';
 }
 
 /*
