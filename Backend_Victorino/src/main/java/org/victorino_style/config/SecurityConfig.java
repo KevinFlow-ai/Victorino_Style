@@ -54,6 +54,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/uploads/**").permitAll()
                         // Endpoints de error y health.
                         .requestMatchers("/error", "/actuator/health").permitAll()
+                        // Endpoints del panel administrador: solo rol ADMINISTRADOR.
+                        // El @PreAuthorize de cada controller aplica el mismo filtro a nivel
+                        // de métodoo; este matcher es la primera barrera global por defensa en profundidad.
+                        .requestMatchers("/admin/**").hasRole("ADMINISTRADOR")
                         // Cualquier otra petición exige token válido.
                         .anyRequest().authenticated()
                 )

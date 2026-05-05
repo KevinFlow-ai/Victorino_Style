@@ -69,7 +69,7 @@ public class AdminInitializer implements CommandLineRunner {
     @Value("${victorino.admin-prueba.apellidos:Admin}")
     private String apellidosAdmin;
 
-    @Value("${victorino.admin-prueba.foto:/uploads/empleados/admin.jpg}")
+    @Value("${victorino.admin-prueba.foto:/uploads/empleados/admin.png}")
     private String fotoAdmin;
 
     @Override
