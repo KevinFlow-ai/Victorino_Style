@@ -1,6 +1,7 @@
 ## 🧱 Arquitectura general del backend (n‑tier en Spring Boot)
 
-La arquitectura clásica en capas divide el backend en **responsabilidades separadas**, de forma que cada capa hace solo una cosa y la hace bien. Las capas principales son:
+La arquitectura clásica en capas divide el backend en **responsabilidades separadas**, 
+de forma que cada capa hace solo una cosa y la hace bien. Las capas principales son:
 
 1. **Controller (Capa de Presentación / expone la API REST.)**
     
