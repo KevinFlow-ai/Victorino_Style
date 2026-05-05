@@ -155,6 +155,52 @@ public class GlobalExceptionHandler {
                 .body(ApiError.sinCampos(409, "Conflict", ex.getMessage(), req.getRequestURI()));
     }
 
+    // ------------------------------------------------------------------------
+    // 404: recurso no encontrado (empleado, servicio o cualquier subclase).
+    // ------------------------------------------------------------------------
+    @ExceptionHandler(RecursoNoEncontradoException.class)
+    public ResponseEntity<ApiError> manejarNoEncontrado(RecursoNoEncontradoException ex,
+                                                        HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiError.sinCampos(404, "Not Found", ex.getMessage(), req.getRequestURI()));
+    }
+
+    // ------------------------------------------------------------------------
+    // 400: foto obligatoria al crear empleado o servicio.
+    // ------------------------------------------------------------------------
+    @ExceptionHandler(FotoObligatoriaException.class)
+    public ResponseEntity<ApiError> manejarFotoObligatoria(FotoObligatoriaException ex,
+                                                           HttpServletRequest req) {
+        return ResponseEntity.badRequest()
+                .body(ApiError.sinCampos(400, "Bad Request", ex.getMessage(), req.getRequestURI()));
+    }
+
+    // ------------------------------------------------------------------------
+    // 409: cancelación masiva sin citas futuras / festivo duplicado / cita solapada / cita no modificable.
+    // ------------------------------------------------------------------------
+    @ExceptionHandler({
+            NoCitasFuturasCancelablesException.class,
+            FestivoDuplicadoException.class,
+            CitaSolapadaException.class,
+            CitaNoModificableException.class
+    })
+    public ResponseEntity<ApiError> manejarConflicto(RuntimeException ex,
+                                                     HttpServletRequest req) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.sinCampos(409, "Conflict", ex.getMessage(), req.getRequestURI()));
+    }
+
+    // ------------------------------------------------------------------------
+    // 500: la peluquería no está configurada (problema de inicialización del proyecto).
+    // ------------------------------------------------------------------------
+    @ExceptionHandler(PeluqueriaNoConfiguradaException.class)
+    public ResponseEntity<ApiError> manejarPeluqueriaNoConfigurada(PeluqueriaNoConfiguradaException ex,
+                                                                   HttpServletRequest req) {
+        log.error("Error de configuración: peluquería singleton no encontrada en BD");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiError.sinCampos(500, "Internal Server Error", ex.getMessage(), req.getRequestURI()));
+    }
+
 
 
     // ------------------------------------------------------------------------
