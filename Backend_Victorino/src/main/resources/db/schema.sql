@@ -219,6 +219,7 @@ CREATE TABLE cita (
   fecha_modificacion_cita DATETIME(6) NOT NULL -- DATETIME(6) → guarda fecha y hora con microsegundos.  Ejemplo 2026-05-02 21:57:12.345678
       DEFAULT CURRENT_TIMESTAMP(6) -- Cuando se crea el registro por primera vez, esta columna se llena automáticamente con la fecha y hora actual.
       ON UPDATE CURRENT_TIMESTAMP(6), -- Cada vez que se hace un UPDATE a la fila, MySQL actualiza esta columna automáticamente con la fecha y hora del momento de la modificación.
+  version_cita BIGINT UNSIGNED NOT NULL DEFAULT 0, -- Contador de versión optimista (@Version de JPA). Hibernate lo incrementa en cada UPDATE para detectar conflictos de concurrencia entre dos transacciones que escriben sobre la misma cita.
   PRIMARY KEY (id_cita),
 
   CONSTRAINT fk_cita_cliente -- Es el nombre que le das a la restricción.
