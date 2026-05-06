@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "93.0.0"
+  adoptive_calendar:
+    dependency: "direct main"
+    description:
+      name: adoptive_calendar
+      sha256: "58ee961a0471267d7fd630cb5ee48eb67e5a096b9766da09f3004b58527678d9"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.2.0"
   analyzer:
     dependency: transitive
     description:
@@ -145,6 +153,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.7"
+  cupertino_calendar_picker:
+    dependency: "direct main"
+    description:
+      name: cupertino_calendar_picker
+      sha256: "91a717b990d2c602c0be84a8c1e584eea69fae92dad7b3259d019e1b40e10a54"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.2.6"
   cupertino_icons:
     dependency: "direct main"
     description:
@@ -169,6 +185,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.2"
+  easy_date_timeline:
+    dependency: "direct main"
+    description:
+      name: easy_date_timeline
+      sha256: "0fb8fe360d78b7ccb409da9de0e8a71e8e06f0e8a60ea6c54dabf830479309b2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.0.9"
   equatable:
     dependency: transitive
     description:
@@ -286,6 +310,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_datetime_picker:
+    dependency: "direct main"
+    description:
+      name: flutter_datetime_picker
+      sha256: "8e695c63c769350e541951227c2775190ec73ceda774a315b1dc9a99d5facfe5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.5.1"
   flutter_form_builder:
     dependency: "direct main"
     description:
@@ -302,6 +334,11 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
+  flutter_localizations:
+    dependency: transitive
+    description: flutter
+    source: sdk
+    version: "0.0.0"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -576,6 +613,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.2.2"
+  infinite_calendar_view:
+    dependency: "direct main"
+    description:
+      name: infinite_calendar_view
+      sha256: a3edbf1cc2f0eca20df8debdce9cf2a391749e009f36ef1f00b5fec3b2c0f5c9
+      url: "https://pub.dev"
+    source: hosted
+    version: "2.11.3"
   intl:
     dependency: "direct main"
     description:
@@ -1037,6 +1082,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.1"
+  syncfusion_flutter_calendar:
+    dependency: "direct main"
+    description:
+      name: syncfusion_flutter_calendar
+      sha256: "11f237d08d17bbda8ed6b0702a44bbd897d3fd4ce313f8ffab757ed20cf6ade6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "33.2.5"
   syncfusion_flutter_charts:
     dependency: "direct main"
     description:
@@ -1049,10 +1102,26 @@ packages:
     dependency: transitive
     description:
       name: syncfusion_flutter_core
-      sha256: b377be3df580e9fdc4e5cc5e47fc09a513c8b08dc4ed05eb45c43f5fd34add2d
+      sha256: "25f2e349bc14a1a4f9da95f24484ea1751de2ab13dc11a2d4d96f54c4c7a030a"
       url: "https://pub.dev"
     source: hosted
-    version: "33.2.4"
+    version: "33.2.5"
+  syncfusion_flutter_datepicker:
+    dependency: transitive
+    description:
+      name: syncfusion_flutter_datepicker
+      sha256: "4b31c4643a3388d30ab5b005ac643c69d06ab682ab617422839c894cc88c1b0c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "33.2.5"
+  syncfusion_localizations:
+    dependency: transitive
+    description:
+      name: syncfusion_localizations
+      sha256: "3b9fce43cbd979c72e688052472b0e63eb2584af7ad2c4f7bd5f1e5728c08f60"
+      url: "https://pub.dev"
+    source: hosted
+    version: "33.2.5"
   term_glyph:
     dependency: transitive
     description:
@@ -1085,6 +1154,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.6.15"
+  timezone:
+    dependency: transitive
+    description:
+      name: timezone
+      sha256: "784a5e34d2eb62e1326f24d6f600aaaee452eb8ca8ef2f384a59244e292d158b"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.11.0"
   typed_data:
     dependency: transitive
     description:

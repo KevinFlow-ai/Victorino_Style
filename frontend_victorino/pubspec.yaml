@@ -90,9 +90,40 @@ dependencies:
   image_picker: ^1.1.2 # Selector de imágenes desde galería/cámara.
   # Necesario para subir la foto del empleado, servicio o perfil del cliente.
 
-  image_editor_plus: ^1.0.8 #
-  image_cropper: ^12.2.1 #
-  crop_your_image: ^2.0.0 #
+  image_editor_plus: ^1.0.8 # Editor de imágenes avanzado.
+  # Permite aplicar filtros, dibujar, agregar texto, stickers y otras herramientas de edición.
+
+  image_cropper: ^12.2.1 # Recortador de imágenes.
+  # Abre una interfaz para recortar la imagen seleccionada antes de guardarla o subirla.
+
+  crop_your_image: ^2.0.0 # Alternativa para recortar imágenes.
+  # Ofrece un widget personalizable para recortar imágenes dentro de tu propia UI.
+
+
+
+
+  # *****************************  CALENDARIOS*******************
+  infinite_calendar_view: ^2.11.3 # Calendario infinito desplazable.
+  # Permite navegar por meses y años sin límite, con scroll suave y personalizable.
+
+  adoptive_calendar: ^0.2.0 # Calendario adaptable al diseño.
+  # Se ajusta automáticamente al tamaño disponible y permite estilos modernos y minimalistas.
+
+  cupertino_calendar_picker: ^2.2.6 # Selector de fecha estilo iOS.
+  # Muestra el clásico "ruedita" de Apple para elegir fecha y hora, ideal para apps con estilo Cupertino.
+
+  syncfusion_flutter_calendar: ^33.2.5 # Calendario profesional y muy completo.
+  # Incluye vistas de día, semana, mes, agenda, eventos, recordatorios, arrastrar y soltar, etc.
+  # Perfecto para apps de reservas, agendas o gestión de horarios.
+
+  easy_date_timeline: ^2.0.9 # Línea de fechas horizontal.
+  # Muestra una tira de días desplazable, útil para seleccionar fechas rápidas tipo "timeline".
+
+  flutter_datetime_picker: ^1.5.1 # Selector de fecha y hora simple.
+  # Ofrece un picker rápido y personalizable para elegir fechas, horas o ambos.
+
+
+
 
 dev_dependencies:
   flutter_test:
