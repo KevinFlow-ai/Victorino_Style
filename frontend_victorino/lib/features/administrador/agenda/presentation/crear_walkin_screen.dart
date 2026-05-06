@@ -29,7 +29,7 @@ class _CrearWalkInScreenState extends ConsumerState<CrearWalkInScreen> {
   int? _idEmpleado;
   int? _idServicio;
   DateTime _fecha = DateTime.now();
-  TimeOfDay _hora = const TimeOfDay(hour: 10, minute: 0);
+  TimeOfDay _hora = TimeOfDay.now();
   bool _modoInvitado = true;
   final _nombre = TextEditingController();
   final _apellidos = TextEditingController();
@@ -120,8 +120,8 @@ class _CrearWalkInScreenState extends ConsumerState<CrearWalkInScreen> {
             // Toggle cliente registrado / invitado.
             SegmentedButton<bool>(
               segments: const [
-                ButtonSegment(value: true, label: Text('Walk-in (sin cuenta)')),
-                ButtonSegment(value: false, label: Text('Cliente registrado')),
+                ButtonSegment(value: true, label: Text('Walk-in (Cliente sin cuenta)')),
+                // ButtonSegment(value: false, label: Text('Cliente registrado')),
               ],
               selected: {_modoInvitado},
               onSelectionChanged: (s) => setState(() => _modoInvitado = s.first),
@@ -225,6 +225,18 @@ class _CrearWalkInScreenState extends ConsumerState<CrearWalkInScreen> {
   Future<void> _crear() async {
     if (!_form.currentState!.validate()) return;
     if (!_modoInvitado) return; // todavía no soportado
+
+    final ahora = DateTime.now();
+    final citaDateTime = DateTime(
+      _fecha.year, _fecha.month, _fecha.day, _hora.hour, _hora.minute,
+    );
+    if (!citaDateTime.isAfter(ahora)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No puedes reservar una hora que ya ha pasado.')),
+      );
+      return;
+    }
+
     setState(() => _enviando = true);
     try {
       final datos = DatosWalkIn(
