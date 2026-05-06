@@ -11,6 +11,8 @@ import 'package:intl/intl.dart';
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/theme/app_colores.dart';
 import '../../empleados/application/empleados_providers.dart';
+import '../../negocio/application/negocio_providers.dart';
+import '../../negocio/domain/entidades/horario_peluqueria.dart';
 import '../../servicios/application/servicios_providers.dart';
 import '../application/agenda_providers.dart';
 import '../domain/entidades/cita.dart';
@@ -39,6 +41,8 @@ class _CrearWalkInScreenState extends ConsumerState<CrearWalkInScreen> {
   Widget build(BuildContext context) {
     final empleadosState = ref.watch(empleadosAdminNotifierProvider);
     final serviciosState = ref.watch(serviciosAdminNotifierProvider);
+    // Nos aseguramos de observar el horario para que esté cargado si lo necesitamos en el error.
+    ref.watch(horarioNotifierProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -127,20 +131,62 @@ class _CrearWalkInScreenState extends ConsumerState<CrearWalkInScreen> {
               TextFormField(
                 controller: _nombre,
                 decoration: _decoracion('Nombre'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Obligatorio' : null,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Campo obligatorio';
+                  }
+
+                  final texto = v.trim();
+                  final regex = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$');
+
+                  if (!regex.hasMatch(texto)) {
+                    return 'Solo se permiten letras';
+                  }
+
+                  return null;
+                },
               ),
-              const SizedBox(height: 12),
+
               TextFormField(
                 controller: _apellidos,
                 decoration: _decoracion('Apellidos'),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Obligatorio' : null,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return 'Campo bligatorio';
+                  }
+
+                  final texto = v.trim();
+                  final regex = RegExp(r'^[a-zA-ZáéíóúÁÉÍÓÚñÑ ]+$');
+
+                  if (!regex.hasMatch(texto)) {
+                    return 'Solo se permiten letras';
+                  }
+
+                  return null;
+                },
               ),
+
               const SizedBox(height: 12),
               TextFormField(
                 controller: _telefono,
                 decoration: _decoracion('Teléfono (opcional)'),
                 keyboardType: TextInputType.phone,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return null; // Es opcional
+                  }
+
+                  final telefono = v.trim();
+                  final regex = RegExp(r'^[0-9 ]+$');
+
+                  if (!regex.hasMatch(telefono)) {
+                    return 'El teléfono solo puede contener números';
+                  }
+
+                  return null; // Si el teléfono es válido
+                },
               ),
+
             ] else
               const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
@@ -199,7 +245,20 @@ class _CrearWalkInScreenState extends ConsumerState<CrearWalkInScreen> {
       }
     } on ApiException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.failure.mensaje)));
+        String mensaje = e.failure.mensaje;
+
+        // Si el error es por horario, intentamos dar más detalle
+        if (mensaje.contains('fuera del horario de apertura')) {
+          final horario = ref.read(horarioNotifierProvider).asData?.value;
+          if (horario != null) {
+            final textoHoras = _getHorarioTexto(horario, _fecha);
+            if (textoHoras != null) {
+              mensaje = 'La cita debe ser $textoHoras';
+            }
+          }
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje)));
       }
     } catch (e) {
       if (mounted) {
@@ -208,6 +267,23 @@ class _CrearWalkInScreenState extends ConsumerState<CrearWalkInScreen> {
     } finally {
       if (mounted) setState(() => _enviando = false);
     }
+  }
+
+  /// Devuelve un texto descriptivo del horario para un día concreto.
+  String? _getHorarioTexto(HorarioPeluqueria h, DateTime fecha) {
+    final (String? apertura, String? cierre) = switch (fecha.weekday) {
+      DateTime.monday => (h.aperturaLunes, h.cierreLunes),
+      DateTime.tuesday => (h.aperturaMartes, h.cierreMartes),
+      DateTime.wednesday => (h.aperturaMiercoles, h.cierreMiercoles),
+      DateTime.thursday => (h.aperturaJueves, h.cierreJueves),
+      DateTime.friday => (h.aperturaViernes, h.cierreViernes),
+      DateTime.saturday => (h.aperturaSabado, h.cierreSabado),
+      DateTime.sunday => (h.aperturaDomingo, h.cierreDomingo),
+      _ => (null, null),
+    };
+
+    if (apertura == null || cierre == null) return null;
+    return 'entre las $apertura y las $cierre';
   }
 
   InputDecoration _decoracion(String label) => InputDecoration(
