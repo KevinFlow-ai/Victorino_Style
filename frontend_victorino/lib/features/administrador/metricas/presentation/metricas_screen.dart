@@ -182,7 +182,7 @@ class _RankingCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(titulo, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.textMuted, fontSize: 11)),
+                    style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
                 Text(primario, maxLines: 1, overflow: TextOverflow.ellipsis,
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                 Text(secundario, maxLines: 1, overflow: TextOverflow.ellipsis,

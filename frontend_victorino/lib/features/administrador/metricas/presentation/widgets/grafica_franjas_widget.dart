@@ -55,10 +55,10 @@ class GraficaFranjasWidget extends StatelessWidget {
             lineBarsData: [
               LineChartBarData(
                 isCurved: true,
-                color: AppColors.primary,
-                barWidth: 3,
+                color: AppColors.secondary, // color de la linea del grafico
+                barWidth: 3, // grosor de la linea del grafico
                 spots: puntos,
-                belowBarData: BarAreaData(show: true, color: AppColors.accentGlow),
+                belowBarData: BarAreaData(show: true, color: AppColors.accentGlow), // relleno de la barra
                 dotData: const FlDotData(show: true),
               ),
             ],
@@ -86,7 +86,7 @@ class GraficaFranjasWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Citas por franja horaria',
-              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17)),
           const SizedBox(height: 16),
           child,
         ],

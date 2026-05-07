@@ -74,7 +74,7 @@ class CitaAdminCard extends StatelessWidget {
                 // Nombre del cliente + indicador si es Walk-in
                 Text(
                   '${cita.nombreCliente}${cita.esInvitado ? "  ·  Walk-in" : ""}',
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
@@ -82,7 +82,7 @@ class CitaAdminCard extends StatelessWidget {
                 // Servicio y empleado
                 Text(
                   '${cita.nombreServicio} · ${cita.nombreEmpleado}',
-                  maxLines: 1,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                     color: AppColors.textMuted,
