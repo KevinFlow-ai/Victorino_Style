@@ -114,7 +114,16 @@ class _RegistroScreenState extends ConsumerState<RegistroScreen> {
                   controller: _nombreCtrl,
                   hintText: 'Ej. Kevin',
                   prefixIcon: Icons.person_outline,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Nombre obligatorio' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Nombre obligatorio';
+                    }
+                    final regex = RegExp(r'^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$');
+                    if (!regex.hasMatch(v.trim())) {
+                      return 'Solo se permiten letras';
+                    }
+                    return null;
+                  },
                 ),
 
                 const SizedBox(height: 20),
@@ -124,7 +133,17 @@ class _RegistroScreenState extends ConsumerState<RegistroScreen> {
                   controller: _apellidosCtrl,
                   hintText: 'Ej. Flores',
                   prefixIcon: Icons.badge_outlined,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Apellidos obligatorios' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) {
+                      return 'Apellidos obligatorios';
+                    }
+                    final regex = RegExp(r'^[a-zA-ZÁÉÍÓÚáéíóúÑñ\s]+$');
+                    if (!regex.hasMatch(v.trim())) {
+                      return 'Solo se permiten letras';
+                    }
+                    return null;
+                  },
+
                 ),
 
                 const SizedBox(height: 20),
@@ -135,6 +154,14 @@ class _RegistroScreenState extends ConsumerState<RegistroScreen> {
                   hintText: '600000000',
                   prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
+                  validator: (v) {
+                    final s = v?.trim() ?? '';
+                    if (s.isEmpty) return null; // Es opcional
+                    final regex = RegExp(r'^[0-9]+$');
+                    if (!regex.hasMatch(s)) return 'Solo se permiten números';
+                    return null;
+                  },
+
                 ),
 
                 const SizedBox(height: 20),
