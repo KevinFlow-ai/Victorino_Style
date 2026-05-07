@@ -22,6 +22,7 @@ import '../../features/administrador/shell/presentation/shell_admin_screen.dart'
 import '../../features/cliente/home/home_cliente.dart';
 import '../../features/cliente/registro/presentation/registro_screen.dart';
 import '../../features/empleado/home/home_empleado.dart';
+import '../../features/forgot_password/forgot_password_screen.dart';
 import '../../features/login_admin_empleado_cliente/presentation/login_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../shared/providers/sesion_provider.dart';
@@ -35,6 +36,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/registro', builder: (_, _) => const RegistroScreen()),
       GoRoute(path: '/cliente/home', builder: (_, _) => const HomeCliente()),
+      GoRoute(path: '/forgot-password', builder: (_, __) => const ForgotPasswordEmailScreen()),
       GoRoute(path: '/empleado/home', builder: (_, _) => const HomeEmpleado()),
 
       // Panel ADMIN con bottom nav y 5 ramas independientes.
@@ -123,7 +125,9 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final sesion = ref.read(sesionProvider).value;
       final ubicacion = state.matchedLocation;
       final estaEnSplash = ubicacion == '/';
-      final estaEnAuth = ubicacion == '/login' || ubicacion == '/registro';
+      final estaEnAuth = ubicacion == '/login' ||
+          ubicacion == '/registro' ||
+          ubicacion == '/forgot-password';
       final hayLogin = sesion != null;
 
       // El splash nunca redirige: él mismo decide a dónde ir tras intentar refresh.

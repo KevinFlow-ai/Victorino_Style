@@ -23,6 +23,11 @@ class ApiEndpoints {
   static const authRefresh = '/auth/refresh';
   static const authLogout = '/auth/logout';
 
+  // Rutas de recuperación de contraseña
+  static const authForgotPassword = '/auth/forgot-password';
+  static const authVerifyOtp = '/auth/verify-otp';
+  static const authResetPassword = '/auth/reset-password';
+
   // ==========================================================================
   // RUTAS DEL PANEL ADMIN
   // ==========================================================================

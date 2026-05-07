@@ -97,6 +97,49 @@ class AuthRepositorioImpl implements AuthRepositorio {
     }
   }
 
+  @override
+  Future<void> enviarCodigoRecuperacion(String correo) async {
+    try {
+      await _dio.post(
+        ApiEndpoints.authForgotPassword,
+        data: {'correo': correo.trim()},
+      );
+    } catch (e) {
+      throw ApiException(_errorMapper.mapear(e));
+    }
+  }
+
+  @override
+  Future<void> verificarCodigoOtp(String correo, String codigo) async {
+    try {
+      await _dio.post(
+        ApiEndpoints.authVerifyOtp,
+        data: {
+          'correo': correo.trim(),
+          'codigo': codigo.trim(),
+        },
+      );
+    } catch (e) {
+      throw ApiException(_errorMapper.mapear(e));
+    }
+  }
+
+  @override
+  Future<void> restablecerContrasena(String correo, String codigo, String nuevaPassword) async {
+    try {
+      await _dio.post(
+        ApiEndpoints.authResetPassword,
+        data: {
+          'correo': correo.trim(),
+          'codigo': codigo.trim(),
+          'nuevaPassword': nuevaPassword,
+        },
+      );
+    } catch (e) {
+      throw ApiException(_errorMapper.mapear(e));
+    }
+  }
+
   // Convierte el DTO en (SesionUsuario + refreshToken).
   ResultadoAuth _aResultado(AuthResponseDto dto) {
     // Métodoo privado que transforma el DTO del backend en modelos internos.

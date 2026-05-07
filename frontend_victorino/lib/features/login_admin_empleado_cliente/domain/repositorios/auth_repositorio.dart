@@ -55,6 +55,17 @@ abstract class AuthRepositorio {
   // Registra un nuevo cliente.
 
   Future<void> cerrarSesion(String refreshToken);
-// Cierra sesión invalidando el refresh token en el backend.
+  // Cierra sesión invalidando el refresh token en el backend.
+
+  // --- Métodos de recuperación de contraseña ---
+
+  Future<void> enviarCodigoRecuperacion(String correo);
+  // Solicita el envío de un código de 6 dígitos al correo.
+
+  Future<void> verificarCodigoOtp(String correo, String codigo);
+  // Verifica si el código introducido es correcto para ese correo.
+
+  Future<void> restablecerContrasena(String correo, String codigo, String nuevaPassword);
+// Cambia la contraseña usando el código verificado.
 }
 

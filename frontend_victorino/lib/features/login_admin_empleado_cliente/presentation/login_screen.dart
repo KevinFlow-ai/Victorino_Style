@@ -175,11 +175,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                       // Link a recuperación (lógica fuera de alcance ahora mismo).
                       GestureDetector(
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Próximamente')),
-                          );
-                        },
+                        onTap: () => context.push('/forgot-password'), // Navegación limpia con GoRouter
                         child: Text(
                           '¿Olvidaste tu contraseña?',
                           style: GoogleFonts.roboto(
