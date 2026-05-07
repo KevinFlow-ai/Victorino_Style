@@ -146,6 +146,8 @@ class _CrearWalkInScreenState extends ConsumerState<CrearWalkInScreen> {
                   return null;
                 },
               ),
+              const SizedBox(height: 12),
+
 
               TextFormField(
                 controller: _apellidos,

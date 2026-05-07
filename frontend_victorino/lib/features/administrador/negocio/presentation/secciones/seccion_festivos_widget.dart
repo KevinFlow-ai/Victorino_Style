@@ -51,6 +51,8 @@ class SeccionFestivosWidget extends ConsumerWidget {
     final descripcion = TextEditingController();
     var tipo = TipoFestivo.local;
 
+    String? errorDescripcion;
+
     final resultado = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -73,10 +75,20 @@ class SeccionFestivosWidget extends ConsumerWidget {
                   if (f != null) setSt(() => fecha = f);
                 },
               ),
+
               TextField(
                 controller: descripcion,
-                decoration: const InputDecoration(labelText: 'Descripción'),
+                decoration: InputDecoration(
+                  labelText: 'Descripción',
+                  errorText: errorDescripcion, // 🔥 muestra error en rojo
+                ),
+                onChanged: (_) {
+                  if (errorDescripcion != null) {
+                    setSt(() => errorDescripcion = null);
+                  }
+                },
               ),
+
               DropdownButton<TipoFestivo>(
                 value: tipo,
                 isExpanded: true,
@@ -88,10 +100,26 @@ class SeccionFestivosWidget extends ConsumerWidget {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancelar'),
+            ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
-              onPressed: () => Navigator.pop(ctx, true),
+              onPressed: () {
+                if (descripcion.text.trim().isEmpty) {
+                  setSt(() => errorDescripcion = 'La descripción es obligatoria');
+                  return; // ❌ NO cerrar el diálogo
+                }
+                if (fecha == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Selecciona una fecha')),
+                  );
+                  return;
+                }
+
+                Navigator.pop(ctx, true); // ✔️ Solo si todoo está bien
+              },
               child: const Text('Crear'),
             ),
           ],
@@ -99,20 +127,29 @@ class SeccionFestivosWidget extends ConsumerWidget {
       ),
     );
 
-    if (resultado != true || fecha == null || descripcion.text.trim().isEmpty) return;
+    if (resultado != true) return;
+
     try {
       final iso = DateFormat('yyyy-MM-dd').format(fecha!);
-      await ref.read(crearFestivoProvider).ejecutar(iso, descripcion.text.trim(), tipo);
+      await ref.read(crearFestivoProvider).ejecutar(
+        iso,
+        descripcion.text.trim(),
+        tipo,
+      );
       await ref.read(festivosNotifierProvider.notifier).recargar();
+
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Festivo creado')));
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
       }
     }
   }
+
 
   String _etiqueta(TipoFestivo t) => switch (t) {
         TipoFestivo.nacional => 'Nacional',
