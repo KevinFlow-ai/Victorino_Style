@@ -23,6 +23,8 @@ class EmpleadoAdminDto {
     required this.rol,
     required this.esAdministrador,
     this.telefono,
+    this.horaDescanso,
+    this.duracionDescansoMinutos,
   });
 
   // Campos EXACTOS que vienen del backend
@@ -35,9 +37,19 @@ class EmpleadoAdminDto {
   final bool activo;
   final String rol;
   final bool esAdministrador;
+  // Descanso fijo diario. Null si el empleado aún no tiene descanso configurado.
+  final String? horaDescanso;
+  final int? duracionDescansoMinutos;
 
   // Constructor factory para crear el DTO desde JSON
   factory EmpleadoAdminDto.fromJson(Map<String, dynamic> json) {
+    // El backend devuelve "HH:mm" o "HH:mm:ss"; nos quedamos con los 5 primeros caracteres.
+    String? parsearHora(dynamic v) {
+      if (v == null) return null;
+      final s = v as String;
+      return s.length >= 5 ? s.substring(0, 5) : s;
+    }
+
     return EmpleadoAdminDto(
       idEmpleado: (json['idEmpleado'] as num).toInt(),
       nombre: json['nombre'] as String,
@@ -48,6 +60,10 @@ class EmpleadoAdminDto {
       activo: json['activo'] as bool,
       rol: json['rol'] as String,
       esAdministrador: json['esAdministrador'] as bool,
+      horaDescanso: parsearHora(json['horaDescanso']),
+      duracionDescansoMinutos: json['duracionDescansoMinutos'] == null
+          ? null
+          : (json['duracionDescansoMinutos'] as num).toInt(),
     );
   }
 
@@ -62,6 +78,8 @@ class EmpleadoAdminDto {
     fotoUrl: fotoUrl,
     activo: activo,
     esAdministrador: esAdministrador,
+    horaDescanso: horaDescanso,
+    duracionDescansoMinutos: duracionDescansoMinutos,
   );
 }
 

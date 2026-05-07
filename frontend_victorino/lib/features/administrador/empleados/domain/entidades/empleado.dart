@@ -12,6 +12,8 @@ class Empleado {
     required this.activo,
     required this.esAdministrador,
     this.telefono,
+    this.horaDescanso,
+    this.duracionDescansoMinutos,
   });
 
   final int id;
@@ -22,6 +24,10 @@ class Empleado {
   final String fotoUrl;
   final bool activo;
   final bool esAdministrador;
+  // Hora de inicio del descanso fijo ("HH:mm"). Null si aún no se ha configurado.
+  final String? horaDescanso;
+  // Duración del descanso en minutos. Null si aún no se ha configurado.
+  final int? duracionDescansoMinutos;
 
   // Helper para mostrar el nombre completo en la UI.
   String get nombreCompleto => nombre;

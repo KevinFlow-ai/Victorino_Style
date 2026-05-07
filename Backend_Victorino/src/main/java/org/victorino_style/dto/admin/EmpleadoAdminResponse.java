@@ -31,7 +31,14 @@ public record EmpleadoAdminResponse(
         RolUsuario rol,
 
         // Bandera de conveniencia para el frontend: true si el empleado también es administrador.
-        boolean esAdministrador
+        boolean esAdministrador,
+
+        // Hora de inicio del descanso fijo diario en formato "HH:mm".
+        // Null si el empleado todavía no tiene descanso configurado.
+        String horaDescanso,
+
+        // Duración del descanso en minutos. Null si no está configurado.
+        Integer duracionDescansoMinutos
 ) {
 }
 

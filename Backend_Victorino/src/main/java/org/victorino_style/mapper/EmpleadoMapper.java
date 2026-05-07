@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.victorino_style.dto.admin.EmpleadoAdminResponse;
 import org.victorino_style.entity.Empleado;
+import org.victorino_style.entity.HorarioEmpleado;
 import org.victorino_style.entity.Usuario;
 import org.victorino_style.repository.AdministradorRepository;
+import org.victorino_style.repository.HorarioEmpleadoRepository;
 
 // Convierte la entidad Empleado (que arrastra a Usuario por herencia JOINED)
 // en EmpleadoAdminResponse para devolverla al panel admin.
@@ -15,14 +17,30 @@ import org.victorino_style.repository.AdministradorRepository;
 public class EmpleadoMapper {
 
     private final AdministradorRepository administradorRepository;
+    private final HorarioEmpleadoRepository horarioEmpleadoRepository;
 
-    // Conversión simple: extrae los campos del empleado y enriquece con flags.
+    // Conversión simple: extrae los campos del empleado y enriquece con flags y descanso.
     public EmpleadoAdminResponse aRespuesta(Empleado empleado) {
         // Recupera el usuario relacionado para sacar correo, rol y estado de eliminación.
         Usuario usuario = empleado.getUsuario();
 
         // Comprueba si la fila tiene también una entrada en la tabla `administrador`.
         boolean esAdmin = administradorRepository.existsById(empleado.getId());
+
+        // Recupera el descanso fijo del empleado si ya está configurado.
+        HorarioEmpleado horario = horarioEmpleadoRepository
+                .findByIdEmpleado_Id(empleado.getId())
+                .orElse(null);
+
+        String horaDescanso = null;
+        Integer duracionDescansoMinutos = null;
+        if (horario != null) {
+            // LocalTime.toString() devuelve "HH:mm" o "HH:mm:ss" según tenga segundos;
+            // recortamos a 5 caracteres para garantizar siempre el formato "HH:mm".
+            String horaStr = horario.getDescansoInicioHorario().toString();
+            horaDescanso = horaStr.length() >= 5 ? horaStr.substring(0, 5) : horaStr;
+            duracionDescansoMinutos = horario.getDescansoDuracionHorario();
+        }
 
         return new EmpleadoAdminResponse(
                 empleado.getId(),
@@ -33,7 +51,9 @@ public class EmpleadoMapper {
                 empleado.getFotoEmpleado(),
                 usuario.getFechaEliminacionUsuario() == null,
                 usuario.getRolUsuario(),
-                esAdmin
+                esAdmin,
+                horaDescanso,
+                duracionDescansoMinutos
         );
     }
 }
