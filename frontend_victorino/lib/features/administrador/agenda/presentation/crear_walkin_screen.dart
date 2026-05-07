@@ -97,7 +97,7 @@ class _CrearWalkInScreenState extends ConsumerState<CrearWalkInScreen> {
                         context: context,
                         initialDate: _fecha,
                         firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 60)),
+                        lastDate: DateTime.now().add(const Duration(days: 31)), // como maximo se puede reservar en un mes
                       );
                       if (f != null) setState(() => _fecha = f);
                     },
