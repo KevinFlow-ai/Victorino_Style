@@ -46,5 +46,15 @@ public class TokenRecuperacion {
     @Column(name = "usado_token_recuperacion", nullable = false)
     private Boolean usadoTokenRecuperacion;
 
+    public boolean estaCaducado() {
+        return Instant.now().isAfter(fechaCaducidadTokenRecuperacion);
+    }
 
+    public boolean estaDisponible() {
+        return Boolean.FALSE.equals(usadoTokenRecuperacion) && !estaCaducado();
+    }
+
+    public void marcarComoUsado() {
+        this.usadoTokenRecuperacion = true;
+    }
 }
