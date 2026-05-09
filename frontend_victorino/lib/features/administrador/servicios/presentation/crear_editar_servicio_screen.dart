@@ -1,13 +1,14 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/theme/app_colores.dart';
+import '../../../../core/widgets_compartidos/selector_imagen.dart';
 import '../application/servicios_providers.dart';
 import '../domain/entidades/servicio.dart';
 
@@ -28,6 +29,8 @@ class _CrearEditarServicioScreenState extends ConsumerState<CrearEditarServicioS
   final _duracion = TextEditingController(text: '30');
   final _precio = TextEditingController();
   File? _foto;
+  double? _aspectRatio; // ⭐ relación de aspecto real del recorte
+
   bool _enviando = false;
   bool _cargando = false;
 
@@ -51,9 +54,32 @@ class _CrearEditarServicioScreenState extends ConsumerState<CrearEditarServicioS
   }
 
   Future<void> _elegirFoto() async {
-    final f = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (f != null) setState(() => _foto = File(f.path));
+    final foto = await SelectorImagen.elegirYRecortar(
+      context: context,
+      formaCircular: false, // ⭐ rectangular
+    );
+
+    if (foto != null) {
+      final ratio = await _obtenerAspectRatio(foto);
+
+      setState(() {
+        _foto = foto;
+        _aspectRatio = ratio;
+      });
+    }
   }
+
+  // ⭐ Obtiene la relación de aspecto REAL del recorte
+  Future<double> _obtenerAspectRatio(File file) async {
+    final bytes = await file.readAsBytes();
+
+    final codec = await ui.instantiateImageCodec(bytes);
+    final frame = await codec.getNextFrame();
+    final image = frame.image;
+
+    return image.width / image.height;
+  }
+
 
   Future<void> _guardar() async {
     if (!_form.currentState!.validate()) return;
@@ -114,59 +140,83 @@ class _CrearEditarServicioScreenState extends ConsumerState<CrearEditarServicioS
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : Form(
-              key: _form,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  GestureDetector(
-                    onTap: _enviando ? null : _elegirFoto,
-                    child: Container(
-                      height: 180,
-                      decoration: BoxDecoration(
-                        color: AppColors.accentGlow,
-                        borderRadius: BorderRadius.circular(12),
-                        image: _foto != null
-                            ? DecorationImage(image: FileImage(_foto!), fit: BoxFit.cover)
-                            : null,
-                      ),
-                      child: _foto == null
-                          ? const Center(child: Icon(Icons.add_a_photo, color: AppColors.primary, size: 40))
-                          : null,
-                    ),
+        key: _form,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            // ⭐ FOTO DEL SERVICIO (respeta el recorte)
+            GestureDetector(
+              onTap: _enviando ? null : _elegirFoto,
+              child: _foto == null
+                  ? Container(
+                height: 180,
+                decoration: BoxDecoration(
+                  color: AppColors.accentGlow,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Center(
+                  child: Icon(Icons.add_a_photo,
+                      color: AppColors.primary, size: 40),
+                ),
+              )
+                  : AspectRatio(
+                aspectRatio: _aspectRatio ?? 1,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.file(
+                    _foto!,
+                    fit: BoxFit.cover,
                   ),
-                  const SizedBox(height: 16),
-                  _campo('Nombre del servicio', _nombre, requerido: true),
-                  _campo('Descripción (opcional)', _descripcion, maxLines: 3),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _campo('Duración (min)', _duracion,
-                            requerido: true, teclado: TextInputType.number),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _campo('Precio (€)', _precio,
-                            requerido: true, teclado: TextInputType.number),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: _enviando ? null : _guardar,
-                    child: _enviando
-                        ? const SizedBox(
-                            height: 20, width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(widget.esEdicion ? 'Guardar cambios' : 'Crear servicio'),
-                  ),
-                ],
+                ),
               ),
             ),
+
+            const SizedBox(height: 16),
+
+            _campo('Nombre del servicio', _nombre, requerido: true),
+            _campo('Descripción (opcional)', _descripcion, maxLines: 3),
+
+            Row(
+              children: [
+                Expanded(
+                  child: _campo('Duración (min)', _duracion,
+                      requerido: true,
+                      teclado: TextInputType.number),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _campo('Precio (€)', _precio,
+                      requerido: true,
+                      teclado: TextInputType.number),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                padding:
+                const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+              ),
+              onPressed: _enviando ? null : _guardar,
+              child: _enviando
+                  ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+                  : Text(widget.esEdicion
+                  ? 'Guardar cambios'
+                  : 'Crear servicio'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -47,7 +47,7 @@ INSERT INTO usuario (id_usuario, correo_usuario, contrasena_usuario, rol_usuario
 VALUES (1, 'victorino@admin.com', @pwd, 'ADMINISTRADOR');
 
 INSERT INTO empleado (id_empleado, nombre_empleado, apellidos_empleado, foto_empleado)
-VALUES (1, 'Victorino', 'Admin', '/uploads/empleados/admin.jpg');
+VALUES (1, 'Victorino', 'Admin', '/uploads/empleados/admin.png');
 
 INSERT INTO administrador (id_administrador) VALUES (1);
 

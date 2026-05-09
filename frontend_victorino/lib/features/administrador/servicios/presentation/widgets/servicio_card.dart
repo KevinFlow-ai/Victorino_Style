@@ -1,4 +1,4 @@
-// Card grande de servicio inspirada en `gestion_de_servicios_admin.jpeg`.
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -40,14 +40,12 @@ class ServicioCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ⭐ Imagen que respeta el recorte (1:1, 16:9, 4:3)
           ClipRRect(
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-            child: SizedBox(
-              height: 160,
-              width: double.infinity,
-              child: _foto(servicio.fotoUrl),
-            ),
+            child: _fotoConAspectRatio(servicio.fotoUrl),
           ),
+
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -112,21 +110,58 @@ class ServicioCard extends StatelessWidget {
     );
   }
 
-  Widget _foto(String url) {
+  // ⭐ Imagen que respeta la relación de aspecto real del recorte
+  Widget _fotoConAspectRatio(String url) {
     if (url.isEmpty) {
       return Container(
+        height: 200,
         color: AppColors.accentGlow,
         child: const Icon(Icons.image, size: 48, color: AppColors.primary),
       );
     }
-    final completa = '${ApiEndpoints.baseUrl.replaceAll("/api/v1", "")}$url';
-    return Image.network(
-      completa,
-      fit: BoxFit.cover,
-      errorBuilder: (_, _, _) => Container(
-        color: AppColors.accentGlow,
-        child: const Icon(Icons.broken_image, size: 48, color: AppColors.primary),
-      ),
+
+    final completa = ApiEndpoints.urlImagen(url);
+
+    return FutureBuilder<double>(
+      future: _aspectRatioFromNetwork(completa),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const SizedBox(
+            height: 200,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        final ratio = snapshot.data!;
+
+        return AspectRatio(
+          aspectRatio: ratio,
+          child: Image.network(
+            completa,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: AppColors.accentGlow,
+              child: const Icon(Icons.broken_image,
+                  size: 48, color: AppColors.primary),
+            ),
+          ),
+        );
+      },
     );
+  }
+
+  // ⭐ Obtiene la relación de aspecto REAL de la imagen del servidor
+  Future<double> _aspectRatioFromNetwork(String url) async {
+    final completer = Completer<ImageInfo>();
+
+    final image = Image.network(url);
+    image.image.resolve(const ImageConfiguration()).addListener(
+      ImageStreamListener((info, _) {
+        completer.complete(info);
+      }),
+    );
+
+    final info = await completer.future;
+    return info.image.width / info.image.height;
   }
 }

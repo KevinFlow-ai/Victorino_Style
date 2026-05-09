@@ -58,6 +58,23 @@ class ApiEndpoints {
 
   // Métricas.
   static const adminMetricasResumen = '/admin/metricas/resumen';
+
+  // ==========================================================================
+  // HELPERS PARA URLs DE IMÁGENES
+  // ==========================================================================
+
+  // Construye la URL absoluta de una imagen subida (`/uploads/<carpeta>/<file>`).
+  // El backend sirve estos recursos bajo el mismo `context-path` que el resto
+  // del API (`/api/v1`), así que basta con concatenar baseUrl + ruta relativa.
+  // Devuelve cadena vacía si la ruta es null o vacía.
+  static String urlImagen(String? rutaRelativa) {
+    if (rutaRelativa == null || rutaRelativa.isEmpty) return '';
+    if (rutaRelativa.startsWith('http://') || rutaRelativa.startsWith('https://')) {
+      // Algunas migraciones futuras pueden devolver URLs absolutas (ej. CDN).
+      return rutaRelativa;
+    }
+    return '$baseUrl$rutaRelativa';
+  }
 }
 
 /*

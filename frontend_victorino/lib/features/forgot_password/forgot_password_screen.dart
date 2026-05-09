@@ -17,7 +17,10 @@ class _ForgotPasswordEmailScreenState extends ConsumerState<ForgotPasswordEmailS
   final _formKey = GlobalKey<FormState>();
 
   bool isValidEmail(String email) {
-    final regex = RegExp(r'^[a-zA-Z0-9._%+-]+@gmail\.com$');
+    final regex = RegExp(
+      r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+.[A-Za-z]{2,}$',
+    );
+
     return regex.hasMatch(email);
   }
 
