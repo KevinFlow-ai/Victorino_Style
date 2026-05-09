@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/theme/app_colores.dart';
 import '../../../../core/widgets_compartidos/selector_imagen.dart';
@@ -29,7 +30,14 @@ class _CrearEditarServicioScreenState extends ConsumerState<CrearEditarServicioS
   final _duracion = TextEditingController(text: '30');
   final _precio = TextEditingController();
   File? _foto;
-  double? _aspectRatio; // ⭐ relación de aspecto real del recorte
+  double? _aspectRatio; // ⭐ relación de aspecto real del recorte local
+  // URL relativa de la foto que ya tiene el servicio en el backend.
+  // Si el admin elige una foto nueva (`_foto != null`), prevalece la nueva.
+  String _fotoUrlActual = '';
+  // Aspect ratio REAL de la imagen remota (la guardada en el servidor).
+  // Se calcula al cargar `_fotoUrlActual`. Mientras es null, mostramos un
+  // contenedor con relación cuadrada como fallback.
+  double? _aspectRatioRemoto;
 
   bool _enviando = false;
   bool _cargando = false;
@@ -48,6 +56,13 @@ class _CrearEditarServicioScreenState extends ConsumerState<CrearEditarServicioS
       _descripcion.text = s.descripcion ?? '';
       _duracion.text = s.duracionMinutos.toString();
       _precio.text = s.precio.toString();
+      _fotoUrlActual = s.fotoUrl;
+      // Dispara el cálculo del aspect ratio real de la imagen remota.
+      // No espera al resultado: en cuanto la imagen se descargue, hace setState
+      // con el ratio y la UI vuelve a renderizar con el AR correcto.
+      if (_fotoUrlActual.isNotEmpty) {
+        _calcularAspectRatioRemoto(ApiEndpoints.urlImagen(_fotoUrlActual));
+      }
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
@@ -78,6 +93,28 @@ class _CrearEditarServicioScreenState extends ConsumerState<CrearEditarServicioS
     final image = frame.image;
 
     return image.width / image.height;
+  }
+
+  // Descarga la imagen remota con NetworkImage y, en cuanto Flutter conoce
+  // sus dimensiones, calcula el aspect ratio y refresca la UI. Así, al editar,
+  // la foto guardada se muestra respetando el ratio con el que fue recortada
+  // (1:1, 16:9, 4:3, etc.).
+  void _calcularAspectRatioRemoto(String url) {
+    final imageProvider = NetworkImage(url);
+    final stream = imageProvider.resolve(ImageConfiguration.empty);
+    late ImageStreamListener listener;
+    listener = ImageStreamListener(
+      (info, _) {
+        if (mounted) {
+          setState(() {
+            _aspectRatioRemoto = info.image.width / info.image.height;
+          });
+        }
+        stream.removeListener(listener);
+      },
+      onError: (_, _) => stream.removeListener(listener),
+    );
+    stream.addListener(listener);
   }
 
 
@@ -144,34 +181,62 @@ class _CrearEditarServicioScreenState extends ConsumerState<CrearEditarServicioS
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // ⭐ FOTO DEL SERVICIO (respeta el recorte)
+            // ⭐ FOTO DEL SERVICIO
+            // Prioridad de qué se muestra:
+            // 1) foto local recién recortada → Image.file con AspectRatio del recorte
+            // 2) foto que ya tiene el servicio en el backend (modo editar) → Image.network
+            // 3) sin foto → placeholder con icono add_a_photo
             GestureDetector(
               onTap: _enviando ? null : _elegirFoto,
-              child: _foto == null
-                  ? Container(
-                height: 180,
-                decoration: BoxDecoration(
-                  color: AppColors.accentGlow,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Center(
-                  child: Icon(Icons.add_a_photo,
-                      color: AppColors.primary, size: 40),
-                ),
-              )
-                  : AspectRatio(
-                aspectRatio: _aspectRatio ?? 1,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.file(
-                    _foto!,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
+              child: _foto != null
+                  ? AspectRatio(
+                      aspectRatio: _aspectRatio ?? 1,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.file(_foto!, fit: BoxFit.cover),
+                      ),
+                    )
+                  : (_fotoUrlActual.isNotEmpty
+                      // Cuando ya conocemos el aspect ratio real (lo calcula
+                      // _calcularAspectRatioRemoto al cargar la imagen), envolvemos
+                      // la imagen en AspectRatio para que se muestre con el ratio
+                      // exacto con el que se recortó (1:1, 16:9, 4:3, etc.).
+                      // Si todavía está cargando, dejamos un placeholder cuadrado
+                      // (1:1) para evitar saltos visuales.
+                      ? AspectRatio(
+                          aspectRatio: _aspectRatioRemoto ?? 1,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              ApiEndpoints.urlImagen(_fotoUrlActual),
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, _, _) => Container(
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentGlow,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.broken_image,
+                                      color: AppColors.primary, size: 40),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                      : Container(
+                          height: 180,
+                          decoration: BoxDecoration(
+                            color: AppColors.accentGlow,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.add_a_photo,
+                                color: AppColors.primary, size: 40),
+                          ),
+                        )),
             ),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 22),
 
             _campo('Nombre del servicio', _nombre, requerido: true),
             _campo('Descripción (opcional)', _descripcion, maxLines: 3),
@@ -229,6 +294,7 @@ class _CrearEditarServicioScreenState extends ConsumerState<CrearEditarServicioS
         keyboardType: teclado,
         maxLines: maxLines,
         decoration: InputDecoration(
+          // labelStyle: const TextStyle(fontSize: 15), // Tamaño del label
           labelText: label,
           filled: true,
           fillColor: AppColors.surface,
