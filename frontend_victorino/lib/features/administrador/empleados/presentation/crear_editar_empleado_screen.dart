@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/theme/app_colores.dart';
 import '../../../../core/widgets_compartidos/selector_imagen.dart';
@@ -32,6 +33,10 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
   final _correo = TextEditingController();
   final _password = TextEditingController();
   File? _foto;
+  // URL relativa de la foto que ya tiene el empleado en el backend.
+  // Se usa para mostrar la foto actual al entrar en modo edición; si el admin
+  // elige una foto nueva (`_foto != null`), prevalece la nueva sobre la URL.
+  String _fotoUrlActual = '';
   bool _enviando = false;
   bool _cargando = false;
 
@@ -51,6 +56,7 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
       _apellidos.text = emp.apellidos;
       _correo.text = emp.correo;
       _telefono.text = emp.telefono ?? '';
+      _fotoUrlActual = emp.fotoUrl;
     } finally {
       if (mounted) setState(() => _cargando = false);
     }
@@ -149,23 +155,44 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
                         alignment: Alignment.center,   // 👈 centra todoO
                         children: [
                           ClipOval(
-                            child: _foto == null
-                                ? Container(
-                              width: 120,     // 👈 tamaño fijo
-                              height: 120,    // 👈 tamaño fijo
-                              color: AppColors.accentGlow,
-                              child: const Icon(
-                                Icons.camera_alt,
-                                color: AppColors.primary,
-                                size: 50,
-                              ),
-                            )
-                                : Image.file(
-                              _foto!,
-                              width: 120,
-                              height: 120,
-                              fit: BoxFit.cover,
-                            ),
+                            // Prioridad de qué se muestra:
+                            // 1) foto local recién recortada → Image.file
+                            // 2) foto que ya tiene el empleado en el backend (modo editar) → Image.network
+                            // 3) sin foto → icono cámara como placeholder
+                            child: _foto != null
+                                ? Image.file(
+                                    _foto!,
+                                    width: 120,
+                                    height: 120,
+                                    fit: BoxFit.cover,
+                                  )
+                                : (_fotoUrlActual.isNotEmpty
+                                    ? Image.network(
+                                        ApiEndpoints.urlImagen(_fotoUrlActual),
+                                        width: 120,
+                                        height: 120,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Container(
+                                          width: 120,
+                                          height: 120,
+                                          color: AppColors.accentGlow,
+                                          child: const Icon(
+                                            Icons.camera_alt,
+                                            color: AppColors.primary,
+                                            size: 50,
+                                          ),
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 120, // 👈 tamaño fijo
+                                        height: 120, // 👈 tamaño fijo
+                                        color: AppColors.accentGlow,
+                                        child: const Icon(
+                                          Icons.camera_alt,
+                                          color: AppColors.primary,
+                                          size: 50,
+                                        ),
+                                      )),
                           ),
 
                           // Borde elegante (opcional)
