@@ -8,10 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
-
 import '../../../../core/errors/api_exception.dart';
 import '../../../../core/theme/app_colores.dart';
+import '../../../../core/widgets_compartidos/selector_imagen.dart';
 import '../application/empleados_providers.dart';
 import '../domain/entidades/empleado.dart';
 
@@ -68,9 +67,13 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
   }
 
   Future<void> _elegirFoto() async {
-    final picker = ImagePicker();
-    final fichero = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
-    if (fichero != null) setState(() => _foto = File(fichero.path));
+    // Usa el helper compartido: bottom sheet (galería/cámara) + recorte CIRCULAR
+    // obligatorio (avatar). Devuelve null si el usuario cancela.
+    final foto = await SelectorImagen.elegirYRecortar(
+      context: context,
+      formaCircular: true,
+    );
+    if (foto != null) setState(() => _foto = foto);
   }
 
   Future<void> _guardar() async {
@@ -139,15 +142,70 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
                 children: [
                   GestureDetector(
                     onTap: _enviando ? null : _elegirFoto,
-                    child: CircleAvatar(
-                      radius: 50,
-                      backgroundColor: AppColors.accentGlow,
-                      backgroundImage: _foto != null ? FileImage(_foto!) : null,
-                      child: _foto == null
-                          ? const Icon(Icons.camera_alt, color: AppColors.primary, size: 32)
-                          : null,
+                    child: SizedBox(
+                      width: 120,   // 👈 tamaño del avatar
+                      height: 120,  // 👈 cuadrado = círculo perfecto
+                      child: Stack(
+                        alignment: Alignment.center,   // 👈 centra todoO
+                        children: [
+                          ClipOval(
+                            child: _foto == null
+                                ? Container(
+                              width: 120,     // 👈 tamaño fijo
+                              height: 120,    // 👈 tamaño fijo
+                              color: AppColors.accentGlow,
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: AppColors.primary,
+                                size: 50,
+                              ),
+                            )
+                                : Image.file(
+                              _foto!,
+                              width: 120,
+                              height: 120,
+                              fit: BoxFit.cover,
+                            ),
+                          ),
+
+                          // Borde elegante (opcional)
+                          Positioned.fill(
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 3,
+                                ),
+                                /*
+                                Para cambiar el borde la imagen. OPCION 1
+
+                                border: Border.all(
+                                  color: Color(0xFFA98CFF), // tu púrpura pastel
+                                  width: 3,
+                                ),
+
+                                      Para cambiar el borde la imagen. OPCION 2
+                                    border: Border.all(color: Colors.white, width: 3),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black26,
+                                        blurRadius: 6,
+                                        spreadRadius: 1,
+                                      ),
+                                    ],
+
+
+
+                                 */
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
+
                   const SizedBox(height: 8),
                   Center(
                     child: Text(

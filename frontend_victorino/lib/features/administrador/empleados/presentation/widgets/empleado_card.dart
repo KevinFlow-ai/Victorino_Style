@@ -39,6 +39,72 @@ class EmpleadoCard extends StatelessWidget {
       child: Row(
         children: [
           // Foto circular grande, gris si está dado de baja.
+
+          /*
+
+          REMPLAZAR EL ClipOval, POR ESO, PARA QUE LA FOTO DE PERFIL
+          SEA IGUAL QUE LA DE NUEVO EMPLEADO, AL CREAR EL EMPLEADO
+
+          SizedBox(
+              width: 56,
+              height: 56,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  ClipOval(
+                    child: ColorFiltered(
+                      colorFilter: activo
+                          ? const ColorFilter.mode(Colors.transparent, BlendMode.multiply)
+                          : const ColorFilter.matrix(<double>[
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0.2126, 0.7152, 0.0722, 0, 0,
+                              0,      0,      0,      1, 0,
+                            ]),
+                      child: empleado.fotoUrl.isEmpty
+                          ? Container(
+                              width: 56,
+                              height: 56,
+                              color: AppColors.accentGlow,
+                              child: const Icon(Icons.person,
+                                  color: AppColors.primary, size: 32),
+                            )
+                          : Image.network(
+                              ApiEndpoints.urlImagen(empleado.fotoUrl),
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                width: 56,
+                                height: 56,
+                                color: AppColors.accentGlow,
+                                child: const Icon(Icons.person,
+                                    color: AppColors.primary, size: 32),
+                              ),
+                            ),
+                    ),
+                  ),
+
+                  // Borde opcional (igual que en la pantalla de edición)
+                  Positioned.fill(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Colors.white,
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+           */
+
+
+
           ClipOval(
             child: ColorFiltered(
               colorFilter: activo
@@ -109,15 +175,15 @@ class EmpleadoCard extends StatelessWidget {
         child: const Icon(Icons.person, color: AppColors.primary, size: 32),
       );
     }
-    final url = '${ApiEndpoints.baseUrl.replaceAll("/api/v1", "")}$fotoUrl';
+    final url = ApiEndpoints.urlImagen(fotoUrl);
     return Image.network(
       url,
-      width: 56,
-      height: 56,
+      width: 60,
+      height: 60,
       fit: BoxFit.cover,
       errorBuilder: (_, _, _) => Container(
-        width: 56,
-        height: 56,
+        width: 60,
+        height: 60,
         color: AppColors.accentGlow,
         child: const Icon(Icons.person, color: AppColors.primary, size: 32),
       ),
