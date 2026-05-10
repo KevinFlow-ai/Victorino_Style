@@ -99,7 +99,7 @@ class EmpleadoServiceTest {
         when(empleadoRepository.save(any(Empleado.class))).thenAnswer(inv -> inv.getArgument(0));
         when(empleadoMapper.aRespuesta(any(Empleado.class))).thenReturn(
                 new EmpleadoAdminResponse(20L, "Marco", "Polo", "marco@v.es",
-                        null, "", true, RolUsuario.EMPLEADO, false));
+                        null, "", true, RolUsuario.EMPLEADO, false, null, null));
 
         EmpleadoAdminRequest dto = new EmpleadoAdminRequest(
                 "Marco", "Polo", null, "marco@v.es", "Abcdefg1");
@@ -146,7 +146,7 @@ class EmpleadoServiceTest {
         when(empleadoRepository.save(any(Empleado.class))).thenAnswer(inv -> inv.getArgument(0));
         when(empleadoMapper.aRespuesta(any())).thenReturn(
                 new EmpleadoAdminResponse(10L, "Vito", "Mod", "vito@victorino.es",
-                        null, "/uploads/empleados/old.jpg", true, RolUsuario.EMPLEADO, false));
+                        null, "/uploads/empleados/old.jpg", true, RolUsuario.EMPLEADO, false, null, null));
 
         EmpleadoAdminRequest dto = new EmpleadoAdminRequest(
                 "Vito", "Mod", null, "vito@victorino.es", null);
@@ -184,7 +184,7 @@ class EmpleadoServiceTest {
         when(empleadoRepository.findAllActivos()).thenReturn(List.of(empleadoFalso));
         when(empleadoMapper.aRespuesta(any())).thenReturn(
                 new EmpleadoAdminResponse(10L, "Vito", "Corleone", "vito@victorino.es",
-                        null, "/uploads/empleados/old.jpg", true, RolUsuario.EMPLEADO, false));
+                        null, "/uploads/empleados/old.jpg", true, RolUsuario.EMPLEADO, false, null, null));
 
         List<EmpleadoAdminResponse> lista = empleadoService.listar(false);
 
@@ -198,7 +198,7 @@ class EmpleadoServiceTest {
         when(empleadoRepository.findAllOrderActivosPrimero()).thenReturn(List.of(empleadoFalso));
         when(empleadoMapper.aRespuesta(any())).thenReturn(
                 new EmpleadoAdminResponse(10L, "Vito", "Corleone", "vito@victorino.es",
-                        null, "/uploads/empleados/old.jpg", true, RolUsuario.EMPLEADO, false));
+                        null, "/uploads/empleados/old.jpg", true, RolUsuario.EMPLEADO, false, null, null));
 
         List<EmpleadoAdminResponse> lista = empleadoService.listar(true);
 

@@ -56,13 +56,20 @@ public class AuditoriaService {
         auditoriaRepository.save(fila);
     }
 
-    // Obtiene el Usuario actual desde Spring Security buscándolo por correo.
+    // Obtiene el Usuario actual desde Spring Security.
+    //
+    // El JwtAuthenticationFilter pone el ID del usuario (no el correo) como
+    // principal. Parseamos a Long y buscamos por id. Si no es numérico o el
+    // usuario no existe, devolvemos null y la auditoría se omite silenciosamente.
     private Usuario obtenerUsuarioEjecutor() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || auth.getName() == null) return null;
-        return usuarioRepository
-                .findByCorreoUsuarioAndFechaEliminacionUsuarioIsNull(auth.getName())
-                .orElse(null);
+        try {
+            long idUsuario = Long.parseLong(auth.getName());
+            return usuarioRepository.findById(idUsuario).orElse(null);
+        } catch (NumberFormatException ex) {
+            return null;
+        }
     }
 
     // Recorta una cadena al máximo permitido por la columna BD.
