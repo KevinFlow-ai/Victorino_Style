@@ -46,19 +46,11 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
     if (widget.esEdicion) _cargarEmpleado();
 
     // 🔥 Listener para actualizar validación dinámica
-    _password.addListener(() {
-      setState(() {});
-    });
-
-    // 🔥 Listener para actualizar validación dinámica
-
-    _correo.addListener(() {
-      setState(() {});
-    });
-
+    _password.addListener(() => setState(() {}));
+    _correo.addListener(() => setState(() {}));
   }
 
-  // 🔥 Reglas de validación en vivo
+  // 🔥 VALIDACIÓN DINÁMICA CONTRASEÑA
   bool get _tieneLongitud =>
       _password.text.trim().length >= 8 && _password.text.trim().length <= 72;
 
@@ -68,8 +60,13 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
   bool get _tieneNumero =>
       RegExp(r'[0-9]').hasMatch(_password.text);
 
+  bool get _passwordValida =>
+      _tieneLongitud && _tieneMayuscula && _tieneNumero;
+
   Widget _requisitosPassword() {
     if (_password.text.isEmpty) return const SizedBox();
+    if (_passwordValida) return const SizedBox();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -81,6 +78,39 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
     );
   }
 
+
+
+
+
+
+
+
+  // 🔥 VALIDACIÓN DINÁMICA CORREO
+  bool get _correoNoVacio => _correo.text.trim().isNotEmpty;
+
+  bool get _correoFormatoValido {
+    final email = _correo.text.trim();
+    final regex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,7}$');
+    return regex.hasMatch(email);
+  }
+
+  bool get _correoValido => _correoNoVacio && _correoFormatoValido;
+
+  Widget _requisitosCorreo() {
+    if (_correo.text.isEmpty) return const SizedBox();
+    if (_correoValido) return const SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _itemRegla("El correo no puede estar vacío", _correoNoVacio),
+        _itemRegla("Formato válido (ej: usuario@dominio.com)", _correoFormatoValido),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  // 🔥 Widget reutilizable
   Widget _itemRegla(String texto, bool ok) {
     return Row(
       children: [
@@ -100,40 +130,6 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
       ],
     );
   }
-
-
-
-
-
-
-
-
-  // COORRREOO CORREO
-
-  bool get _correoFormatoValido {
-    final email = _correo.text.trim();
-    final regex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,7}$');
-    return regex.hasMatch(email);
-  }
-
-  bool get _correoNoVacio => _correo.text.trim().isNotEmpty;
-
-  Widget _requisitosCorreo() {
-    if (_correo.text.isEmpty) return const SizedBox();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _itemRegla("El correo no puede estar vacío", _correoNoVacio),
-        _itemRegla("Formato válido (ej: usuario@dominio.com)", _correoFormatoValido),
-        const SizedBox(height: 12),
-      ],
-    );
-  }
-
-
-
-
 
   Future<void> _cargarEmpleado() async {
     setState(() => _cargando = true);
@@ -338,7 +334,6 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
                   _campo('Correo', _correo, requerido: true, teclado: TextInputType.emailAddress),
                   _requisitosCorreo(),
 
-
                   // 🔥 Campo contraseña + validación dinámica
                   _campo(
                     widget.esEdicion ? 'Nueva contraseña (opcional)' : 'Contraseña provisional',
@@ -348,6 +343,7 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
               esPassword: true,
             ),
             _requisitosPassword(),
+
                   const SizedBox(height: 24),
                   FilledButton(
                     style: FilledButton.styleFrom(
@@ -398,6 +394,12 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
 
           if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
 
+          if (label == 'Correo') {
+            final email = v.trim();
+            final regex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,7}$');
+            if (!regex.hasMatch(email)) return 'Correo inválido';
+          }
+
           if (esPassword) {
             if (v.length < 8 || v.length > 72) {
               return 'Debe tener entre 8 y 72 caracteres';
@@ -409,18 +411,6 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
               return 'Debe incluir al menos un número';
             }
           }
-
-
-
-          if (label == 'Correo') {
-            final email = v.trim();
-            final regex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,7}$');
-
-            if (!regex.hasMatch(email)) {
-              return 'Correo inválido';
-            }
-          }
-
 
           return null;
         },
