@@ -44,7 +44,96 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
   void initState() {
     super.initState();
     if (widget.esEdicion) _cargarEmpleado();
+
+    // 🔥 Listener para actualizar validación dinámica
+    _password.addListener(() {
+      setState(() {});
+    });
+
+    // 🔥 Listener para actualizar validación dinámica
+
+    _correo.addListener(() {
+      setState(() {});
+    });
+
   }
+
+  // 🔥 Reglas de validación en vivo
+  bool get _tieneLongitud =>
+      _password.text.trim().length >= 8 && _password.text.trim().length <= 72;
+
+  bool get _tieneMayuscula =>
+      RegExp(r'[A-Z]').hasMatch(_password.text);
+
+  bool get _tieneNumero =>
+      RegExp(r'[0-9]').hasMatch(_password.text);
+
+  Widget _requisitosPassword() {
+    if (_password.text.isEmpty) return const SizedBox();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _itemRegla("Entre 8 y 72 caracteres", _tieneLongitud),
+        _itemRegla("Al menos una mayúscula", _tieneMayuscula),
+        _itemRegla("Al menos un número", _tieneNumero),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _itemRegla(String texto, bool ok) {
+    return Row(
+      children: [
+        Icon(
+          ok ? Icons.check_circle : Icons.radio_button_unchecked,
+          color: ok ? Colors.green : Colors.grey,
+          size: 18,
+        ),
+        const SizedBox(width: 6),
+        Text(
+          texto,
+          style: TextStyle(
+            fontSize: 13,
+            color: ok ? Colors.green : Colors.grey,
+          ),
+        ),
+      ],
+    );
+  }
+
+
+
+
+
+
+
+
+  // COORRREOO CORREO
+
+  bool get _correoFormatoValido {
+    final email = _correo.text.trim();
+    final regex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,7}$');
+    return regex.hasMatch(email);
+  }
+
+  bool get _correoNoVacio => _correo.text.trim().isNotEmpty;
+
+  Widget _requisitosCorreo() {
+    if (_correo.text.isEmpty) return const SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _itemRegla("El correo no puede estar vacío", _correoNoVacio),
+        _itemRegla("Formato válido (ej: usuario@dominio.com)", _correoFormatoValido),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+
+
+
 
   Future<void> _cargarEmpleado() async {
     setState(() => _cargando = true);
@@ -205,14 +294,14 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
                                   width: 3,
                                 ),
                                 /*
-                                Para cambiar el borde la imagen. OPCION 1
+                                Para cambiar el borde la imagen. OPCIÓN 1
 
                                 border: Border.all(
                                   color: Color(0xFFA98CFF), // tu púrpura pastel
                                   width: 3,
                                 ),
 
-                                      Para cambiar el borde la imagen. OPCION 2
+                                      Para cambiar el borde la imagen. OPCIÓN 2
                                     border: Border.all(color: Colors.white, width: 3),
                                     boxShadow: [
                                       BoxShadow(
@@ -247,12 +336,18 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
                   _campo('Apellidos', _apellidos, requerido: true),
                   _campo('Teléfono (opcional)', _telefono, teclado: TextInputType.phone),
                   _campo('Correo', _correo, requerido: true, teclado: TextInputType.emailAddress),
+                  _requisitosCorreo(),
+
+
+                  // 🔥 Campo contraseña + validación dinámica
                   _campo(
                     widget.esEdicion ? 'Nueva contraseña (opcional)' : 'Contraseña provisional',
                     _password,
                     requerido: !widget.esEdicion,
                     obscure: true,
-                  ),
+              esPassword: true,
+            ),
+            _requisitosPassword(),
                   const SizedBox(height: 24),
                   FilledButton(
                     style: FilledButton.styleFrom(
@@ -273,8 +368,14 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
     );
   }
 
-  Widget _campo(String label, TextEditingController c,
-      {bool requerido = false, bool obscure = false, TextInputType? teclado}) {
+  Widget _campo(
+      String label,
+      TextEditingController c, {
+        bool requerido = false,
+        bool obscure = false,
+        bool esPassword = false,
+        TextInputType? teclado,
+      }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextFormField(
@@ -290,9 +391,37 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
             borderSide: BorderSide.none,
           ),
         ),
+
+
         validator: (v) {
-          if (!requerido) return null;
+          if (!requerido && (v == null || v.isEmpty)) return null;
+
           if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
+
+          if (esPassword) {
+            if (v.length < 8 || v.length > 72) {
+              return 'Debe tener entre 8 y 72 caracteres';
+            }
+            if (!RegExp(r'[A-Z]').hasMatch(v)) {
+              return 'Debe incluir al menos una mayúscula';
+            }
+            if (!RegExp(r'[0-9]').hasMatch(v)) {
+              return 'Debe incluir al menos un número';
+            }
+          }
+
+
+
+          if (label == 'Correo') {
+            final email = v.trim();
+            final regex = RegExp(r'^[\w\.\-]+@([\w\-]+\.)+[a-zA-Z]{2,7}$');
+
+            if (!regex.hasMatch(email)) {
+              return 'Correo inválido';
+            }
+          }
+
+
           return null;
         },
       ),
