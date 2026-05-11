@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/errors/failure.dart';
 import '../../../../core/theme/app_colores.dart';
+import '../../../../shared/providers/sesion_provider.dart';
 import '../../empleados/application/empleados_providers.dart';
 import '../application/agenda_providers.dart';
 import '../domain/entidades/cita.dart';
@@ -34,6 +35,14 @@ class AgendaGlobalScreen extends ConsumerWidget {
             tooltip: 'Avisos',
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () => context.push('/admin/avisos'),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Cerrar sesión',
+            onPressed: () async {
+              await ref.read(sesionProvider.notifier).cerrarSesion();
+              if (context.mounted) context.go('/login');
+            },
           ),
         ],
       ),
