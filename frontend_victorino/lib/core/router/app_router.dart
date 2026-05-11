@@ -17,6 +17,7 @@ import '../../features/administrador/empleados/presentation/lista_empleados_scre
 import '../../features/administrador/metricas/presentation/metricas_screen.dart';
 import '../../features/administrador/negocio/presentation/negocio_screen.dart';
 import '../../features/administrador/servicios/presentation/crear_editar_servicio_screen.dart';
+import '../../features/administrador/notificaciones/presentation/enviar_aviso_screen.dart';
 import '../../features/administrador/servicios/presentation/lista_servicios_screen.dart';
 import '../../features/administrador/shell/presentation/shell_admin_screen.dart';
 import '../../features/cliente/home/home_cliente.dart';
@@ -120,6 +121,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Rutas auxiliares fuera del shell (modal-like).
       GoRoute(path: '/admin/walk-in', builder: (_, _) => const CrearWalkInScreen()),
       GoRoute(path: '/admin/avisos', builder: (_, _) => const AvisosScreen()),
+      GoRoute(path: '/admin/notificaciones/enviar', builder: (_, _) => const EnviarAvisoScreen()),
+
     ],
     redirect: (context, state) {
       final sesion = ref.read(sesionProvider).value;

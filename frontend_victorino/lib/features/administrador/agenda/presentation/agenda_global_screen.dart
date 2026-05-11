@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 
 import '../../../../core/errors/failure.dart';
 import '../../../../core/theme/app_colores.dart';
+import '../../../../features/notificaciones/application/notificaciones_notifier.dart';
 import '../../../../shared/providers/sesion_provider.dart';
 import '../../empleados/application/empleados_providers.dart';
 import '../application/agenda_providers.dart';
@@ -22,6 +23,12 @@ class AgendaGlobalScreen extends ConsumerWidget {
     final filtros = ref.watch(filtrosAgendaProvider);
     final estado = ref.watch(agendaAdminNotifierProvider);
     final empleadosState = ref.watch(empleadosAdminNotifierProvider);
+    // Badge con las notificaciones no leídas del admin.
+    final noLeidas = ref.watch(
+      notificacionesNotifierProvider.select(
+            (s) => s.value == null ? 0 : s.value!.where((n) => !n.esLeida).length,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -31,9 +38,40 @@ class AgendaGlobalScreen extends ConsumerWidget {
         title: Text('Agenda',
             style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: AppColors.textMain)),
         actions: [
+          // Campana de notificaciones con badge de no leídas.
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                tooltip: 'Mis notificaciones',
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () => context.push('/notificaciones'),
+              ),
+              if (noLeidas > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      noLeidas > 99 ? '99+' : '$noLeidas',
+                      style: const TextStyle(
+                          color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          // Icono de avisos (clientes con cancelaciones frecuentes).
           IconButton(
-            tooltip: 'Avisos',
-            icon: const Icon(Icons.notifications_outlined),
+            tooltip: 'Avisos de clientes',
+            icon: const Icon(Icons.warning_amber_outlined),
             onPressed: () => context.push('/admin/avisos'),
           ),
           IconButton(

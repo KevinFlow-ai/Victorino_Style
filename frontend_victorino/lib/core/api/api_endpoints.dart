@@ -22,11 +22,32 @@ class ApiEndpoints {
   static const authLogin = '/auth/login';
   static const authRefresh = '/auth/refresh';
   static const authLogout = '/auth/logout';
+  static const authCambiarPassword = '/auth/cambiar-password';
+
 
   // Rutas de recuperación de contraseña
   static const authForgotPassword = '/auth/forgot-password';
   static const authVerifyOtp = '/auth/verify-otp';
   static const authResetPassword = '/auth/reset-password';
+
+  //Notificaciones / FCM
+
+  /// Este es el endpoint para registrar el token FCM de un dispositivo.
+  /// Usando metodo POST en /notificaciones/fcm-token
+  static const fcmToken = '/notificaciones/fcm-token';
+
+  /// Esto es para la bandeja in-app del usuario (GET /notificaciones → JWT identifica al usuario).
+  static const notificaciones = '/notificaciones';
+
+  /// Esto lo que hace es marcar las notificaciones como leídas (PATCH /notificaciones/{id}/leer).
+  static String notificacionLeer(int id) => '/notificaciones/$id/leer';
+
+  /// Esto es un aviso general del admin (POST /notificaciones/aviso-general).
+  static const notificacionesAvisoGeneral = '/notificaciones/aviso-general';
+
+  // Rutas del cliente.
+  /// Esto es para cancelar una cita propia (PATCH /cliente/citas/{id}/cancelar).
+  static String clienteCancelarCita(int id) => '/cliente/citas/$id/cancelar';
 
   // ==========================================================================
   // RUTAS DEL PANEL ADMIN

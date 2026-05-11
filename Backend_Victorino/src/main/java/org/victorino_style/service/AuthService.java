@@ -21,6 +21,8 @@ import org.victorino_style.repository.ClienteRepository;
 import org.victorino_style.repository.RefreshTokenRepository;
 import org.victorino_style.repository.UsuarioRepository;
 import org.victorino_style.security.JwtService;
+import org.victorino_style.repository.DeviceTokenFcmRepository;
+
 
 import java.time.Instant;
 import java.util.Locale;
@@ -36,9 +38,12 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final ClienteRepository clienteRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final DeviceTokenFcmRepository deviceTokenFcmRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final UsuarioMapper usuarioMapper;
+    private final NotificacionService notificacionService;
+
 
     // ============================================================
     //  REGISTRO DE CLIENTE
@@ -143,6 +148,10 @@ public class AuthService {
     // ============================================================
     // Marca el refresh recibido como revocado. Idempotente: si no existe o ya está
     // revocado, no se rompe (devuelve sin error porque la sesión ya no es válida).
+    // TAMBIÉN borra los tokens FCM del usuario para que el catch-up push al login
+    // funcione correctamente: sin este borrado, las notificaciones creadas mientras
+    // la sesión estaba cerrada se marcan 'enviada_push=true' optimistamente al
+    // encontrar el token viejo, bloqueando el reenvío al hacer login de nuevo.
     @Transactional
     public void cerrarSesion(String refreshTokenPlano) {
         String hash = jwtService.hashearRefreshToken(refreshTokenPlano);
@@ -150,9 +159,17 @@ public class AuthService {
         refreshTokenRepository
                 .findByHashRefreshTokenAndRevocadoRefreshTokenFalse(hash)
                 .ifPresent(rt -> {
+                    // Revocar el refresh token.
                     rt.setRevocadoRefreshToken(true);
                     refreshTokenRepository.save(rt);
                     log.info("Refresh revocado: idRefreshToken={}", rt.getId());
+                    // Borrar TODOS los tokens FCM del usuario para que al próximo login
+                    // el sistema registre un token fresco y el catch-up de pushes pendientes
+                    // funcione: sin tokens en BD, crearNotificacion() no puede marcar
+                    // 'enviada_push=true' de forma optimista, y el catch-up los recoge.
+                    Long idUsuario = rt.getIdUsuario().getId();
+                    deviceTokenFcmRepository.deleteByIdUsuario_Id(idUsuario);
+                    log.info("Tokens FCM eliminados al cerrar sesion: idUsuario={}", idUsuario);
                 });
     }
 

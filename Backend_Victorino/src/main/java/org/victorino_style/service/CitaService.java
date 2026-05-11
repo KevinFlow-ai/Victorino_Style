@@ -161,6 +161,16 @@ public class CitaService {
                 "Tienes una cita el " + dto.fecha() + " a las " + dto.horaInicio()
                         + " (" + servicio.getNombreServicio() + ")");
 
+        // 7) Si la cita es para un cliente registrado, le enviamos CONFIRMACION_RESERVA.
+        if (cita.getIdCliente() != null) {
+            notificacionService.crearNotificacion(
+                    cita.getIdCliente().getUsuario(), cita, TipoNotificacion.CONFIRMACION_RESERVA,
+                    "Cita confirmada",
+                    "Tu cita para " + servicio.getNombreServicio() + " el " + dto.fecha()
+                            + " a las " + dto.horaInicio() + " con " + empleado.getNombreEmpleado()
+                            + " está confirmada.");
+        }
+
         auditoriaService.registrar("WALK_IN_CREADO", "CITA", cita.getId(),
                 "Walk-in creado por admin para empleado " + empleado.getId()
                         + " el " + dto.fecha() + " " + dto.horaInicio());
@@ -169,6 +179,46 @@ public class CitaService {
                 cita.getId(), empleado.getId(), dto.fecha(), dto.horaInicio());
 
         return citaMapper.aRespuesta(cita);
+    }
+
+
+    // ============================================================
+    //  CANCELACIÓN POR CLIENTE
+    // ============================================================
+
+    // El cliente podrá cancelar su propia cita. Solo se puede cancelar si la cita le pertenece
+    // y está en estado CONFIRMADA. Y se le notifica al empleado con CANCELACION_CLIENTE.
+    @Transactional
+    public void cancelarPorCliente(Long idCita, Long idUsuarioCliente) {
+        Cita cita = citaRepository.findById(idCita)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Cita no encontrada: " + idCita));
+
+        // Esto lo que hace es verificar que la cita pertenece al cliente que llama.
+        if (cita.getIdCliente() == null
+                || !cita.getIdCliente().getUsuario().getId().equals(idUsuarioCliente)) {
+            throw new RecursoNoEncontradoException("La cita no pertenece al usuario");
+        }
+
+        if (cita.getEstadoCita() != EstadoCita.CONFIRMADA) {
+            throw new CitaSolapadaException("Solo se pueden cancelar citas en estado confirmado");
+        }
+
+        cita.setEstadoCita(EstadoCita.CANCELADA_CLIENTE);
+        cita.setFechaModificacionCita(java.time.Instant.now());
+        citaRepository.save(cita);
+
+        // Esto lo que hace es notificar al empleado.
+        notificacionService.crearNotificacion(
+                cita.getIdEmpleado().getUsuario(),
+                cita,
+                TipoNotificacion.CANCELACION_CLIENTE,
+                "Cita cancelada por el cliente",
+                "El cliente " + cita.getIdCliente().getNombreCliente()
+                        + " " + cita.getIdCliente().getApellidosCliente()
+                        + " ha cancelado la cita del " + cita.getFechaCita()
+                        + " a las " + cita.getHoraInicioCita() + ".");
+
+        log.info("Cita {} cancelada por el cliente (usuario={})", idCita, idUsuarioCliente);
     }
 
     // ============================================================

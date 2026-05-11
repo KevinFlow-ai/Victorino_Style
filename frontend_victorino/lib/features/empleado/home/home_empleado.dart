@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/theme/app_colores.dart';
+import '../../../features/notificaciones/application/notificaciones_notifier.dart';
 import '../../../shared/providers/sesion_provider.dart';
 
 class HomeEmpleado extends ConsumerWidget {
@@ -13,12 +14,46 @@ class HomeEmpleado extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final sesion = ref.watch(sesionProvider).value;
+    final noLeidas = ref.watch(
+      notificacionesNotifierProvider.select(
+            (s) => s.value == null ? 0 : s.value!.where((n) => !n.esLeida).length,
+      ),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text('Empleado${sesion != null ? ' · ${sesion.nombreCompleto}' : ''}'),
         actions: [
+          // Esto es una campana de notificaciones con badge de no leídas como las tipicas que hay en cualquier red social o aplicación movil actualmente.
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                tooltip: 'Notificaciones',
+                onPressed: () => context.push('/notificaciones'),
+              ),
+              if (noLeidas > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      color: Colors.red,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                    child: Text(
+                      noLeidas > 99 ? '99+' : '$noLeidas',
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar sesión',

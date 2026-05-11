@@ -10,6 +10,7 @@ import org.victorino_style.entity.enums.EstadoCita;
 
 import java.time.DayOfWeek;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 // Repositorio de la entidad Cita. Concentra todas las consultas de agenda y métricas.
@@ -339,6 +340,36 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
                        @Param("fecha") LocalDate fecha,
                        @Param("horaInicio") java.time.LocalTime horaInicio,
                        @Param("horaFin")    java.time.LocalTime horaFin);
+
+    // ------------------------------------------------------------------------
+    // Puse citas en una ventana temporal [fechaDesde/horaDesde, fechaHasta/horaHasta)
+    // con un estado concreto. Lo usa RecordatorioScheduler para buscar las citas
+    // que están a ~24 h de distancia y enviar el recordatorio push.
+    // También puse para soportar ventanas que cruzan medianoche (fechaDesde != fechaHasta).
+    // ------------------------------------------------------------------------
+    @Query("""
+           SELECT c FROM Cita c
+             JOIN FETCH c.idCliente cl
+             JOIN FETCH cl.usuario
+             JOIN FETCH c.idEmpleado
+           WHERE c.estadoCita = :estado
+             AND (
+               (c.fechaCita = :fechaDesde AND c.fechaCita = :fechaHasta
+                AND c.horaInicioCita >= :horaDesde AND c.horaInicioCita < :horaHasta)
+               OR
+               (c.fechaCita = :fechaDesde AND c.fechaCita <> :fechaHasta
+                AND c.horaInicioCita >= :horaDesde)
+               OR
+               (c.fechaCita = :fechaHasta AND c.fechaCita <> :fechaDesde
+                AND c.horaInicioCita < :horaHasta)
+             )
+           """)
+    List<Cita> findCitasEnVentanaRecordatorio(
+            @Param("fechaDesde") LocalDate fechaDesde,
+            @Param("horaDesde")  LocalTime horaDesde,
+            @Param("fechaHasta") LocalDate fechaHasta,
+            @Param("horaHasta")  LocalTime horaHasta,
+            @Param("estado")     EstadoCita estado);
 }
 
 

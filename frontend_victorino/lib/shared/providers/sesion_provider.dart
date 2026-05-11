@@ -14,6 +14,12 @@ import '../../core/storage/secure_storage.dart';
 import '../modelos/sesion_usuario.dart';
 import 'secure_storage_provider.dart';
 
+
+import 'package:flutter/foundation.dart';
+import '../../features/login_admin_empleado_cliente/data/repositorios/auth_repositorio_impl.dart';
+import 'dio_provider.dart';
+
+
 class SesionNotifier extends AsyncNotifier<SesionUsuario?> {
   late final SecureStorage _storage;
 
@@ -28,7 +34,7 @@ class SesionNotifier extends AsyncNotifier<SesionUsuario?> {
   // ---------------------------------------------------------------------------
   // Establece la sesión tras un login/registro exitoso y persiste lo necesario.
   // ---------------------------------------------------------------------------
-  Future<void> establecerSesion(SesionUsuario sesion, String refreshToken) async {
+  Future<void> establecerSesion(SesionUsuario sesion, String refreshToken, {bool esLoginExplicito = false}) async {
     await _storage.guardarSesion(
       refreshToken: refreshToken,
       idUsuario: sesion.idUsuario,
@@ -52,13 +58,34 @@ class SesionNotifier extends AsyncNotifier<SesionUsuario?> {
   }
 
   // ---------------------------------------------------------------------------
-  // Cierra la sesión: borra disco y deja state en null.
+  // Cierra la sesión: avisa al backend (para que borre tokens FCM y revoque
+  // el refresh token), borra disco y deja state en null.
+  // El aviso al backend es best-effort: si falla (sin red, token ya revocado,
+  // etc.) se cierra igualmente la sesión local. Sin la llamada al backend los
+  // tokens FCM quedarían en BD y las notificaciones creadas mientras la sesión
+  // está cerrada se marcarían 'enviada_push=true', rompiendo el catch-up push.
   // ---------------------------------------------------------------------------
   Future<void> cerrarSesion() async {
     state = const AsyncLoading();
     // Indicamos que estamos cerrando sesión.
+    // 1) Leer el refresh token ANTES de borrar el storage.
+    final refreshToken = await _storage.leerRefreshToken();
 
+    // 2) Limpiar almacenamiento local (refresh, id, rol).
     await _storage.limpiarSesion();
+
+    // 3) Avisar al backend: revoca el refresh token Y borra los tokens FCM.
+    //    Es best-effort: si falla, la sesión local ya está limpia.
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      try {
+        final authRepo = AuthRepositorioImpl(dio: ref.read(dioBaseProvider));
+        await authRepo.cerrarSesion(refreshToken);
+        debugPrint('[Sesion] Logout confirmado en backend (tokens FCM borrados)');
+      } catch (e) {
+        debugPrint('[Sesion] Logout backend falló (ignorado): $e');
+      }
+    }
+
     // Borramos refresh token, id y rol del almacenamiento seguro.
 
     state = const AsyncData(null);

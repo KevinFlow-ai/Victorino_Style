@@ -1,6 +1,9 @@
 package org.victorino_style.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.victorino_style.entity.Notificacion;
 
 import java.util.List;
@@ -10,8 +13,27 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
 
     // Notificaciones de un usuario, ordenadas por fecha desc (las más recientes primero).
     List<Notificacion> findByIdDestinatarioNotificacion_IdOrderByFechaCreacionNotificacionDesc(Long idUsuario);
-}
 
+    // Notificaciones de un usuario que aún NO se entregaron como push y que el usuario NO ha leído.
+    // Se usan para el "catch-up push" al iniciar sesión: si el usuario estaba offline cuando se generó
+    // la notificación (o el push falló), se reenvían en cuanto inicia sesión con credenciales.
+    List<Notificacion> findByIdDestinatarioNotificacion_IdAndEnviadaPushNotificacionFalseAndFechaLecturaNotificacionIsNull(Long idUsuario);
+
+    // Resetea la bandera enviada_push a false en todas las notificaciones NO leídas del usuario.
+    // Se invoca al inicio de sesión explícito (login con credenciales) ANTES de ejecutar el
+    // catch-up push. Esto garantiza que notificaciones marcadas como "push enviado" durante
+    // una sesión anterior (incluso si el token era válido pero el empleado no las vio) se
+    // re-envíen como push en el nuevo login.
+    // No afecta a notificaciones ya leídas (fechaLectura != null).
+    // clearAutomatically = true → limpia la caché de la sesión JPA después del UPDATE masivo,
+    // garantizando que la consulta del catch-up posterior lea valores frescos de la BD
+    // en lugar de los datos en caché con el valor antiguo enviada_push=true.
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Notificacion n SET n.enviadaPushNotificacion = false " +
+            "WHERE n.idDestinatarioNotificacion.id = :idUsuario " +
+            "AND n.fechaLecturaNotificacion IS NULL")
+    void resetEnviadaPushParaNoLeidas(@Param("idUsuario") Long idUsuario);
+}
 
         // ------------------------------------------------------------------------
         // findByIdDestinatarioNotificacion_IdOrderByFechaCreacionNotificacionDesc

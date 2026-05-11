@@ -70,7 +70,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         accessToken: nuevoAccess,
       );
 
-      await ref.read(sesionProvider.notifier).establecerSesion(sesion, refresh);
+      await ref.read(sesionProvider.notifier).establecerSesion(sesion, refresh, esLoginExplicito: false);
 
       if (!mounted) return;
 

@@ -16,6 +16,8 @@ import org.victorino_style.repository.ClienteRepository;
 import org.victorino_style.repository.DeviceTokenFcmRepository;
 import org.victorino_style.repository.EmpleadoRepository;
 import org.victorino_style.repository.NotificacionRepository;
+import org.victorino_style.repository.UsuarioRepository;
+import org.victorino_style.dto.NotificacionDto;
 
 import java.time.Instant;
 import java.time.LocalTime;
@@ -27,9 +29,16 @@ import java.util.List;
 // - In-app SIEMPRE: por cada llamada se inserta una fila en `notificacion`.
 // - Push solo si el destinatario lo permite:
 //      * Cliente: respeta `cliente.push_activa_cliente`.
-//      * Empleado/Admin: respeta el modo "no molestar" y el rango de silencio.
+//      * Empleado: respeta el modo "no molestar" y el rango de silencio.
+//      * Administrador: recibe push sin restricciones.
 //
-// El push real se delega en FirebaseService.enviarPush, hoy todavía un stub.
+// Registro de token FCM (guardarTokenFcm):
+// Si el token es NUEVO (primera instalaciÃ³n / reinstalaciÃ³n) â†’ notificaciÃ³n "SesiÃ³n iniciada".
+// Si el token ya existÃ­a (restauraciÃ³n de sesiÃ³n desde splash) â†’ sin notificaciÃ³n.
+// sto garantiza que el usuario recibe el push al instalar/reinstalar pero NOT en cada
+// apertura de la app.
+//
+// El push real se delega en FirebaseService.enviarPush.
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -40,9 +49,10 @@ public class NotificacionService {
     private final EmpleadoRepository empleadoRepository;
     private final DeviceTokenFcmRepository deviceTokenFcmRepository;
     private final FirebaseService firebaseService;
+    private final UsuarioRepository usuarioRepository;
 
     // ------------------------------------------------------------------------
-    // Punto de entrada principal: crea una notificación in-app y, si procede,
+    // Punto de entrada principal: crea una notificaciÃ³n in-app y, si procede,
     // intenta enviar el push.
     // ------------------------------------------------------------------------
     @Transactional
@@ -69,19 +79,140 @@ public class NotificacionService {
                     .stream()
                     .map(DeviceTokenFcm::getTokenFcm)
                     .toList();
-            boolean enviado = firebaseService.enviarPush(tokens, titulo, cuerpo, tipo);
-            // 3) Marca la fila como enviada por push si Firebase confirmó éxito.
-            if (enviado) {
+
+            if (!tokens.isEmpty()) {
+                // Marca la fila como "push enviada" de forma OPTIMISTA antes de llamar a
+                // Firebase. Así el HTTP thread no espera el ACK de Google (~300-800 ms)
+                // y el frontend recibe la respuesta de inmediato. Si Firebase falla el
+                // log de FirebaseService lo registrará; la bandeja in-app sigue intacta.
                 fila.setEnviadaPushNotificacion(true);
                 notificacionRepository.save(fila);
+
+                // Dispara el push en un hilo paralelo (@Async en FirebaseService).
+                // El HTTP response ya habrá llegado a Flutter cuando Firebase confirme.
+                firebaseService.enviarPushAsync(tokens, titulo, cuerpo, tipo);
             }
         }
 
         return fila;
     }
 
+    // esLoginExplicito = true  -> login explicito (el usuario escribio credenciales): SIEMPRE notificacion.
+    // esLoginExplicito = false -> restauracion de sesion desde splash: NUNCA notificacion.
+    @Transactional
+    public void guardarTokenFcm(Long idUsuario, String tokenFcm, String plataforma, boolean esLoginExplicito) {
+        log.info("[FCM] Solicitud de registro -> usuario={}, plataforma={}, esLoginExplicito={}, token_inicio={}",
+                idUsuario, plataforma, esLoginExplicito,
+                tokenFcm != null && tokenFcm.length() > 20 ? tokenFcm.substring(0, 20) + "..." : tokenFcm);
+
+        Usuario usuario = usuarioRepository.findById(idUsuario)
+                .orElseThrow(() -> {
+                    log.error("[FCM] Usuario con id={} no encontrado en BD", idUsuario);
+                    return new RuntimeException("Usuario no encontrado: " + idUsuario);
+                });
+
+        DeviceTokenFcm deviceToken = deviceTokenFcmRepository.findByTokenFcm(tokenFcm)
+                .orElse(null);
+
+        if (deviceToken == null) {
+            deviceToken = new DeviceTokenFcm();
+            deviceToken.setTokenFcm(tokenFcm);
+            deviceToken.setPlataformaFcm(plataforma);
+            log.info("[FCM] Token nuevo guardado para usuario={}", idUsuario);
+        } else {
+            // Siempre se reasigna el token al usuario actual: si cambió de cuenta en el
+            // mismo dispositivo, el token debe apuntar al nuevo propietario.
+            if (!usuario.getId().equals(deviceToken.getIdUsuario().getId())) {
+                log.info("[FCM] Token reasignado de usuario={} a usuario={}", deviceToken.getIdUsuario().getId(), idUsuario);
+            } else {
+                log.info("[FCM] Token ya existente - actualizando fechaAlta para usuario={}", idUsuario);
+            }
+        }
+        deviceToken.setIdUsuario(usuario);
+        deviceToken.setFechaAltaFcm(Instant.now());
+        deviceTokenFcmRepository.saveAndFlush(deviceToken);
+
+        // Notificacion in-app SOLO en login explicito (credenciales escritas).
+        // La restauracion de sesion (splash con refresh token) pasa esLoginExplicito=false.
+        // NO enviamos push FCM para "Sesion iniciada": la app esta en foreground y Flutter
+        // mostrara la notificacion local directamente, evitando el throttling de FCM HIGH priority.
+        //
+        // Antes del catch-up reseteamos enviada_push=false en TODAS las notificaciones no leídas.
+        // Motivo: si el empleado tenía sesión activa (token FCM en BD) cuando el admin creó la cita,
+        // la notificación fue marcada enviada_push=true optimísticamente aunque el push pudo no llegar
+        // (token caducado, dispositivo apagado, notificación descartada sin leer, etc.).
+        // Al resetear aquí garantizamos que el catch-up las reenvía en este login explícito.
+        // Las notificaciones ya leídas (fechaLectura != null) NO se resetean ni se re-envían.
+        if (esLoginExplicito) {
+            log.info("[FCM] Login explicito -> reseteando enviada_push de notificaciones no leidas para usuario={}", idUsuario);
+            notificacionRepository.resetEnviadaPushParaNoLeidas(usuario.getId());
+
+            log.info("[FCM] Login explicito -> creando notificacion in-app (sin push) para usuario={}", idUsuario);
+            crearSoloInApp(
+                    usuario,
+                    TipoNotificacion.AVISO_GENERAL,
+                    "Sesion iniciada",
+                    "Has iniciado sesion en Victorino Style. Bienvenido/a."
+            );
+            // Catch-up push: reenviar via FCM las notificaciones pendientes (no leidas).
+            // El reset anterior garantiza que se incluyen incluso las que tenían enviada_push=true.
+            if (deboEnviarPush(usuario)) {
+                enviarPushPendientesAlLogin(usuario);
+            }
+        }
+    }
+
     // ------------------------------------------------------------------------
-    // Determina si el destinatario quiere recibir push según su rol y preferencias.
+    // Catch-up push al login.
+    // Busca las notificaciones del usuario que NO se entregaron como push
+    // (enviada_push_notificacion = false) y que aún no han sido leídas.
+    // Las envía por FCM ahora que el usuario dispone de un token válido registrado
+    // y las marca como enviadas para evitar duplicados en futuros logins.
+    // Caso típico: admin asigna cita a un empleado que tenía la sesión cerrada →
+    // el empleado recibe el push en cuanto inicia sesión.
+    // ------------------------------------------------------------------------
+    @Transactional
+    private void enviarPushPendientesAlLogin(Usuario usuario) {
+        List<org.victorino_style.entity.Notificacion> pendientes =
+                notificacionRepository
+                        .findByIdDestinatarioNotificacion_IdAndEnviadaPushNotificacionFalseAndFechaLecturaNotificacionIsNull(
+                                usuario.getId());
+
+        if (pendientes.isEmpty()) {
+            log.info("[FCM] Sin notificaciones pendientes de push para usuario={}", usuario.getId());
+            return;
+        }
+
+        List<String> tokens = deviceTokenFcmRepository
+                .findByIdUsuario_Id(usuario.getId())
+                .stream()
+                .map(DeviceTokenFcm::getTokenFcm)
+                .toList();
+
+        if (tokens.isEmpty()) {
+            log.warn("[FCM] Usuario={} sin tokens FCM registrados, no se puede hacer catch-up push", usuario.getId());
+            return;
+        }
+
+        log.info("[FCM] Catch-up push: enviando {} notificacion(es) pendiente(s) a usuario={}", pendientes.size(), usuario.getId());
+
+        for (org.victorino_style.entity.Notificacion notif : pendientes) {
+            TipoNotificacion tipo;
+            try {
+                tipo = TipoNotificacion.valueOf(notif.getTipoNotificacion());
+            } catch (IllegalArgumentException e) {
+                tipo = TipoNotificacion.AVISO_GENERAL;
+            }
+            // Marcamos ANTES del envío asíncrono para evitar doble envío si el método
+            // se invoca en paralelo o si falla a medias (la bandeja in-app es la fuente de verdad).
+            notif.setEnviadaPushNotificacion(true);
+            notificacionRepository.save(notif);
+            firebaseService.enviarPushAsync(tokens, notif.getTituloNotificacion(), notif.getCuerpoNotificacion(), tipo);
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Determina si el destinatario quiere recibir push segÃºn su rol y preferencias.
     // ------------------------------------------------------------------------
     private boolean deboEnviarPush(Usuario u) {
         if (u.getRolUsuario() == RolUsuario.CLIENTE) {
@@ -90,15 +221,50 @@ public class NotificacionService {
                     .map(Cliente::getPushActivaCliente)
                     .orElse(false);
         }
-        // Empleado y administrador comparten reglas: respetan el "no molestar"
-        // y el rango horario de silencio configurado.
+        if (u.getRolUsuario() == RolUsuario.ADMINISTRADOR) {
+            // El administrador siempre recibe push (no tiene preferencias de silencio propias).
+            return true;
+        }
+        // Empleado: respeta el "no molestar" y el rango horario de silencio.
         return empleadoRepository.findActivoById(u.getId())
                 .map(this::empleadoPermitePush)
                 .orElse(false);
     }
 
-    // El empleado permite push si NO está en modo "no molestar" y la hora actual
-    // NO está dentro de su rango de silencio (silencio_inicio, silencio_fin).
+    // Obtener todas las notificaciones de un usuario
+    public List<NotificacionDto> obtenerNotificaciones(Long idUsuario) {
+        return notificacionRepository
+                .findByIdDestinatarioNotificacion_IdOrderByFechaCreacionNotificacionDesc(idUsuario)
+                .stream()
+                .map(NotificacionDto::from)
+                .toList();
+    }
+
+
+
+    // Marcar una notificacin como leda
+    @Transactional
+    public void marcarComoLeida(Long idNotificacion) {
+        Notificacion n = notificacionRepository.findById(idNotificacion).orElseThrow();
+        n.setFechaLecturaNotificacion(Instant.now());
+        notificacionRepository.save(n);
+    }
+
+
+
+    // ------------------------------------------------------------------------
+    // EnvÃ­a un aviso general a un usuario concreto (de un admin a cualquier usuario).
+    // ------------------------------------------------------------------------
+    @Transactional
+    public void enviarAvisoGeneral(Long idDestinatario, String titulo, String cuerpo) {
+        Usuario destinatario = usuarioRepository.findById(idDestinatario)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + idDestinatario));
+        crearNotificacion(destinatario, null, TipoNotificacion.AVISO_GENERAL, titulo, cuerpo);
+        log.info("[AVISO_GENERAL] Enviado a idUsuario={} | titulo='{}'", idDestinatario, titulo);
+    }
+
+    // El empleado permite push si NO estÃ¡ en modo "no molestar" y la hora actual
+    // NO estÃ¡ dentro de su rango de silencio (silencio_inicio, silencio_fin).
     private boolean empleadoPermitePush(Empleado e) {
         if (Boolean.TRUE.equals(e.getNoMolestarEmpleado())) return false;
         LocalTime ini = e.getSilencioInicioEmpleado();
@@ -106,11 +272,32 @@ public class NotificacionService {
         if (ini == null || fin == null) return true;
         LocalTime ahora = LocalTime.now();
         // Soporta rangos que cruzan la medianoche: si ini > fin, el silencio
-        // abarca [ini..23:59] ∪ [00:00..fin].
+        // abarca [ini..23:59] âˆª [00:00..fin].
         if (ini.isBefore(fin)) {
             return ahora.isBefore(ini) || ahora.isAfter(fin);
         }
         return ahora.isAfter(fin) && ahora.isBefore(ini);
+    }
+
+    // Se crea únicamente el registro in-app SIN enviar push FCM.
+    // Se usa en el flujo de login explícito: la app está en foreground y Flutter
+    // mostrará la notificación local directamente (sin roundtrip FCM).
+    // Se marca como enviada_push=true para que el mecanismo de catch-up
+    // (enviarPushPendientesAlLogin) no la incluya en futuros logins.
+    @Transactional
+    private void crearSoloInApp(Usuario destinatario, TipoNotificacion tipo, String titulo, String cuerpo) {
+        Notificacion fila = new Notificacion();
+        fila.setIdDestinatarioNotificacion(destinatario);
+        fila.setIdCitaRelacionadaNotificacion(null);
+        fila.setTipoNotificacion(tipo.name());
+        fila.setTituloNotificacion(recortar(titulo, 250));
+        fila.setCuerpoNotificacion(recortar(cuerpo, 500));
+        // true = "ya gestionada" — Flutter la mostrará como notificación local.
+        // Evita que el catch-up la reenvíe por FCM en el siguiente login.
+        fila.setEnviadaPushNotificacion(true);
+        fila.setFechaCreacionNotificacion(Instant.now());
+        notificacionRepository.save(fila);
+        log.info("[FCM] Notificacion in-app creada (mostrada como local, sin FCM) para usuario={} | tipo={}", destinatario.getId(), tipo);
     }
 
     // Recorta el texto a `max` caracteres para no romper la columna BD.
