@@ -14,7 +14,7 @@ class OtpVerificationScreen extends ConsumerStatefulWidget {
 
 class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   final List<TextEditingController> _controllers =
-      List.generate(6, (_) => TextEditingController(text: ''));
+  List.generate(6, (_) => TextEditingController(text: ''));
   final List<FocusNode> _focusNodes = List.generate(6, (_) => FocusNode());
 
   @override
@@ -30,9 +30,14 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
     if (value.length > 1) {
       String digitsOnly = value.replaceAll(RegExp(r'[^0-9]'), '');
       for (int i = 0; i < 6; i++) {
-        if (i < digitsOnly.length) _controllers[i].text = digitsOnly[i];
+        if (i < digitsOnly.length) {
+          _controllers[i].text = digitsOnly[i];
+          if (i < 5) _focusNodes[i + 1].requestFocus();
+        }
       }
-      FocusScope.of(context).unfocus();
+      if (digitsOnly.length >= 6) {
+        FocusScope.of(context).unfocus();
+      }
       return;
     }
 
@@ -71,62 +76,85 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
   @override
   Widget build(BuildContext context) {
     final status = ref.watch(forgotPasswordNotifierProvider.select((s) => s.status));
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.width > 600;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: _customAppBar(context, 'Victorino Style'),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const SizedBox(height: 40),
-            const Text('Verificar Código',
-                style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.textMain)),
-            const SizedBox(height: 16),
-            const Text('Hemos enviado un código a tu correo. Por favor, introdúcelo debajo.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 16)),
-            const SizedBox(height: 40),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 12,
-              children: List.generate(6, (index) => _otpBox(index)),
-            ),
-            const SizedBox(height: 40),
-            _primaryButton(
-                context,
-                status is AsyncLoading ? 'Verificando...' : 'Verificar',
-                _code.length == 6 && status is! AsyncLoading ? _verifyOtp : null),
-            const SizedBox(height: 24),
-            Center(
-              child: GestureDetector(
-                onTap: () {
-                  final email = ref.read(forgotPasswordNotifierProvider).email;
-                  ref.read(forgotPasswordNotifierProvider.notifier).enviarCodigo(email);
-                },
-                child: const Text.rich(
-                  TextSpan(
-                    text: '¿No recibiste nada? ',
-                    style: TextStyle(color: AppColors.textMuted),
-                    children: [
-                      TextSpan(
+        child: Container(
+          constraints: BoxConstraints(
+            minHeight: size.height - AppBar().preferredSize.height - MediaQuery.of(context).padding.top,
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 40),
+              Text(
+                'Verificar Código',
+                style: TextStyle(
+                  fontSize: isTablet ? 40 : 32,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textMain,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Hemos enviado un código a tu correo. Por favor, introdúcelo debajo.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 16),
+              ),
+              const SizedBox(height: 40),
+
+              // Fila responsive de inputs OTP
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(6, (index) => Flexible(
+                  child: Padding(
+                    padding: EdgeInsets.only(right: index == 5 ? 0 : 8.0),
+                    child: _otpBox(index),
+                  ),
+                )),
+              ),
+
+              const SizedBox(height: 40),
+              _primaryButton(
+                  context,
+                  status is AsyncLoading ? 'Verificando...' : 'Verificar',
+                  _code.length == 6 && status is! AsyncLoading ? _verifyOtp : null),
+              const SizedBox(height: 24),
+              Center(
+                child: GestureDetector(
+                  onTap: status is AsyncLoading ? null : () {
+                    final email = ref.read(forgotPasswordNotifierProvider).email;
+                    ref.read(forgotPasswordNotifierProvider.notifier).enviarCodigo(email);
+                  },
+                  child: const Text.rich(
+                    TextSpan(
+                      text: '¿No recibiste nada? ',
+                      style: TextStyle(color: AppColors.textMuted),
+                      children: [
+                        TextSpan(
                           text: 'Reenviar código',
-                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                    ],
+                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _otpBox(int index) {
-    return SizedBox(
-      width: 48,
-      height: 56,
+    return AspectRatio(
+      aspectRatio: 1.0, // Garantiza que los cuadros sean siempre cuadrados
       child: TextField(
         controller: _controllers[index],
         focusNode: _focusNodes[index],
@@ -138,7 +166,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         maxLength: 1,
         enableInteractiveSelection: false,
         cursorColor: AppColors.primary,
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black),
+        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black),
         onChanged: (value) => _onChanged(value, index),
         decoration: InputDecoration(
           counterText: '',
@@ -181,9 +209,9 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
         boxShadow: onPressed == null
             ? []
             : [
-                BoxShadow(
-                    color: AppColors.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
-              ],
+          BoxShadow(
+              color: AppColors.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
       ),
       child: ElevatedButton(
         onPressed: onPressed,

@@ -8,18 +8,27 @@ class NewPasswordScreen extends ConsumerStatefulWidget {
   const NewPasswordScreen({super.key});
 
   @override
-  ConsumerState<NewPasswordScreen> createState() => _NewPasswordScreenState();
+  ConsumerState<NewPasswordScreen> createState() =>
+      _NewPasswordScreenState();
 }
 
-class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
-  final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmController = TextEditingController();
+class _NewPasswordScreenState
+    extends ConsumerState<NewPasswordScreen> {
+  final TextEditingController _passwordController =
+  TextEditingController();
 
-  // Variables de estado para las nuevas validaciones
+  final TextEditingController _confirmController =
+  TextEditingController();
+
+  // Variables de validación
   bool _hasEightChars = false;
   bool _hasUppercase = false;
   bool _hasNumber = false;
   bool _passwordsMatch = false;
+
+  // Variables para mostrar/ocultar contraseña
+  bool _showPassword = false;
+  bool _showConfirmPassword = false;
 
   @override
   void initState() {
@@ -43,13 +52,17 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
       _hasNumber = password.contains(RegExp(r'[0-9]'));
 
       // 4. Coincidencia de contraseñas
-      _passwordsMatch = password.isNotEmpty && password == confirm;
+      _passwordsMatch =
+          password.isNotEmpty && password == confirm;
     });
   }
 
   // El botón solo se activa si se cumplen los 4 checks
   bool get _isButtonEnabled =>
-      _hasEightChars && _hasUppercase && _hasNumber && _passwordsMatch;
+      _hasEightChars &&
+          _hasUppercase &&
+          _hasNumber &&
+          _passwordsMatch;
 
   @override
   void dispose() {
@@ -70,14 +83,18 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
           backgroundColor: Colors.green,
         ),
       );
-      // Volver al login. Ajustar la ruta según corresponda.
-      context.go('/login'); 
+
+      context.go('/login');
     } else if (mounted) {
       final state = ref.read(forgotPasswordNotifierProvider);
+
       state.status.whenOrNull(
         error: (error, _) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error.toString()), backgroundColor: Colors.red),
+            SnackBar(
+              content: Text(error.toString()),
+              backgroundColor: Colors.red,
+            ),
           );
         },
       );
@@ -86,7 +103,9 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final status = ref.watch(forgotPasswordNotifierProvider.select((s) => s.status));
+    final status = ref.watch(
+      forgotPasswordNotifierProvider.select((s) => s.status),
+    );
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -97,38 +116,92 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 40),
+
             const Center(
               child: Text(
                 'Nueva Contraseña',
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.textMain),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textMain,
+                ),
               ),
             ),
+
             const SizedBox(height: 8),
+
             const Center(
               child: Text(
                 'Crea una nueva contraseña segura para tu cuenta',
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppColors.textMuted, fontSize: 15),
+                style: TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 15,
+                ),
               ),
             ),
+
             const SizedBox(height: 40),
-            _passwordField('Nueva Contraseña', _passwordController),
-            const SizedBox(height: 24),
-            _passwordField('Confirmar Contraseña', _confirmController),
+
+            _passwordField(
+              'Nueva Contraseña',
+              _passwordController,
+              _showPassword,
+                  () {
+                setState(() {
+                  _showPassword = !_showPassword;
+                });
+              },
+            ),
+
             const SizedBox(height: 24),
 
-            // Requisitos visuales actualizados
-            _requirementRow(_hasEightChars, 'Mínimo 8 caracteres'),
-            _requirementRow(_hasUppercase, 'Al menos una mayúscula'),
-            _requirementRow(_hasNumber, 'Al menos un número'),
-            _requirementRow(_passwordsMatch, 'Las contraseñas coinciden'),
+            _passwordField(
+              'Confirmar Contraseña',
+              _confirmController,
+              _showConfirmPassword,
+                  () {
+                setState(() {
+                  _showConfirmPassword =
+                  !_showConfirmPassword;
+                });
+              },
+            ),
+
+            const SizedBox(height: 24),
+
+            // Requisitos visuales
+            _requirementRow(
+              _hasEightChars,
+              'Mínimo 8 caracteres',
+            ),
+
+            _requirementRow(
+              _hasUppercase,
+              'Al menos una mayúscula',
+            ),
+
+            _requirementRow(
+              _hasNumber,
+              'Al menos un número',
+            ),
+
+            _requirementRow(
+              _passwordsMatch,
+              'Las contraseñas coinciden',
+            ),
 
             const SizedBox(height: 40),
 
             _primaryButtonWithIcon(
-              status is AsyncLoading ? 'Restableciendo...' : 'Restablecer Contraseña',
+              status is AsyncLoading
+                  ? 'Restableciendo...'
+                  : 'Restablecer Contraseña',
               Icons.lock_outline,
-              _isButtonEnabled && status is! AsyncLoading ? _submit : null,
+              _isButtonEnabled &&
+                  status is! AsyncLoading
+                  ? _submit
+                  : null,
             ),
           ],
         ),
@@ -136,23 +209,61 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
     );
   }
 
-  Widget _passwordField(String label, TextEditingController controller) {
+  Widget _passwordField(
+      String label,
+      TextEditingController controller,
+      bool isVisible,
+      VoidCallback onToggle,
+      ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textMain)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textMain,
+          ),
+        ),
+
         const SizedBox(height: 8),
+
         TextField(
           controller: controller,
-          obscureText: true,
+          obscureText: !isVisible,
           decoration: InputDecoration(
             hintText: '••••••••',
-            hintStyle: const TextStyle(color: AppColors.textMuted, fontSize: 14),
-            suffixIcon: const Icon(Icons.visibility_outlined, color: AppColors.textMuted, size: 20),
+            hintStyle: const TextStyle(
+              color: AppColors.textMuted,
+              fontSize: 14,
+            ),
+
+            suffixIcon: IconButton(
+              icon: Icon(
+                isVisible
+                    ? Icons.visibility_off_outlined
+                    : Icons.visibility_outlined,
+                color: AppColors.textMuted,
+                size: 20,
+              ),
+              onPressed: onToggle,
+            ),
+
             filled: true,
-            fillColor: AppColors.textMuted.withOpacity(0.08),
-            contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            fillColor:
+            AppColors.textMuted.withOpacity(0.08),
+
+            contentPadding:
+            const EdgeInsets.symmetric(
+              vertical: 16,
+              horizontal: 16,
+            ),
+
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
           ),
         ),
       ],
@@ -165,16 +276,24 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
       child: Row(
         children: [
           Icon(
-            met ? Icons.check_circle : Icons.radio_button_unchecked,
-            color: met ? const Color(0xFF4CAF50) : AppColors.textMuted.withOpacity(0.5),
+            met
+                ? Icons.check_circle
+                : Icons.radio_button_unchecked,
+            color: met
+                ? const Color(0xFF4CAF50)
+                : AppColors.textMuted.withOpacity(0.5),
             size: 20,
           ),
+
           const SizedBox(width: 10),
+
           Text(
             text,
             style: TextStyle(
-                color: met ? const Color(0xFF4CAF50) : AppColors.textMuted,
-                fontSize: 14
+              color: met
+                  ? const Color(0xFF4CAF50)
+                  : AppColors.textMuted,
+              fontSize: 14,
             ),
           ),
         ],
@@ -182,7 +301,11 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
     );
   }
 
-  Widget _primaryButtonWithIcon(String text, IconData icon, VoidCallback? onPressed) {
+  Widget _primaryButtonWithIcon(
+      String text,
+      IconData icon,
+      VoidCallback? onPressed,
+      ) {
     bool isEnabled = onPressed != null;
 
     return Container(
@@ -190,38 +313,77 @@ class _NewPasswordScreenState extends ConsumerState<NewPasswordScreen> {
       height: 56,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(12),
-        boxShadow: isEnabled ? [
-          BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
-        ] : [],
+        boxShadow: isEnabled
+            ? [
+          BoxShadow(
+            color:
+            AppColors.primary.withOpacity(0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ]
+            : [],
       ),
       child: ElevatedButton(
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isEnabled ? AppColors.primary : Colors.grey.shade400,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          backgroundColor: isEnabled
+              ? AppColors.primary
+              : Colors.grey.shade400,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
           elevation: 0,
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment:
+          MainAxisAlignment.center,
           children: [
-            Text(text, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(
+              text,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+
             const SizedBox(width: 12),
-            Icon(icon, color: Colors.white, size: 20),
+
+            Icon(
+              icon,
+              color: Colors.white,
+              size: 20,
+            ),
           ],
         ),
       ),
     );
   }
 
-  PreferredSizeWidget _customAppBar(BuildContext context, String title) {
+  PreferredSizeWidget _customAppBar(
+      BuildContext context,
+      String title,
+      ) {
     return AppBar(
       backgroundColor: AppColors.background,
       elevation: 0,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new, color: AppColors.primary, size: 20),
+        icon: const Icon(
+          Icons.arrow_back_ios_new,
+          color: AppColors.primary,
+          size: 20,
+        ),
         onPressed: () => Navigator.maybePop(context),
       ),
-      title: Text(title, style: const TextStyle(color: AppColors.textMain, fontSize: 18, fontWeight: FontWeight.bold)),
+      title: Text(
+        title,
+        style: const TextStyle(
+          color: AppColors.textMain,
+          fontSize: 18,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
       centerTitle: true,
     );
   }
