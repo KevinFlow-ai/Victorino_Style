@@ -1,6 +1,7 @@
 // Widget raíz de la app. Configura MaterialApp.router con el tema y el router
 // definidos en core/. Vive separado de main.dart para que main solo arranque.
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/router/app_router.dart';
@@ -23,6 +24,17 @@ class VictorinoApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false, // Oculta la etiqueta de debug.
 
       theme: AppThemes.victorinoTheme, // Tema global de la app (colores, tipografías, estilos).
+
+      // Localización: la app es 100 % español de España (sin i18n). Estos
+      // delegates le dan a los widgets de Material/Cupertino (showDatePicker,
+      // showTimePicker, tooltips…) sus textos en español.
+      locale: const Locale('es', 'ES'),
+      supportedLocales: const [Locale('es', 'ES')],
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
 
       routerConfig: router, // Configuración del router: navegación declarativa con GoRouter.
     );

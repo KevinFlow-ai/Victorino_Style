@@ -193,6 +193,10 @@ class _CrearEditarEmpleadoScreenState extends ConsumerState<CrearEditarEmpleadoS
       if (_foto != null) {
         await ref.read(subirFotoEmpleadoProvider).ejecutar(guardado.id, _foto!);
       }
+      // Invalida el listado global de empleados para que CUALQUIER pantalla
+      // que lo esté observando (lista, agenda, walk-in…) se actualice con
+      // la nueva foto/nombre sin necesidad de pull-to-refresh manual.
+      ref.invalidate(empleadosAdminNotifierProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(widget.esEdicion ? 'Empleado actualizado' : 'Empleado creado')),

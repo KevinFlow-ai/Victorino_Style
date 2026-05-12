@@ -21,7 +21,7 @@ class ListaServiciosScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
-        title: Text('Catálogo de servicios',
+        title: Text('Gestión de servicios',
             style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: AppColors.textMain)),
       ),
       floatingActionButton: FloatingActionButton.extended(
