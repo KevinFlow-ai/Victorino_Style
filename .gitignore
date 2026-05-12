@@ -2,3 +2,8 @@
 /frontend_victorino/.kiro/
 /frontend_victorino/.agents/
 /Backend_Victorino/.agents/
+
+# Firebase service account — credenciales privadas, nunca subir
+Backend_Victorino/src/main/resources/firebase/*.json
+!Backend_Victorino/src/main/resources/firebase/.gitkeep
+Backend_Victorino/src/main/resources/firebase-service-account.json

@@ -125,6 +125,33 @@ dependencies:
 
 
 
+  # *****************************  FIREBASE *******************
+
+  firebase_core: ^4.7.0
+    # Inicializa Firebase en tu app Flutter.
+    # Es obligatorio para poder usar cualquier otro servicio de Firebase
+    # como Firestore, Auth, Messaging, Storage, etc.
+
+  firebase_messaging: ^16.2.0
+    # Permite recibir notificaciones push enviadas desde Firebase Cloud Messaging (FCM).
+    # Gestiona notificaciones en:
+    # - Primer plano (app abierta)
+    # - Segundo plano (app minimizada)
+    # - Terminada (cuando el usuario abre la app desde una notificación)
+    # También permite obtener el token del dispositivo para enviar notificaciones dirigidas.
+
+  flutter_local_notifications: ^21.0.0
+    # Muestra notificaciones locales en el dispositivo.
+    # Se usa junto con firebase_messaging para:
+    # - Mostrar notificaciones personalizadas cuando la app está en primer plano
+    # - Controlar iconos, sonidos, acciones y estilos avanzados
+    # - Programar notificaciones locales sin depender de internet
+
+
+
+
+
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

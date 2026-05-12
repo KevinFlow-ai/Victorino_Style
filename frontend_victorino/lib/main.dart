@@ -1,13 +1,23 @@
 // Punto de entrada de la app. Solo se encarga de:
 // 1. Inicializar Flutter.
-// 2. Inicializar los datos de localización (intl) para el español de España.
-// 3. Envolver la app en un ProviderScope para que Riverpod funcione.
-// 4. Lanzar el widget raíz definido en app.dart.
+// 2. Inicializar Firebase (debe ser antes de runApp).
+// 3. Registrar el handler de mensajes FCM en background.
+// 4. Inicializar datos de localización (intl) para español de España.
+// 5. Envolver la app en ProviderScope para Riverpod y lanzar VictorinoApp.
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
+
+// *********  FIREBASE
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'firebase_messaging_handler.dart';
+import 'firebase_options.dart';
+
 import 'app.dart';
+
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +28,16 @@ Future<void> main() async {
   // DateFormat.yMMMd('es') lanza LocaleDataException en runtime.
   await initializeDateFormatting('es_ES');
 
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Handler para mensajes FCM cuando la app está cerrada o en background.
+  // Debe registrarse antes de runApp y en el top-level (no dentro de un widget).
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   runApp(const ProviderScope(child: VictorinoApp()));
+
   // ProviderScope es el contenedor raíz de Riverpod.
   // Sin él, ningún provider funcionaría.
   //
@@ -26,6 +45,9 @@ Future<void> main() async {
   // - MaterialApp.router
   // - Tema global
   // - Router (GoRouter)
+
+
+
 }
 
 

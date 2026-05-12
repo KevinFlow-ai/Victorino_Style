@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "18732368309",
+    "project_id": "victorino-style",
+    "storage_bucket": "victorino-style.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:18732368309:android:724a128b42f835d58659fc",
+        "android_client_info": {
+          "package_name": "com.example.frontend_victorino"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBpXaJTNraqfc28NrZ2kv3MwUdG6oA9JnI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
