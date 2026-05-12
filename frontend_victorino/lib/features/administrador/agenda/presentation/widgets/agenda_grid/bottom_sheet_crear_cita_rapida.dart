@@ -585,6 +585,199 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
 
 
 
+  /*
+    **********************************************************************************
+    WIDGET PARA ELEGIR LA HORA, las horas no disponible se muestran en ROJO, y LAS
+    QUE SE PUEDEN RESERVAR EN GRIS, SI SE PONE SOBRE UNA HORA EN ROJO SALE UN MENSAJE
+    DE HORA NO DISPONIBLE
+
+       ¿QUÉ HACE ESTE PICKER?
+    ✔ Horas disponibles → negras
+    ✔ Horas no disponibles → rojas y en negrita
+    ✔ No se pueden seleccionar
+    ✔ Vibración fuerte al intentar elegirlas
+    ✔ Muestra un mensaje “Hora no disponible”
+    ✔ Mantiene tu modal y tu botón “Confirmar”
+    * ESTO SOLO PERMITE ELEGIR LAS HORAS VÁLIDAS
+    *********************************************************************************
+
+
+        // Añade esto arriba en tu State: Abajo de la linea 62
+        DateTime? _ultimoAviso;
+
+        Future<void> _elegirHora() async {
+          TimeOfDay? seleccion = _hora;
+
+          final now = DateTime.now();
+
+          final inicio = DateTime(
+            now.year,
+            now.month,
+            now.day,
+            _toMin(widget.horaInicio) ~/ 60,
+            _toMin(widget.horaInicio) % 60,
+          );
+
+          final fin = DateTime(
+            now.year,
+            now.month,
+            now.day,
+            _toMin(widget.horaFinHueco) ~/ 60,
+            _toMin(widget.horaFinHueco) % 60,
+          );
+
+          // Generamos todas las horas del día (cada minuto)
+          List<DateTime> horas = [];
+          DateTime cursor = DateTime(now.year, now.month, now.day, 0, 0);
+
+          while (cursor.day == now.day) {
+            horas.add(cursor);
+            cursor = cursor.add(const Duration(minutes: 1));
+          }
+
+          // Determinar índice inicial
+          int initialIndex = horas.indexWhere(
+            (h) => h.hour == _hora.hour && h.minute == _hora.minute,
+          );
+
+          if (initialIndex == -1) initialIndex = 0;
+
+          FixedExtentScrollController controller =
+              FixedExtentScrollController(initialItem: initialIndex);
+
+          await showModalBottomSheet(
+            context: context,
+            backgroundColor: Colors.white,
+            isScrollControlled: false,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+            ),
+            builder: (ctx) {
+              return SizedBox(
+                height: 330,
+                child: Column(
+                  children: [
+                    // -------------------------
+                    // BOTÓN FIJO ARRIBA
+                    // -------------------------
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text(
+                              "Confirmar",
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.blue,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // -------------------------
+                          // PICKER PERSONALIZADO
+                          // -------------------------
+                          ListWheelScrollView.useDelegate(
+                            controller: controller,
+                            itemExtent: 40,
+                            physics: const FixedExtentScrollPhysics(),
+                            onSelectedItemChanged: (i) {
+                              final hora = horas[i];
+
+                              final disponible =
+                                  hora.isAfter(inicio.subtract(const Duration(minutes: 1))) &&
+                                  hora.isBefore(fin);
+
+                              if (!disponible) {
+                                // Vibración fuerte
+                                HapticFeedback.heavyImpact();
+
+                                // Evitar spam de mensajes (solo 1 cada 3 segundos)
+                                final ahora = DateTime.now();
+                                if (_ultimoAviso == null ||
+                                    ahora.difference(_ultimoAviso!).inSeconds >= 3) {
+                                  _ultimoAviso = ahora;
+
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text("Hora no disponible"),
+                                      duration: Duration(milliseconds: 900),
+                                    ),
+                                  );
+                                }
+
+                                return;
+                              }
+
+                              seleccion = TimeOfDay(hour: hora.hour, minute: hora.minute);
+                            },
+                            childDelegate: ListWheelChildBuilderDelegate(
+                              childCount: horas.length,
+                              builder: (context, index) {
+                                final hora = horas[index];
+
+                                final disponible =
+                                    hora.isAfter(inicio.subtract(const Duration(minutes: 1))) &&
+                                    hora.isBefore(fin);
+
+                                final texto =
+                                    "${hora.hour.toString().padLeft(2, '0')}:${hora.minute.toString().padLeft(2, '0')}";
+
+                                return Center(
+                                  child: Text(
+                                    texto,
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight:
+                                          disponible ? FontWeight.normal : FontWeight.bold,
+                                      color: disponible ? Colors.black : Colors.red,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          // -------------------------
+                          // RECTÁNGULO DE SELECCIÓN
+                          // -------------------------
+                          IgnorePointer(
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  top: BorderSide(color: Colors.grey.shade300, width: 1),
+                                  bottom: BorderSide(color: Colors.grey.shade300, width: 1),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          );
+
+          if (seleccion == null) return;
+
+          setState(() => _hora = seleccion!);
+        }
+
+ */
+
 
 
 
