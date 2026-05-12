@@ -10,6 +10,7 @@
 // Reutiliza `crearWalkInProvider` para no duplicar la llamada al backend.
 // Al éxito devuelve `true` y recarga la agenda.
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -272,6 +273,10 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
     );
   }
 
+
+
+  /* ===  WIDGET PARA ELEGIR LA HORA, EN FORMATO CIRCULAR "FEO", UN RELOJ ANTIGUO=====
+
   Future<void> _elegirHora() async {
     final t = await showTimePicker(
       context: context,
@@ -305,6 +310,284 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
     }
     setState(() => _hora = t);
   }
+
+
+   */
+
+
+   // ============  WIDGET PARA ELEGIR LA HORA NUEVO ESTILO IPHONE ============
+
+  Future<void> _elegirHora() async {
+    TimeOfDay? seleccion = _hora;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final now = DateTime.now();
+        final initial = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          _hora.hour,
+          _hora.minute,
+        );
+
+        return SizedBox(
+          height: 260,
+          child: Column(
+            children: [
+              // Barra de arrastre opcional
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.time,
+                  use24hFormat: true,
+                  initialDateTime: initial,
+                  minuteInterval: 1,
+                  onDateTimeChanged: (dt) {
+                    seleccion = TimeOfDay(hour: dt.hour, minute: dt.minute);
+                  },
+                ),
+              ),
+
+              // Botón de confirmar
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Confirmar"),
+                ),
+              )
+            ],
+          ),
+        );
+      },
+    );
+
+    if (seleccion == null) return;
+
+    final t = seleccion!;
+    final eleccionMin = t.hour * 60 + t.minute;
+    final inicioMin   = _toMin(widget.horaInicio);
+    final finMin      = _toMin(widget.horaFinHueco);
+
+    if (eleccionMin < inicioMin || eleccionMin >= finMin) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Esa hora cae fuera del hueco libre '
+                  '(${widget.horaInicio} – ${widget.horaFinHueco}).',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() => _hora = t);
+  }
+
+
+
+  /*
+
+     // ============  WIDGET PARA ELEGIR LA HORA NUEVO ESTILO IPHONE 2.  ============
+                      SIN EL BOTÓN DE CONFIRMAR. COMO EL DE ARRIBA
+
+    Future<void> _elegirHora() async {
+    TimeOfDay? seleccion;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        final now = DateTime.now();
+        final initial = DateTime(
+          now.year,
+          now.month,
+          now.day,
+          _hora.hour,
+          _hora.minute,
+        );
+
+        return SizedBox(
+          height: 250,
+          child: CupertinoDatePicker(
+            mode: CupertinoDatePickerMode.time,
+            use24hFormat: true,
+            initialDateTime: initial,
+            minuteInterval: 1,
+            onDateTimeChanged: (dt) {
+              seleccion = TimeOfDay(hour: dt.hour, minute: dt.minute);
+            },
+          ),
+        );
+      },
+    );
+
+    if (seleccion == null) return;
+
+    final t = seleccion!;
+    final eleccionMin = t.hour * 60 + t.minute;
+    final inicioMin   = _toMin(widget.horaInicio);
+    final finMin      = _toMin(widget.horaFinHueco);
+
+    if (eleccionMin < inicioMin || eleccionMin >= finMin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Esa hora cae fuera del hueco libre '
+            '(${widget.horaInicio} – ${widget.horaFinHueco}).',
+          ),
+        ),
+      );
+      return;
+    }
+
+    setState(() => _hora = t);
+  }
+
+   */
+
+
+
+
+  /*
+    **********************************************************************************
+    WIDGET PARA ELEGIR LA HORA, CON límites visuales (bloquear horas fuera del horario)
+
+    bloquear visualmente las horas fuera del hueco libre directamente en la rueda,
+    para que el usuario no pueda ni siquiera desplazarse a horas inválidas.
+    *
+    * ESTO SOLO PERMITE ELEGIR LAS HORAS VÁLIDAS
+    *********************************************************************************
+
+  Future<void> _elegirHora() async {
+    TimeOfDay? seleccion = _hora;
+
+    // Convertimos el hueco libre a DateTime para limitar el picker
+    final now = DateTime.now();
+    final inicio = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      _toMin(widget.horaInicio) ~/ 60,
+      _toMin(widget.horaInicio) % 60,
+    );
+    final fin = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      _toMin(widget.horaFinHueco) ~/ 60,
+      _toMin(widget.horaFinHueco) % 60,
+    );
+
+    // Hora inicial dentro del rango
+    DateTime initial = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      _hora.hour,
+      _hora.minute,
+    );
+
+    if (initial.isBefore(inicio)) initial = inicio;
+    if (initial.isAfter(fin)) initial = fin;
+
+    await showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) {
+        return SizedBox(
+          height: 260,
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 10),
+
+              Expanded(
+                child: CupertinoDatePicker(
+                  mode: CupertinoDatePickerMode.time,
+                  use24hFormat: true,
+                  initialDateTime: initial,
+                  minimumDate: inicio,
+                  maximumDate: fin.subtract(const Duration(minutes: 1)),
+                  minuteInterval: 1,
+                  onDateTimeChanged: (dt) {
+                    seleccion = TimeOfDay(hour: dt.hour, minute: dt.minute);
+                  },
+                ),
+              ),
+
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size(double.infinity, 48),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text("Confirmar"),
+                ),
+              )
+            ],
+          ),
+        );
+      },
+    );
+
+    if (seleccion == null) return;
+
+    setState(() => _hora = seleccion!);
+  }
+
+
+   */
+
+
+
+
+
+
+
+
 
   Widget _drag() => Center(
         child: Container(
