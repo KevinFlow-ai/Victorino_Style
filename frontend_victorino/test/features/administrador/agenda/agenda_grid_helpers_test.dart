@@ -26,13 +26,14 @@ HorarioPeluqueria _horarioStd() => const HorarioPeluqueria(
 CitaAdmin _cita({
   required String horaInicio,
   required String horaFin,
+  String fecha = '2026-05-12',
   EstadoCita estado = EstadoCita.confirmada,
   int idEmpleado = 1,
   int duracion = 60,
 }) {
   return CitaAdmin(
     idCita: 0,
-    fecha: '2026-05-12',
+    fecha: fecha,
     horaInicio: horaInicio,
     horaFin: horaFin,
     estado: estado,
@@ -193,6 +194,53 @@ void main() {
         slotMin: 15,
       );
       expect(huecos, isEmpty);
+    });
+  });
+
+  group('estadoEfectivoCita', () {
+    // Cita 11 mayo 2026 10:00-11:00 marcada como CONFIRMADA por backend.
+    CitaAdmin confirmada() => _cita(
+          horaInicio: '10:00',
+          horaFin: '11:00',
+          fecha: '2026-05-11',
+          estado: EstadoCita.confirmada,
+        );
+
+    test('antes del inicio sigue CONFIRMADA', () {
+      final e = estadoEfectivoCita(confirmada(), DateTime(2026, 5, 11, 9, 30));
+      expect(e, EstadoCita.confirmada);
+    });
+
+    test('dentro del rango → EN_PROCESO', () {
+      final e = estadoEfectivoCita(confirmada(), DateTime(2026, 5, 11, 10, 30));
+      expect(e, EstadoCita.enProceso);
+    });
+
+    test('después del fin → COMPLETADA', () {
+      final e = estadoEfectivoCita(confirmada(), DateTime(2026, 5, 11, 12, 0));
+      expect(e, EstadoCita.completada);
+    });
+
+    test('cancelada permanece cancelada aunque haya pasado la hora', () {
+      final c = _cita(
+        horaInicio: '10:00',
+        horaFin: '11:00',
+        fecha: '2026-05-11',
+        estado: EstadoCita.canceladaCliente,
+      );
+      final e = estadoEfectivoCita(c, DateTime(2026, 5, 11, 15, 0));
+      expect(e, EstadoCita.canceladaCliente);
+    });
+
+    test('no presentado permanece no presentado', () {
+      final c = _cita(
+        horaInicio: '10:00',
+        horaFin: '11:00',
+        fecha: '2026-05-11',
+        estado: EstadoCita.noPresentado,
+      );
+      final e = estadoEfectivoCita(c, DateTime(2026, 5, 11, 15, 0));
+      expect(e, EstadoCita.noPresentado);
     });
   });
 

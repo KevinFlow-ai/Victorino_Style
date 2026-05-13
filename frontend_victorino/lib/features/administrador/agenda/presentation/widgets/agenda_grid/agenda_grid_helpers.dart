@@ -297,3 +297,55 @@ double alturaCita({
 double altoGrid(RangoHorario rango, double altoSlot, int slotMin) {
   return (rango.duracionMin / slotMin) * altoSlot;
 }
+
+// ─────────────────────────── Estado efectivo de la cita ───────────────────────────
+
+// Calcula el estado VISUAL de una cita en función de la hora actual.
+//
+// El backend marca todas las citas nuevas como `CONFIRMADA`. Una vez llega
+// la hora de inicio, conceptualmente la cita pasa a `EN_PROCESO`; al pasar
+// la hora de fin, a `COMPLETADA`. Esa transición la hace un scheduler en el
+// backend cada 15 min, pero entre tanto el cliente puede MOSTRAR el estado
+// correcto si calcula la transición localmente.
+//
+// Los estados "manuales" (canceladas y no-presentado) no se tocan: son
+// terminales y se respetan tal cual los marcó el empleado/admin/cliente.
+//
+// Se devuelve un nuevo enum value; no se mutan datos del backend.
+EstadoCita estadoEfectivoCita(CitaAdmin cita, DateTime ahora) {
+  // Estados terminales o manuales: no cambian con el tiempo.
+  switch (cita.estado) {
+    case EstadoCita.canceladaCliente:
+    case EstadoCita.canceladaPeluqueria:
+    case EstadoCita.noPresentado:
+    case EstadoCita.completada:
+      return cita.estado;
+    case EstadoCita.confirmada:
+    case EstadoCita.enProceso:
+      break; // sigue, transición posible.
+  }
+
+  final inicio = _parseFechaHora(cita.fecha, cita.horaInicio);
+  final fin    = _parseFechaHora(cita.fecha, cita.horaFin);
+  if (inicio == null || fin == null) return cita.estado;
+
+  if (ahora.isBefore(inicio)) {
+    // Aún no ha llegado: cualquier estado activo se muestra como CONFIRMADA.
+    return EstadoCita.confirmada;
+  }
+  if (ahora.isBefore(fin)) {
+    return EstadoCita.enProceso;
+  }
+  return EstadoCita.completada;
+}
+
+DateTime? _parseFechaHora(String fechaIso, String hhmm) {
+  final partesFecha = fechaIso.split('-');
+  if (partesFecha.length != 3) return null;
+  final y = int.tryParse(partesFecha[0]);
+  final m = int.tryParse(partesFecha[1]);
+  final d = int.tryParse(partesFecha[2]);
+  final mins = minutosDesdeHora(hhmm);
+  if (y == null || m == null || d == null || mins == null) return null;
+  return DateTime(y, m, d, mins ~/ 60, mins % 60);
+}

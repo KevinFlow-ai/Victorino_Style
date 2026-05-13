@@ -17,6 +17,8 @@
 //     ↑ fijo                ↑ scroll horizontal compartido con el encabezado
 //   ambos hacen scroll vertical conjunto.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -136,6 +138,13 @@ class _AgendaGridState extends State<AgendaGrid> {
   final _horBody    = ScrollController();
   bool _sincronizando = false;
 
+  // Timer que dispara un setState cada minuto para recalcular el estado
+  // visual de las citas (CONFIRMADA → EN_PROCESO → COMPLETADA). El cálculo
+  // real lo hace `estadoEfectivoCita` en helpers; este timer solo provoca
+  // el rebuild.
+  Timer? _tickEstados;
+  DateTime _ahora = DateTime.now();
+
   @override
   void initState() {
     super.initState();
@@ -155,10 +164,17 @@ class _AgendaGridState extends State<AgendaGrid> {
         _sincronizando = false;
       }
     });
+    // Tick cada 60 s. Suficiente para que una cita pase a EN_PROCESO o
+    // COMPLETADA con poco retardo. No martillamos al backend: solo
+    // recalculamos en memoria.
+    _tickEstados = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (mounted) setState(() => _ahora = DateTime.now());
+    });
   }
 
   @override
   void dispose() {
+    _tickEstados?.cancel();
     _vertical.dispose();
     _horHeader.dispose();
     _horBody.dispose();
@@ -235,6 +251,7 @@ class _AgendaGridState extends State<AgendaGrid> {
                                           empleado: e,
                                           fecha: widget.fecha,
                                           rango: widget.rango,
+                                          ahora: _ahora,
                                           citas: widget.citas
                                               .where((c) => c.idEmpleado == e.id)
                                               .toList(),
@@ -456,6 +473,7 @@ class _ColumnaEmpleado extends StatelessWidget {
     required this.empleado,
     required this.fecha,
     required this.rango,
+    required this.ahora,
     required this.citas,
     required this.onHueco,
   });
@@ -463,6 +481,10 @@ class _ColumnaEmpleado extends StatelessWidget {
   final Empleado empleado;
   final DateTime fecha;
   final RangoHorario rango;
+  // Hora actual usada para calcular el estado efectivo de cada cita.
+  // Viene del timer del padre para que cambiar de CONFIRMADA a EN_PROCESO
+  // a COMPLETADA sea automático cada minuto.
+  final DateTime ahora;
   final List<CitaAdmin> citas;
   final OnHuecoPulsado onHueco;
 
@@ -506,7 +528,7 @@ class _ColumnaEmpleado extends StatelessWidget {
                   horaFinHueco: h.horaFin,
                 ),
               )),
-          ...citas.map((c) => _TarjetaCita(cita: c, rango: rango)),
+          ...citas.map((c) => _TarjetaCita(cita: c, rango: rango, ahora: ahora)),
         ],
       ),
     );
@@ -640,9 +662,10 @@ class _PinturaPunteada extends CustomPainter {
 // ───────────────────────── Tarjeta de cita ─────────────────────────
 
 class _TarjetaCita extends StatelessWidget {
-  const _TarjetaCita({required this.cita, required this.rango});
+  const _TarjetaCita({required this.cita, required this.rango, required this.ahora});
   final CitaAdmin cita;
   final RangoHorario rango;
+  final DateTime ahora;
 
   @override
   Widget build(BuildContext context) {
@@ -655,19 +678,24 @@ class _TarjetaCita extends StatelessWidget {
       left: 4,
       right: 4,
       height: altura - 4,
-      child: _TarjetaContenido(cita: cita),
+      child: _TarjetaContenido(cita: cita, ahora: ahora),
     );
   }
 }
 
 class _TarjetaContenido extends StatelessWidget {
-  const _TarjetaContenido({required this.cita});
+  const _TarjetaContenido({required this.cita, required this.ahora});
   final CitaAdmin cita;
+  final DateTime ahora;
 
   @override
   Widget build(BuildContext context) {
-    final colores = _coloresEstado(cita.estado);
-    final atenuada = _estadoAtenuado(cita.estado);
+    // Estado efectivo: si el backend la trae como CONFIRMADA pero ya pasó
+    // la hora de inicio, se muestra como EN CURSO; pasada la hora de fin,
+    // como COMPLETADA. No mutamos `cita`; solo cambia la presentación.
+    final estado = estadoEfectivoCita(cita, ahora);
+    final colores = _coloresEstado(estado);
+    final atenuada = _estadoAtenuado(estado);
 
     // Estructura fija (el usuario lo pidió así):
     //   1) Badge de estado pequeño (CONFIRMADA / EN CURSO / …)
@@ -710,7 +738,7 @@ class _TarjetaContenido extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _badgeEstado(colores),
+                  _badgeEstado(colores, estado),
                   const SizedBox(height: 3),
                   Text(
                     cita.nombreCliente,
@@ -756,7 +784,7 @@ class _TarjetaContenido extends StatelessWidget {
     );
   }
 
-  Widget _badgeEstado(_ColorEstado colores) {
+  Widget _badgeEstado(_ColorEstado colores, EstadoCita estado) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
@@ -764,7 +792,7 @@ class _TarjetaContenido extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        _etiquetaEstado(cita.estado),
+        _etiquetaEstado(estado),
         style: GoogleFonts.poppins(
           color: colores.tagTexto,
           fontSize: 7.5,
