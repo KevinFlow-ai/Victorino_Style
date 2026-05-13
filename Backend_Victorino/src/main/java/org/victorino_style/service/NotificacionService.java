@@ -36,8 +36,8 @@ import java.util.List;
 //      * Administrador: recibe push sin restricciones.
 //
 // Registro de token FCM (guardarTokenFcm):
-// Si el token es NUEVO (primera instalacion / reinstalacion) -> notificacion "Sesion iniciada".
-// Si el token ya existia (restauracion de sesion desde splash) -> sin notificacion.
+// En login explicito: resetea enviada_push de notificaciones no leidas y hace catch-up push.
+// En restauracion de sesion desde splash: no hace nada adicional.
 //
 // El push real se delega en FirebaseService.enviarPushAsync (@Async).
 @Slf4j
@@ -145,6 +145,11 @@ public class NotificacionService {
             log.info("[FCM] Login explicito -> reseteando enviada_push de notificaciones no leidas para usuario={}", idUsuario);
             notificacionRepository.resetEnviadaPushParaNoLeidas(usuario.getId());
 
+            /*
+
+
+                   ***************** PARA VOLVER A ACTIVAR LAS NOTIFICACIONES POR INICIO DE SESION
+
             log.info("[FCM] Login explicito -> creando notificacion in-app (sin push) para usuario={}", idUsuario);
             crearSoloInApp(
                     usuario,
@@ -152,6 +157,7 @@ public class NotificacionService {
                     "Sesion iniciada",
                     "Has iniciado sesion en Victorino Style. Bienvenido/a."
             );
+             */
             // Catch-up push: reenviar via FCM las notificaciones pendientes (no leidas).
             if (deboEnviarPush(usuario)) {
                 enviarPushPendientesAlLogin(usuario);

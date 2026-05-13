@@ -71,11 +71,12 @@ class AgendaGlobalScreen extends ConsumerWidget {
         actions: [
           // Campana de notificaciones in-app con badge de no leídas.
           const CampanaNotificacionesWidget(),
-          IconButton(
-            tooltip: 'Avisos',
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () => context.push('/admin/avisos'),
-          ),
+
+          //IconButton( // PARA VOLVER A ACTIVAR LAS NOTIFICACIONES DE AVISO
+           // tooltip: 'Avisos',
+           // icon: const Icon(Icons.notifications_outlined),
+            //onPressed: () => context.push('/admin/avisos'),
+          //),
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar sesión',

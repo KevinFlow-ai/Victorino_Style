@@ -18,10 +18,10 @@ import 'secure_storage_provider.dart';
 // notificaciones
 import 'package:flutter/foundation.dart';
 import '../../core/notifications/fcm_service.dart';
-import '../../core/notifications/local_notifications.dart';
 import '../../features/notificaciones/application/notificaciones_providers.dart';
 import '../../features/login_admin_empleado_cliente/data/repositorios/auth_repositorio_impl.dart';
 import 'dio_provider.dart';
+// import '../../core/notifications/local_notifications.dart';
 
 class SesionNotifier extends AsyncNotifier<SesionUsuario?> {
   late final SecureStorage _storage;
@@ -59,6 +59,9 @@ class SesionNotifier extends AsyncNotifier<SesionUsuario?> {
         );
         debugPrint('[FCM] Token registrado en backend correctamente (esLoginExplicito=$esLoginExplicito)');
 
+        /*
+        ***************** PARA VOLVER A ACTIVAR LAS NOTIFICACIONES POR INICIO DE SESION
+
         // Si es login explícito, mostramos la notificación local DIRECTAMENTE
         // sin esperar el roundtrip Firebase → dispositivo.
         // Esto evita el throttling de mensajes HIGH priority en logins rápidos consecutivos.
@@ -71,6 +74,7 @@ class SesionNotifier extends AsyncNotifier<SesionUsuario?> {
           FcmService.onMensajeEntrante?.call();
           debugPrint('[FCM] Notificación local de sesión mostrada directamente (sin roundtrip FCM)');
         }
+         */
       } else {
         debugPrint('[FCM] Token null – sin push para este dispositivo');
       }
