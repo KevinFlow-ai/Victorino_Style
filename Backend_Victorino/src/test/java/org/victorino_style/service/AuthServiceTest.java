@@ -38,6 +38,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+// notificaciones
+import org.victorino_style.repository.DeviceTokenFcmRepository;
+
+
 // Tests unitarios de AuthService con Mockito.
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
@@ -45,6 +49,7 @@ class AuthServiceTest {
     @Mock private UsuarioRepository usuarioRepository;
     @Mock private ClienteRepository clienteRepository;
     @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock private DeviceTokenFcmRepository deviceTokenFcmRepository;
     @Mock private PasswordEncoder passwordEncoder;
     @Mock private JwtService jwtService;
     @Mock private UsuarioMapper usuarioMapper;

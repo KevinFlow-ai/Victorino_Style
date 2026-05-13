@@ -77,7 +77,7 @@ class RegistroNotifier extends AsyncNotifier<void> {
       // Si el registro fue exitoso, establece la sesión del usuario.
       await ref
           .read(sesionProvider.notifier)
-          .establecerSesion(resultado.sesion, resultado.refreshToken);
+          .establecerSesion(resultado.sesion, resultado.refreshToken, esLoginExplicito: true);
 
       state = const AsyncData(null);
       // Estado final: operación completada sin errores.

@@ -40,6 +40,7 @@ import '../domain/entidades/cita.dart';
 import 'widgets/agenda_grid/agenda_grid.dart';
 import 'widgets/agenda_grid/agenda_grid_helpers.dart';
 import 'widgets/agenda_grid/bottom_sheet_crear_cita_rapida.dart';
+import '../../../../core/widgets_compartidos/campana_notificaciones_widget.dart';
 
 class AgendaGlobalScreen extends ConsumerWidget {
   const AgendaGlobalScreen({super.key});
@@ -68,6 +69,8 @@ class AgendaGlobalScreen extends ConsumerWidget {
           ),
         ),
         actions: [
+          // Campana de notificaciones in-app con badge de no leídas.
+          const CampanaNotificacionesWidget(),
           IconButton(
             tooltip: 'Avisos',
             icon: const Icon(Icons.notifications_outlined),

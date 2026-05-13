@@ -15,6 +15,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_messaging_handler.dart';
 import 'firebase_options.dart';
+import 'core/notifications/fcm_service.dart';
+import 'core/notifications/local_notifications.dart';
 
 import 'app.dart';
 
@@ -34,7 +36,11 @@ Future<void> main() async {
 
   // Handler para mensajes FCM cuando la app está cerrada o en background.
   // Debe registrarse antes de runApp y en el top-level (no dentro de un widget).
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+  // Inicializa las notificaciones locales (para foreground).
+  await LocalNotificationsService.inicializar();
+
+  // Inicializa FCM: registra el handler de background y escucha mensajes.
+  await FcmService.inicializar();
 
   runApp(const ProviderScope(child: VictorinoApp()));
 

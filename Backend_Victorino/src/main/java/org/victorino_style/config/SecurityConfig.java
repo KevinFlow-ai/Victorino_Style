@@ -57,6 +57,15 @@ public class SecurityConfig {
                         // Endpoints del panel administrador: solo rol ADMINISTRADOR.
                         // El @PreAuthorize de cada controller aplica el mismo filtro a nivel
                         // de métodoo; este matcher es la primera barrera global por defensa en profundidad.
+
+                        // El token FCM se llama justo despues del login, antes de que el JWT este listo.
+                        .requestMatchers(HttpMethod.POST, "/notificaciones/fcm-token").permitAll()
+                        // Endpoint de pruebas de notificaciones (solo DEV - eliminar en produccion).
+                        .requestMatchers("/test/**").permitAll()
+
+
+
+
                         .requestMatchers("/admin/**").hasRole("ADMINISTRADOR")
                         // Cualquier otra petición exige token válido.
                         .anyRequest().authenticated()

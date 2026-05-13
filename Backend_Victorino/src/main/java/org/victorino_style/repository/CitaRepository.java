@@ -339,6 +339,109 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
                        @Param("fecha") LocalDate fecha,
                        @Param("horaInicio") java.time.LocalTime horaInicio,
                        @Param("horaFin")    java.time.LocalTime horaFin);
+
+
+    // ------------------------------------------------------------------------
+    // ---- Queries para NotificacionPendienteScheduler ----------------------
+    // Detectan citas cuyo estado cambio directamente en la BD (sin pasar por
+    // la capa de servicio) y que aun no tienen la notificacion correspondiente.
+    // Se limitan a citas con fechaCita >= :corte para no hacer spam historico.
+    // ------------------------------------------------------------------------
+
+    // Citas CANCELADA_CLIENTE donde el empleado NO tiene notificacion CANCELACION_CLIENTE.
+    @Query("""
+           SELECT c FROM Cita c
+           JOIN FETCH c.idEmpleado e
+           JOIN FETCH e.usuario
+           WHERE c.estadoCita = org.victorino_style.entity.enums.EstadoCita.CANCELADA_CLIENTE
+             AND c.fechaCita >= :corte
+             AND NOT EXISTS (
+                 SELECT n FROM Notificacion n
+                 WHERE n.idCitaRelacionadaNotificacion.id = c.id
+                   AND n.tipoNotificacion = 'CANCELACION_CLIENTE'
+                   AND n.idDestinatarioNotificacion.id = e.usuario.id
+             )
+           """)
+    List<Cita> findCanceladasClienteSinNotifEmpleado(@Param("corte") LocalDate corte);
+
+    // Citas CANCELADA_PELUQUERIA (con cliente registrado) donde el cliente NO tiene
+    // notificacion CANCELACION_PELUQUERIA.
+    @Query("""
+           SELECT c FROM Cita c
+           JOIN FETCH c.idCliente cl
+           JOIN FETCH cl.usuario
+           WHERE c.estadoCita = org.victorino_style.entity.enums.EstadoCita.CANCELADA_PELUQUERIA
+             AND c.idCliente IS NOT NULL
+             AND c.fechaCita >= :corte
+             AND NOT EXISTS (
+                 SELECT n FROM Notificacion n
+                 WHERE n.idCitaRelacionadaNotificacion.id = c.id
+                   AND n.tipoNotificacion = 'CANCELACION_PELUQUERIA'
+                   AND n.idDestinatarioNotificacion.id = cl.usuario.id
+             )
+           """)
+    List<Cita> findCanceladasPeluqueriaSinNotifCliente(@Param("corte") LocalDate corte);
+
+    // Citas CONFIRMADA/EN_PROCESO/COMPLETADA con cliente registrado donde el cliente
+    // NO tiene notificacion CONFIRMACION_RESERVA. Solo citas futuras o recientes.
+    @Query("""
+           SELECT c FROM Cita c
+           JOIN FETCH c.idCliente cl
+           JOIN FETCH cl.usuario
+           JOIN FETCH c.idEmpleado
+           WHERE c.estadoCita IN (
+               org.victorino_style.entity.enums.EstadoCita.CONFIRMADA,
+               org.victorino_style.entity.enums.EstadoCita.EN_PROCESO,
+               org.victorino_style.entity.enums.EstadoCita.COMPLETADA
+           )
+             AND c.idCliente IS NOT NULL
+             AND c.fechaCita >= :corte
+             AND NOT EXISTS (
+                 SELECT n FROM Notificacion n
+                 WHERE n.idCitaRelacionadaNotificacion.id = c.id
+                   AND n.tipoNotificacion = 'CONFIRMACION_RESERVA'
+                   AND n.idDestinatarioNotificacion.id = cl.usuario.id
+             )
+           """)
+    List<Cita> findConfirmadasClienteSinNotifReserva(@Param("corte") LocalDate corte);
+
+    // ------------------------------------------------------------------------
+    // Citas en una ventana temporal [fechaDesde/horaDesde, fechaHasta/horaHasta)
+    // con un estado concreto. Lo usa RecordatorioScheduler para buscar las citas
+    // que estan a ~24 h de distancia y enviar el recordatorio push.
+    // Soporta ventanas que cruzan medianoche (fechaDesde != fechaHasta).
+    // El NOT EXISTS evita enviar RECORDATORIO_24H duplicado cuando el scheduler
+    // vuelve a ejecutarse y la misma cita sigue en la ventana (p.ej. con intervalo 5min).
+    // ------------------------------------------------------------------------
+    @Query("""
+           SELECT c FROM Cita c
+             JOIN FETCH c.idCliente cl
+             JOIN FETCH cl.usuario
+             JOIN FETCH c.idEmpleado
+           WHERE c.estadoCita = :estado
+             AND (
+               (c.fechaCita = :fechaDesde AND c.fechaCita = :fechaHasta
+                AND c.horaInicioCita >= :horaDesde AND c.horaInicioCita < :horaHasta)
+               OR
+               (c.fechaCita = :fechaDesde AND c.fechaCita <> :fechaHasta
+                AND c.horaInicioCita >= :horaDesde)
+               OR
+               (c.fechaCita = :fechaHasta AND c.fechaCita <> :fechaDesde
+                AND c.horaInicioCita < :horaHasta)
+             )
+             AND NOT EXISTS (
+               SELECT n FROM Notificacion n
+               WHERE n.idCitaRelacionadaNotificacion.id = c.id
+                 AND n.tipoNotificacion = 'RECORDATORIO_24H'
+                 AND n.idDestinatarioNotificacion.id = cl.usuario.id
+             )
+           """)
+    List<Cita> findCitasEnVentanaRecordatorio(
+            @Param("fechaDesde") LocalDate fechaDesde,
+            @Param("horaDesde")  java.time.LocalTime horaDesde,
+            @Param("fechaHasta") LocalDate fechaHasta,
+            @Param("horaHasta")  java.time.LocalTime horaHasta,
+            @Param("estado")     EstadoCita estado);
 }
 
 

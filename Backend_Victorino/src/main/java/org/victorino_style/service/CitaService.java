@@ -30,6 +30,11 @@ import org.victorino_style.repository.HorarioEmpleadoRepository;
 import org.victorino_style.repository.PeluqueriaRepository;
 import org.victorino_style.repository.ServicioRepository;
 
+// NOTIFICACIONES
+import org.victorino_style.dto.cliente.ReservaClienteRequest;
+import org.victorino_style.exception.CitaNoModificableException;
+
+
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -169,6 +174,103 @@ public class CitaService {
                 cita.getId(), empleado.getId(), dto.fecha(), dto.horaInicio());
 
         return citaMapper.aRespuesta(cita);
+    }
+
+
+    // ============================================================
+    //  RESERVA POR CLIENTE (CONFIRMACION_RESERVA)
+    // ============================================================
+
+    @Transactional
+    public CitaAdminResponse reservar(Long idCliente, ReservaClienteRequest dto) {
+        // 1) Carga referencias.
+        Cliente cliente = clienteRepository.findById(idCliente)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Cliente no encontrado con id " + idCliente));
+        Empleado empleado = empleadoRepository.findActivoById(dto.idEmpleado())
+                .orElseThrow(() -> new EmpleadoNoEncontradoException(dto.idEmpleado()));
+        Servicio servicio = servicioRepository.findByIdAndFechaEliminacionServicioIsNull(dto.idServicio())
+                .orElseThrow(() -> new ServicioNoEncontradoException(dto.idServicio()));
+
+        // 2) Calcula hora_fin = hora_inicio + duracion del servicio.
+        LocalTime horaFin = dto.horaInicio().plusMinutes(servicio.getDuracionServicio());
+
+        // 3) Valida disponibilidad: día abierto, no festivo, no cierre anual,
+        //    fuera de descanso del empleado, sin solape con otra cita.
+        validarDisponibilidad(empleado, dto.fecha(), dto.horaInicio(), horaFin);
+
+        // 4) Construye la cita.
+        Cita cita = new Cita();
+        cita.setIdCliente(cliente);
+        cita.setIdEmpleado(empleado);
+        cita.setIdServicio(servicio);
+        cita.setFechaCita(dto.fecha());
+        cita.setHoraInicioCita(dto.horaInicio());
+        cita.setHoraFinCita(horaFin);
+        cita.setEstadoCita(EstadoCita.CONFIRMADA);
+        cita.setNotaCita(dto.nota());
+        Instant ahora = Instant.now();
+        cita.setFechaCreacionCita(ahora);
+        cita.setFechaModificacionCita(ahora);
+        cita.setVersionCita(0L);
+
+        cita = citaRepository.save(cita);
+
+        // 5) Notifica al cliente con la confirmacion de la reserva.
+        notificacionService.crearNotificacion(
+                cliente.getUsuario(), cita, TipoNotificacion.CONFIRMACION_RESERVA,
+                "Cita confirmada",
+                "Tu cita para el " + dto.fecha() + " a las " + dto.horaInicio()
+                        + " con " + empleado.getNombreEmpleado()
+                        + " (" + servicio.getNombreServicio() + ") ha sido confirmada.");
+
+        auditoriaService.registrar("RESERVA_CLIENTE", "CITA", cita.getId(),
+                "Cliente " + idCliente + " reservo cita con empleado " + empleado.getId()
+                        + " el " + dto.fecha() + " " + dto.horaInicio());
+
+        log.info("Cita reservada por cliente: idCita={}, idCliente={}, empleado={}, fecha={}, hora={}",
+                cita.getId(), idCliente, empleado.getId(), dto.fecha(), dto.horaInicio());
+
+        return citaMapper.aRespuesta(cita);
+    }
+
+    // ============================================================
+    //  CANCELACION POR CLIENTE (CANCELACION_CLIENTE → empleado)
+    // ============================================================
+
+    @Transactional
+    public void cancelarPorCliente(Long idCliente, Long idCita) {
+        // 1) Carga la cita con lock pesimista para evitar condiciones de carrera.
+        Cita cita = citaRepository.findByIdParaActualizar(idCita)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Cita no encontrada con id " + idCita));
+
+        // 2) Verifica que la cita pertenece al cliente autenticado.
+        if (cita.getIdCliente() == null || !cita.getIdCliente().getId().equals(idCliente)) {
+            throw new RecursoNoEncontradoException("Cita no encontrada con id " + idCita);
+        }
+
+        // 3) Solo se pueden cancelar citas CONFIRMADAS.
+        if (cita.getEstadoCita() != EstadoCita.CONFIRMADA) {
+            throw new CitaNoModificableException(idCita);
+        }
+
+        // 4) Cambia el estado.
+        cita.setEstadoCita(EstadoCita.CANCELADA_CLIENTE);
+        cita.setFechaModificacionCita(Instant.now());
+        citaRepository.save(cita);
+
+        // 5) Notifica al empleado dueno de la cita.
+        notificacionService.crearNotificacion(
+                cita.getIdEmpleado().getUsuario(), cita, TipoNotificacion.CANCELACION_CLIENTE,
+                "Cita cancelada por el cliente",
+                "El cliente " + cita.getIdCliente().getNombreCliente() + " "
+                        + cita.getIdCliente().getApellidosCliente()
+                        + " ha cancelado su cita del " + cita.getFechaCita()
+                        + " a las " + cita.getHoraInicioCita() + ".");
+
+        auditoriaService.registrar("CANCELACION_CLIENTE", "CITA", idCita,
+                "Cliente " + idCliente + " cancelo la cita " + idCita);
+
+        log.info("Cita cancelada por cliente: idCita={}, idCliente={}", idCita, idCliente);
     }
 
     // ============================================================

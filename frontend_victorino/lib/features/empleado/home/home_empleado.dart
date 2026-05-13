@@ -7,6 +7,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_colores.dart';
 import '../../../shared/providers/sesion_provider.dart';
 
+import '../../../core/widgets_compartidos/campana_notificaciones_widget.dart';
+
 class HomeEmpleado extends ConsumerWidget {
   const HomeEmpleado({super.key});
 
@@ -19,6 +21,8 @@ class HomeEmpleado extends ConsumerWidget {
       appBar: AppBar(
         title: Text('Empleado${sesion != null ? ' · ${sesion.nombreCompleto}' : ''}'),
         actions: [
+          // Campana de notificaciones in-app con badge de no leídas.
+          const CampanaNotificacionesWidget(), // ******** ICONO DE NOTIFICACIONES
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar sesión',

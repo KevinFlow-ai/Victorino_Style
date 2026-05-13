@@ -29,9 +29,11 @@ class LoginNotifier extends AsyncNotifier<void> {
         Credenciales(correo: correo, password: password),
       );
       // Persistimos el refresh y actualizamos sesión global.
+      // esLoginExplicito=true → el backend enviará la notificación de bienvenida.
+
       await ref
           .read(sesionProvider.notifier)
-          .establecerSesion(resultado.sesion, resultado.refreshToken);
+          .establecerSesion(resultado.sesion, resultado.refreshToken, esLoginExplicito: true);
 
       state = const AsyncData(null);
       return resultado.sesion.rol;

@@ -11,6 +11,9 @@ import 'widgets/grafica_estados_widget.dart';
 import 'widgets/grafica_franjas_widget.dart';
 import 'widgets/kpi_card_widget.dart';
 
+import '../../../../core/widgets_compartidos/campana_notificaciones_widget.dart';
+
+
 class MetricasScreen extends ConsumerWidget {
   const MetricasScreen({super.key});
 
@@ -26,6 +29,8 @@ class MetricasScreen extends ConsumerWidget {
         elevation: 0,
         title: Text('Estadísticas',
             style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: AppColors.textMain)),
+        // actions: const [CampanaNotificacionesWidget()],  ***** ICONO DE NOTIFICACIONES, NOTI
+
       ),
       body: estado.when(
         loading: () => const Center(child: CircularProgressIndicator()),

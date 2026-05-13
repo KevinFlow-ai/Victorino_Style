@@ -15,6 +15,7 @@ import '../../features/administrador/agenda/presentation/crear_walkin_screen.dar
 import '../../features/administrador/empleados/presentation/crear_editar_empleado_screen.dart';
 import '../../features/administrador/empleados/presentation/lista_empleados_screen.dart';
 import '../../features/administrador/metricas/presentation/metricas_screen.dart';
+import '../../features/administrador/notificaciones/presentation/enviar_aviso_screen.dart';
 import '../../features/administrador/negocio/presentation/negocio_screen.dart';
 import '../../features/administrador/servicios/presentation/crear_editar_servicio_screen.dart';
 import '../../features/administrador/servicios/presentation/lista_servicios_screen.dart';
@@ -24,6 +25,7 @@ import '../../features/cliente/registro/presentation/registro_screen.dart';
 import '../../features/empleado/home/home_empleado.dart';
 import '../../features/forgot_password/forgot_password_screen.dart';
 import '../../features/login_admin_empleado_cliente/presentation/login_screen.dart';
+import '../../features/notificaciones/presentation/bandeja_notificaciones_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../shared/providers/sesion_provider.dart';
 
@@ -120,6 +122,13 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       // Rutas auxiliares fuera del shell (modal-like).
       GoRoute(path: '/admin/walk-in', builder: (_, _) => const CrearWalkInScreen()),
       GoRoute(path: '/admin/avisos', builder: (_, _) => const AvisosScreen()),
+      GoRoute(path: '/admin/notificaciones/enviar', builder: (_, _) => const EnviarAvisoScreen()),
+
+      // Bandeja de notificaciones in-app (accesible desde cualquier rol).
+      GoRoute(
+        path: '/notificaciones',
+        builder: (_, _) => const BandejaNotificacionesScreen(),
+      ),
     ],
     redirect: (context, state) {
       final sesion = ref.read(sesionProvider).value;
@@ -153,8 +162,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         final esRutaCliente = ubicacion.startsWith('/cliente');
         final esRutaEmpleado = ubicacion.startsWith('/empleado');
         final esRutaAdmin = ubicacion.startsWith('/admin');
+        // /notificaciones es accesible para cualquier rol autenticado.
+        final esRutaCompartida = ubicacion.startsWith('/notificaciones');
 
-        final rolPermite = switch (sesion.rol) {
+        final rolPermite = esRutaCompartida || switch (sesion.rol) {
           'CLIENTE' => esRutaCliente,
           'EMPLEADO' => esRutaEmpleado,
           'ADMINISTRADOR' => esRutaAdmin,

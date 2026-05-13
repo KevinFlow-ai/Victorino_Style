@@ -8,6 +8,9 @@ import '../../../../core/theme/app_colores.dart';
 import '../application/servicios_providers.dart';
 import 'widgets/servicio_card.dart';
 
+
+import '../../../../core/widgets_compartidos/campana_notificaciones_widget.dart';
+
 class ListaServiciosScreen extends ConsumerWidget {
   const ListaServiciosScreen({super.key});
 
@@ -23,6 +26,8 @@ class ListaServiciosScreen extends ConsumerWidget {
         elevation: 0,
         title: Text('Gestión de servicios',
             style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: AppColors.textMain)),
+        // actions: const [CampanaNotificacionesWidget()], ********* ICONO DE NOTIFICACIONES
+
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,

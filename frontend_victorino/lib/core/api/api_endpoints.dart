@@ -60,6 +60,27 @@ class ApiEndpoints {
   static const adminMetricasResumen = '/admin/metricas/resumen';
 
   // ==========================================================================
+  // NOTIFICACIONES / FCM
+  // ==========================================================================
+
+  /// Endpoint para registrar el token FCM de un dispositivo.
+  /// POST /notificaciones/fcm-token
+  static const fcmToken = '/notificaciones/fcm-token';
+
+  /// Bandeja in-app del usuario (GET /notificaciones — JWT identifica al usuario).
+  static const notificaciones = '/notificaciones';
+
+  /// Marcar notificación como leída (PATCH /notificaciones/{id}/leer).
+  static String notificacionLeer(int id) => '/notificaciones/$id/leer';
+
+  /// Aviso general del admin (POST /notificaciones/aviso-general).
+  static const notificacionesAvisoGeneral = '/notificaciones/aviso-general';
+
+  // Rutas del cliente.
+  /// Cancelar una cita propia (PATCH /cliente/citas/{id}/cancelar).
+  static String clienteCancelarCita(int id) => '/cliente/citas/$id/cancelar';
+
+  // ==========================================================================
   // HELPERS PARA URLs DE IMÁGENES
   // ==========================================================================
 

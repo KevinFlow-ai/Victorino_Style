@@ -12,6 +12,9 @@ import 'secciones/seccion_descansos_widget.dart';
 import 'secciones/seccion_festivos_widget.dart';
 import 'secciones/seccion_horario_widget.dart';
 
+import '../../../../core/widgets_compartidos/campana_notificaciones_widget.dart';
+
+
 class NegocioScreen extends ConsumerWidget {
   const NegocioScreen({super.key});
 
@@ -24,6 +27,8 @@ class NegocioScreen extends ConsumerWidget {
         elevation: 0,
         title: Text('Configuración del negocio',
             style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: AppColors.textMain)),
+        // actions: const [CampanaNotificacionesWidget()], ***** ICONO DE NOTIFICACIONES
+
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

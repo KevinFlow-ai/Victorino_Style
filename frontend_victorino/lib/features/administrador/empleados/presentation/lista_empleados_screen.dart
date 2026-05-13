@@ -8,6 +8,7 @@ import '../../../../core/errors/failure.dart';
 import '../../../../core/theme/app_colores.dart';
 import '../application/empleados_providers.dart';
 import '../domain/entidades/empleado.dart';
+import '../../../../core/widgets_compartidos/campana_notificaciones_widget.dart';
 import 'widgets/dialogo_cancelacion_masiva.dart';
 import 'widgets/empleado_card.dart';
 
@@ -33,6 +34,8 @@ class _ListaEmpleadosScreenState extends ConsumerState<ListaEmpleadosScreen> {
         elevation: 0,
         title: Text('Empleados',
             style: GoogleFonts.poppins(fontWeight: FontWeight.w700, color: AppColors.textMain)),
+        // actions: const [CampanaNotificacionesWidget()], ************ NOTIFICACIONES ICONO ICONO NOTI
+
       ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
