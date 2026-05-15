@@ -41,7 +41,19 @@ class GraficaFranjasWidget extends StatelessWidget {
               rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               leftTitles: AxisTitles(
-                sideTitles: SideTitles(showTitles: true, reservedSize: 32, interval: (maxY == 0 ? 1 : maxY / 2).toDouble()),
+                sideTitles: SideTitles(
+                  showTitles: true,
+                  reservedSize: 36,
+                  interval: (maxY <= 4 ? 1 : (maxY / 4).ceil()).toDouble(),
+                  getTitlesWidget: (value, meta) {
+                    // Solo mostrar enteros; omitir el techo fraccionario (maxY*1.2)
+                    if (value != value.roundToDouble()) return const SizedBox.shrink();
+                    return Text(
+                      value.toInt().toString(),
+                      style: const TextStyle(fontSize: 11),
+                    );
+                  },
+                ),
               ),
               bottomTitles: AxisTitles(
                 sideTitles: SideTitles(

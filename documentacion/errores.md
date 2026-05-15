@@ -5,6 +5,167 @@
 
 ---
 
+## 2026-05-15 · Frontend — Números del eje Y amontonados y superpuestos en el gráfico "Citas por franja horaria" (Estadísticas admin)
+
+**Síntoma**: en el apartado de Estadísticas del administrador, en la gráfica de líneas llamada "Citas por franja horaria", los números del lado izquierdo (eje Y) aparecían todos juntos y encima unos de otros, haciendo imposible leerlos. Se veían valores como `0`, `0.5`, `1`, `7.2`, `14`, `28`, `33` apilados en el mismo espacio.
+
+---
+
+### Qué hace ese gráfico y cómo funciona (explicado fácil)
+
+**Para qué sirve a la peluquería**: de un vistazo, el dueño puede ver a qué horas del día hay más clientes. Si la gráfica sube mucho a las 10h y baja a las 15h, sabe que por la mañana está a tope y por la tarde floja — útil para decidir turnos, refuerzos o promociones en horas valle.
+
+¿ Qué es La tasa de asistencia?
+la tasa de asistencia solo entre las citas que no fueron canceladas.Muchas peluquerías usan esta fórmula porque consideran que una cancelación no es un fallo de asistencia, sino una cita liberada. Citas activas = completadas + no presentados = 772 Cancelaciones no se cuentan porque no hubo oportunidad de asistir.
+Asistencia efectiva: Mide cuántos clientes asistieron cuando realmente tenían intención de venir. Muchos negocios prefieren esta segunda porque:
+Las cancelaciones anticipadas permiten reprogramar.
+
+
+
+**Eje X (horizontal — la base)**: representa las **horas del día**. Cada punto en el suelo de la gráfica es una hora: 10h, 11h, 12h… hasta la última hora con citas en el rango de fechas seleccionado.
+
+**Eje Y (vertical — la altura)**: representa **cuántas citas hubo** en esa hora. Cuanto más alto llega la línea en un punto, más citas se hicieron en esa franja horaria.
+
+**La línea**: une todos los puntos (hora → número de citas) formando una curva. Si sube bruscamente es que a esa hora se concentran muchas reservas.
+
+**Dónde vive el código del gráfico**:
+`frontend_victorino/lib/features/administrador/metricas/presentation/widgets/grafica_franjas_widget.dart`
+
+**Cómo calcula los puntos** (la "fórmula"):
+```
+Para cada franja horaria recibida del backend:
+  hora  = los dos primeros dígitos de "HH:00"  →  eje X
+  citas = número de citas en esa hora           →  eje Y
+  punto = (hora, citas)
+```
+Es decir, si el backend dice "a las 10:00 hubo 33 citas", el gráfico pone un punto en x=10, y=33.
+
+**Cómo se calcula el rango del eje Y**:
+```
+máximo real   = el valor más alto de citas en cualquier hora
+techo visual  = máximo × 1.2   (se deja un 20 % de aire arriba para que la línea no toque el borde)
+suelo visual  = 0              (siempre empieza en cero)
+```
+Con esto el gráfico nunca "corta" la línea por arriba y siempre se lee bien.
+
+---
+
+### Causa del error
+
+El intervalo entre etiquetas del eje Y estaba calculado como `maxY ÷ 2`. Eso suena razonable, pero generaba números con decimales (por ejemplo, si maxY = 33, el intervalo era 16.5). fl_chart (la librería de gráficas) rellenaba entonces el espacio desde 0 hasta el techo (39.6) usando ese intervalo decimal, produciendo etiquetas intermedias como 0, 0.5, 1, 7.2, 14, 28, 33… que no cabían en el espacio reservado (solo 32 px de ancho) y se solapaban todas.
+
+### Solución
+
+Dos cambios en `grafica_franjas_widget.dart`, línea 44:
+
+1. **Intervalo limpio**: en lugar de `maxY ÷ 2` se usa `ceil(maxY ÷ 4)` — es decir, se divide el rango en 4 partes y se redondea al entero superior. Con maxY = 33, el intervalo pasa a ser 9, y las etiquetas quedan en 0, 9, 18, 27: cuatro números enteros bien espaciados.
+
+2. **Filtro de decimales**: se añade una función que dice "si el valor no es un número entero exacto, no lo dibujes". Así el techo 39.6 (que es maxY × 1.2) no aparece como etiqueta.
+
+3. **Más espacio para los números**: el ancho reservado para el eje Y pasa de 32 a 36 píxeles, para que los números de dos cifras tengan margen.
+
+**Diff**:
+```dart
+// ❌ Antes — intervalo decimal, etiquetas apiladas
+leftTitles: AxisTitles(
+  sideTitles: SideTitles(
+    showTitles: true,
+    reservedSize: 32,
+    interval: (maxY == 0 ? 1 : maxY / 2).toDouble(),
+  ),
+),
+
+// ✅ Después — intervalo entero, ~4 etiquetas limpias
+leftTitles: AxisTitles(
+  sideTitles: SideTitles(
+    showTitles: true,
+    reservedSize: 36,
+    interval: (maxY <= 4 ? 1 : (maxY / 4).ceil()).toDouble(),
+    getTitlesWidget: (value, meta) {
+      if (value != value.roundToDouble()) return const SizedBox.shrink();
+      return Text(value.toInt().toString(), style: const TextStyle(fontSize: 11));
+    },
+  ),
+),
+```
+
+**Archivo**: `frontend_victorino/lib/features/administrador/metricas/presentation/widgets/grafica_franjas_widget.dart` — línea 43.
+
+---
+
+**Lección aprendida**: en fl_chart, si el `interval` del eje tiene decimales, la librería genera etiquetas intermedias que desbordan el espacio. Siempre usar `ceil()` o redondear al entero más próximo para garantizar etiquetas limpias y separadas.
+
+---
+
+## 2026-05-14 · Frontend — Franja amarilla de desbordamiento al abrir "Crear cita rápida" (admin)
+
+**Síntoma**: al pulsar un hueco libre en la agenda del administrador y abrirse la ventana emergente para crear una nueva cita, aparecía una franja amarilla y negra en el borde derecho de la pantalla junto con el mensaje en el terminal:
+```
+A RenderFlex overflowed by 0.189 pixels on the right.
+```
+En cristiano: Flutter estaba intentando dibujar algo 0.189 píxeles más ancho de lo que cabía en la pantalla, y lo avisaba con esa franja de obra. *(Ver captura: `error en crear cita admin`)*
+
+---
+
+### Intento 1 — ❌ No resolvió el problema
+
+**Lo que pensamos**: mirando el código, había una fila horizontal (`Row`) con el selector de hora que tenía un texto sin restricción de ancho — el texto "Libre 11:30 – 14:00" que aparece a la derecha. Pensamos que ese texto era el que no cabía.
+
+**Lo que hicimos**: envolvimos ese texto en un `Flexible` para que pudiera encogerse si no había sitio.
+
+**Por qué no funcionó**: el texto del selector de hora no era el culpable. El error seguía apareciendo igual, porque había otro widget más conflictivo que no habíamos identificado.
+
+---
+
+### Intento 2 — ❌ No resolvió el problema
+
+**Lo que pensamos**: quizá el contenedor principal (el `SingleChildScrollView`, que es como la caja que envuelve todo el formulario) no estaba recortando bien los bordes horizontales.
+
+**Lo que hicimos**: añadimos `clipBehavior: Clip.hardEdge` al `SingleChildScrollView` para forzar que recortara cualquier cosa que sobresaliera.
+
+**Por qué no funcionó**: ese parámetro ya era el valor por defecto en Flutter — básicamente le dijimos que hiciera lo que ya estaba haciendo. No tuvo ningún efecto.
+
+---
+
+### Intento 3 — ✅ Solución real
+
+**Cómo encontramos el culpable**: en lugar de seguir adivinando, miramos el terminal de debug de Flutter, que mostraba exactamente qué widget estaba causando el error:
+```
+The relevant error-causing widget was:
+  DropdownButtonFormField<int>
+  file:///...bottom_sheet_crear_cita_rapida.dart:116
+```
+
+**El culpable real**: el desplegable de selección de servicio (`DropdownButtonFormField`). Internamente, este desplegable tiene una fila horizontal con el texto del servicio seleccionado y la flecha. Sin la propiedad `isExpanded: true`, ese desplegable mide su propio ancho basándose en el texto que contiene (nombre del servicio + duración), y con la fuente Poppins el resultado es un número con decimales que se pasaba 0.189 px del borde.
+
+**La solución**: añadir `isExpanded: true` al desplegable. Esto le dice que, en lugar de medir su propio contenido para calcular su ancho, simplemente ocupe todo el espacio que le da su contenedor padre — sin decimales, sin desbordamiento.
+
+**Diff**:
+```dart
+// ❌ Antes
+DropdownButtonFormField<int>(
+  initialValue: _idServicio,
+  decoration: _dec('Servicio'),
+  ...
+),
+
+// ✅ Después
+DropdownButtonFormField<int>(
+  initialValue: _idServicio,
+  isExpanded: true,   // ← esta línea
+  decoration: _dec('Servicio'),
+  ...
+),
+```
+
+**Archivo**: `frontend_victorino/lib/features/administrador/agenda/presentation/widgets/agenda_grid/bottom_sheet_crear_cita_rapida.dart` — línea 117.
+
+---
+
+**Lección aprendida**: cuando aparece este tipo de error en Flutter, lo primero es mirar el terminal — Flutter indica exactamente qué widget lo causa. No hay que adivinar. Además, cualquier `DropdownButtonFormField` dentro de un formulario con ancho limitado necesita `isExpanded: true` para no desbordar.
+
+---
+
 ## 2026-05-04 · Frontend — `LocaleDataException: Locale data has not been initialized`
 
 **Síntoma**: la app crashea con pantalla roja al entrar al panel admin:

@@ -45,7 +45,7 @@ class _ListaEmpleadosScreenState extends ConsumerState<ListaEmpleadosScreen> {
           await notifier.recargar();
         },
         icon: const Icon(Icons.add),
-        label: const Text('Nuevo'),
+        label: const Text('Nuevo empleado'),
       ),
       body: estado.when(
         loading: () => const Center(child: CircularProgressIndicator()),

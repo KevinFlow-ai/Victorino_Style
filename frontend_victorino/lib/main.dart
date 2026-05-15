@@ -56,6 +56,20 @@ Future<void> main() async {
 
 }
 
+//  maradona@victorinostyle.com          Empleado1234!
+//  jerson@victorinostyle.com            Empleado1234!
+
+//  andres.lozano@gmail.com              Cliente1234!
+//  carlos.rodriguez@gmail.com           Cliente1234!
+//  miguel.perez@gmail.com               Cliente1234!
+
+
+
+
+
+
+
+
 
 /*
 RESUMEN DEL ARCHIVO

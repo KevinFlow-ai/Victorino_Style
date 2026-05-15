@@ -81,6 +81,7 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
+          clipBehavior: Clip.hardEdge,
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           child: Form(
             key: _form,
@@ -114,6 +115,7 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
                   orElse: () => const LinearProgressIndicator(),
                   data: (lista) => DropdownButtonFormField<int>(
                     initialValue: _idServicio,
+                    isExpanded: true,
                     decoration: _dec('Servicio'),
                     items: lista
                         .where((s) => s.activo)
@@ -259,12 +261,15 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
                 ],
               ),
             ),
-            Text(
-              'Libre ${widget.horaInicio} – ${widget.horaFinHueco}',
-              style: GoogleFonts.poppins(
-                fontSize: 11,
-                color: AppColors.textMuted,
-                fontWeight: FontWeight.w500,
+            Flexible(
+              child: Text(
+                'Libre ${widget.horaInicio} – ${widget.horaFinHueco}',
+                style: GoogleFonts.poppins(
+                  fontSize: 11,
+                  color: AppColors.textMuted,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],

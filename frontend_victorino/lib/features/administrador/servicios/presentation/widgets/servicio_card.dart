@@ -100,7 +100,7 @@ class ServicioCard extends StatelessWidget {
                 if (servicio.descripcion != null && servicio.descripcion!.isNotEmpty) ...[
                   const SizedBox(height: 12),
                   Text(servicio.descripcion!,
-                      style: const TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                      style: const TextStyle(color: AppColors.textMuted, fontSize: 14)),
                 ],
               ],
             ),

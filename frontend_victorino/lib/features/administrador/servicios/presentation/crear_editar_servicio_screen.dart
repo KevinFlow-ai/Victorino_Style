@@ -239,7 +239,7 @@ class _CrearEditarServicioScreenState extends ConsumerState<CrearEditarServicioS
             const SizedBox(height: 22),
 
             _campo('Nombre del servicio', _nombre, requerido: true),
-            _campo('Descripción (opcional)', _descripcion, maxLines: 3),
+            _campo('Descripción (opcional)', _descripcion, maxLines: 7),
 
             Row(
               children: [
