@@ -5,6 +5,151 @@
 
 ---
 
+## 2026-05-15 · Frontend — Pantalla roja al abrir "Incidencias de plantilla" tras cancelar citas (Negocio)
+
+**Síntoma**: después de arreglar el error del backend, al abrir la sección de "Incidencias de plantilla" en el panel Negocio la app se quedaba en rojo con el mensaje:
+```
+There should be exactly one item with [DropdownButton]'s value: Instance of 'Empleado'.
+Either zero or 2 or more [DropdownMenuItem]s were detected with the same value.
+```
+En cristiano: el desplegable de empleados estaba en un estado imposible — tenía un valor seleccionado que no coincidía con ningún elemento de su lista, y Flutter se negó a pintar la pantalla.
+
+---
+
+### Por qué ocurrió
+
+Cuando el administrador cancela las citas de un empleado, Riverpod (el sistema de estado de la app) recarga la lista de empleados desde el servidor para reflejar los cambios. Al recargar, crea **objetos nuevos en memoria** para cada empleado.
+
+El problema está en cómo Dart compara objetos. Por defecto, Dart no compara dos objetos por su contenido (nombre, id, etc.) sino por su **dirección en memoria** — es decir, si son literalmente el mismo objeto. El empleado "Maradona" antes de la recarga y el "Maradona" después son dos objetos distintos para Dart, aunque tengan exactamente los mismos datos.
+
+El estado del widget guardaba en `_seleccionado` el objeto antiguo de "Maradona". Tras la recarga, la lista tenía un "Maradona" nuevo. Flutter buscaba en la lista cuántos items coincidían con el valor seleccionado, encontraba cero (porque el objeto antiguo ≠ objeto nuevo por referencia), y lanzaba el error.
+
+**Analogía**: es como si alguien fotocopiara tu DNI. Los dos DNIs tienen los mismos datos, pero si comparas los papeles físicamente, son dos papeles distintos. Dart hace esa comparación física, no la comparación de datos.
+
+---
+
+### Solución
+
+Antes de construir el desplegable, buscar en la lista actual el empleado cuyo **id** coincide con el seleccionado. Así, aunque la lista se haya recargado con objetos nuevos, siempre se encuentra el empleado correcto por su identificador único.
+
+**Archivo**: `frontend_victorino/lib/features/administrador/negocio/presentation/secciones/seccion_cancelacion_masiva_widget.dart`
+
+**Diff**:
+```dart
+// ❌ Antes — se usaba directamente el objeto guardado en estado
+DropdownButtonFormField<Empleado>(
+  initialValue: _seleccionado,   // puede ser un objeto "viejo" que ya no está en la lista
+  ...
+),
+FilledButton.icon(
+  onPressed: _seleccionado == null || _ejecutando ? null : _ejecutar,
+  ...
+),
+
+// ✅ Después — se busca el empleado en la lista actual por id antes de usarlo
+final seleccionadoActual = _seleccionado == null
+    ? null
+    : activos.where((e) => e.id == _seleccionado!.id).firstOrNull;
+
+DropdownButtonFormField<Empleado>(
+  initialValue: seleccionadoActual,   // siempre apunta a un objeto de la lista actual
+  ...
+),
+FilledButton.icon(
+  onPressed: seleccionadoActual == null || _ejecutando ? null : _ejecutar,
+  ...
+),
+```
+
+---
+
+**Lección aprendida**: en Flutter, cuando el valor de un `DropdownButtonFormField` es un objeto (no un tipo primitivo como `int` o `String`), hay que asegurarse de que ese objeto ES exactamente uno de los que hay en la lista de items — el mismo objeto, no una copia. Si el provider puede recargar los datos, siempre hay que resincronizar el valor seleccionado con la lista fresca antes de construir el dropdown, buscando por id o por cualquier campo único.
+
+---
+
+## 2026-05-15 · Backend — "Error inesperado" al cancelar todas las citas de un empleado (Negocio → Incidencias de plantilla)
+
+**Síntoma**: al seleccionar un empleado en el panel Negocio y pulsar "Cancelar todas las citas futuras", la app mostraba el mensaje de error `ApiException: ha ocurrido un error inesperado`. En el terminal del backend aparecía:
+```
+InvalidDataAccessApiUsageException: No active transaction
+  at CancelacionMasivaService.cancelarFuturasDelEmpleado (línea 54)
+```
+No se cancelaba ninguna cita ni se notificaba a ningún cliente.
+
+---
+
+### Qué hace esta funcionalidad (explicado fácil)
+
+Cuando un empleado se pone enfermo o causa baja, el administrador puede pulsar un botón para cancelar de golpe TODAS sus citas futuras. El sistema cancela cada cita una por una y envía una notificación automática a cada cliente afectado para que pueda reservar de nuevo cuando quiera.
+
+El diseño tenía una lógica inteligente de resiliencia: si por algún motivo una cita concreta falla (por ejemplo, un cliente la canceló justo en ese mismo instante desde su móvil), el sistema no para — la apunta como "omitida" y sigue con las demás. Al final muestra el resumen: cuántas se cancelaron, cuántos clientes fueron notificados y cuántas se omitieron.
+
+Para lograr esa resiliencia, cada cita se cancela en su propia "mini-operación" independiente en la base de datos (`REQUIRES_NEW`). Si una mini-operación falla, no arrastra a las demás.
+
+---
+
+### Causa real (dos problemas encadenados)
+
+**Problema 1 — El lock pedía algo que no existía**
+
+En la base de datos, cuando vas a modificar registros de forma masiva, es buena práctica "bloquear" esas filas para que nadie más las toque mientras tú las estás procesando. En el código, el repositorio tenía esa instrucción de bloqueo (`@Lock`) en la consulta que carga la lista inicial de citas.
+
+El problema: ese bloqueo solo funciona si hay una "transacción" activa (una transacción es como una sesión con la base de datos que garantiza que todo se hace o no se hace). El método que carga esa lista no tenía ninguna transacción abierta → la base de datos respondía: "¿qué bloqueo? ¡Si ni siquiera tenemos una sesión abierta!".
+
+**Problema 2 — La llamada interna no pasaba por el intermediario**
+
+Spring funciona con un sistema de "interceptores" que envuelven los métodos para añadirles comportamientos (como abrir una transacción). Pero esos interceptores solo funcionan cuando la llamada viene de FUERA de la clase. Si un método llama a otro método de su propia clase (`this.cancelarUnaCita()`), Spring no puede interceptarlo y el comportamiento transaccional se ignora silenciosamente.
+
+En cristiano: el método `cancelarFuturasDelEmpleado` llamaba a `cancelarUnaCita` directamente, como si uno le susurrara al oído al de al lado. Spring no se enteraba y la instrucción "abre una transacción nueva para esto" (el `REQUIRES_NEW`) era completamente ignorada.
+
+---
+
+### Solución (dos cambios)
+
+**Cambio 1 — Quitar el bloqueo de la consulta inicial** (`CitaRepository.java`)
+
+La consulta que carga la lista de citas solo necesita los datos, no necesita bloquearlos. El bloqueo real se hace después, cita a cita, en el momento de cancelar cada una individualmente. Se eliminó el `@Lock` de `findCitasFuturasParaCancelar`.
+
+```java
+// ❌ Antes — bloqueo en la carga inicial (requería transacción que no existía)
+@Lock(LockModeType.PESSIMISTIC_WRITE)
+@Query("SELECT c FROM Cita c WHERE ...")
+List<Cita> findCitasFuturasParaCancelar(...);
+
+// ✅ Después — carga simple sin bloqueo (el bloqueo ocurre al cancelar cada una)
+@Query("SELECT c FROM Cita c WHERE ...")
+List<Cita> findCitasFuturasParaCancelar(...);
+```
+
+**Cambio 2 — Forzar que la llamada pase por el intermediario de Spring** (`CancelacionMasivaService.java`)
+
+En lugar de llamar al método directamente (`this.cancelarUnaCita()`), se inyecta una referencia a la propia clase a través del sistema de Spring (`self`). Así la llamada sí pasa por el interceptor y el `REQUIRES_NEW` funciona de verdad.
+
+```java
+// Añadir al principio de la clase:
+@Lazy
+@Autowired
+private CancelacionMasivaService self;
+
+// ❌ Antes — llamada directa, Spring no se entera, REQUIRES_NEW ignorado
+Long idCliente = cancelarUnaCita(c.getId());
+
+// ✅ Después — llamada a través del proxy de Spring, REQUIRES_NEW funciona
+Long idCliente = self.cancelarUnaCita(c.getId());
+```
+
+El `@Lazy` es necesario para que Spring no entre en bucle al intentar construir la clase que depende de sí misma.
+
+---
+
+**Archivos modificados**:
+- `Backend_Victorino/src/main/java/org/victorino_style/repository/CitaRepository.java`
+- `Backend_Victorino/src/main/java/org/victorino_style/service/CancelacionMasivaService.java`
+
+**Lección aprendida**: en Spring, un método que llama a otro método de su propia clase (`this.xxx()`) NUNCA activa las anotaciones transaccionales del método llamado. Si necesitas que `REQUIRES_NEW` funcione en una llamada interna, debes inyectar la propia clase con `@Lazy @Autowired` y llamar a través de esa referencia.
+
+---
+
 ## 2026-05-15 · Frontend — Números del eje Y amontonados y superpuestos en el gráfico "Citas por franja horaria" (Estadísticas admin)
 
 **Síntoma**: en el apartado de Estadísticas del administrador, en la gráfica de líneas llamada "Citas por franja horaria", los números del lado izquierdo (eje Y) aparecían todos juntos y encima unos de otros, haciendo imposible leerlos. Se veían valores como `0`, `0.5`, `1`, `7.2`, `14`, `28`, `33` apilados en el mismo espacio.

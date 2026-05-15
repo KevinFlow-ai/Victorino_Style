@@ -19,7 +19,8 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
 
 
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    // Sin @Lock: esta consulta solo carga los IDs para iterar. El lock real se aplica
+    // cita a cita dentro de cancelarUnaCita() mediante findByIdParaActualizar().
     @Query("""
            SELECT c FROM Cita c
            WHERE c.idEmpleado.id = :idEmpleado

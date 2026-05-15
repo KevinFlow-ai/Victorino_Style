@@ -34,20 +34,29 @@ class _SeccionCancelacionMasivaWidgetState extends ConsumerState<SeccionCancelac
         error: (e, _) => Text('Error: $e'),
         data: (lista) {
           final activos = lista.where((e) => e.activo).toList();
+          // Resincronizar la selección con la lista actual por id.
+          // El provider puede recargar y crear nuevos objetos Empleado en memoria;
+          // si comparamos por referencia (==), el valor antiguo no se encuentra
+          // en los items nuevos y el dropdown explota con un assertion error.
+          final seleccionadoActual = _seleccionado == null
+              ? null
+              : activos.where((e) => e.id == _seleccionado!.id).firstOrNull;
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Text(
                 'Cancela en bloque las citas futuras de un empleado por baja médica, '
-                'ausencia imprevista o baja definitiva. Los clientes serán notificados '
-                'automáticamente.',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                    'ausencia imprevista o baja definitiva. Los clientes serán notificados '
+                    'automáticamente.',
+                style: TextStyle(color: AppColors.textMuted, fontSize: 13),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               DropdownButtonFormField<Empleado>(
-                initialValue: _seleccionado,
+                initialValue: seleccionadoActual,
                 decoration: InputDecoration(
                   labelText: 'Empleado afectado',
+                  labelStyle: const TextStyle(fontSize: 16), // ← más grande
                   filled: true,
                   fillColor: AppColors.background,
                   border: OutlineInputBorder(
@@ -62,7 +71,7 @@ class _SeccionCancelacionMasivaWidgetState extends ConsumerState<SeccionCancelac
               ),
               const SizedBox(height: 12),
               FilledButton.icon(
-                onPressed: _seleccionado == null || _ejecutando ? null : _ejecutar,
+                onPressed: seleccionadoActual == null || _ejecutando ? null : _ejecutar,
                 icon: const Icon(Icons.delete_sweep_outlined),
                 label: Text(_ejecutando ? 'Cancelando...' : 'Cancelar todas las citas futuras'),
                 style: FilledButton.styleFrom(backgroundColor: AppColors.error),

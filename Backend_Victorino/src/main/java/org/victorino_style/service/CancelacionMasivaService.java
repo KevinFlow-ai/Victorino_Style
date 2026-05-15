@@ -2,6 +2,8 @@ package org.victorino_style.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,13 @@ public class CancelacionMasivaService {
     private final NotificacionService notificacionService;
     private final AuditoriaService auditoriaService;
 
+    // Auto-inyección lazy para que las llamadas a cancelarUnaCita() pasen por el
+    // proxy CGLIB y REQUIRES_NEW funcione correctamente (las auto-llamadas con
+    // "this.xxx()" bypasean el proxy y la anotación transaccional es ignorada).
+    @Lazy
+    @Autowired
+    private CancelacionMasivaService self;
+
     // ------------------------------------------------------------------------
     // Cancela todas las citas futuras CONFIRMADAS del empleado dado.
     // ------------------------------------------------------------------------
@@ -65,7 +74,8 @@ public class CancelacionMasivaService {
         for (Cita c : citas) {
             try {
                 // Cada cita se cancela en una transacción independiente.
-                Long idCliente = cancelarUnaCita(c.getId());
+                // Se llama a través de "self" (proxy CGLIB) para que REQUIRES_NEW funcione.
+                Long idCliente = self.cancelarUnaCita(c.getId());
                 canceladas++;
                 if (idCliente != null) clientesNotificados.add(idCliente);
             } catch (Exception ex) {
