@@ -5,6 +5,201 @@
 
 ---
 
+## 2026-05-16 · Frontend Cliente — "Mi perfil, sin perfil cargado" al cerrar sesión
+
+> 📸 **Captura asociada**: `cliente_error_cerrar_cesion`
+
+**Síntoma**: cuando el cliente está en la pestaña "Perfil" y pulsa el botón **"Cerrar sesión"**, durante un instante (~medio segundo) la pantalla muestra el mensaje:
+```
+Mi perfil
+Sin perfil cargado
+```
+…en lugar de llevarle DIRECTAMENTE al login como sí pasa con el admin. Es un parpadeo desagradable que da sensación de bug.
+
+---
+
+### Qué hace este botón (explicado fácil)
+
+Imagina la sesión como una "pulsera" que llevas puesta cuando entras a la peluquería: lleva tu nombre, tu rol (cliente/empleado/admin) y un código secreto (el token). Mientras la lleves, las pantallas saben quién eres y te enseñan tus datos.
+
+Cuando le das a "Cerrar sesión":
+1. La aplicación se **quita la pulsera** (borra los tokens, avisa al servidor).
+2. Como ya no llevas pulsera, la pantalla de perfil ya no sabe quién eres → muestra "Sin perfil cargado".
+3. **Luego** la aplicación te lleva al login.
+
+El problema es ese **"luego"** del paso 3: el paso 2 ocurre ANTES y, durante un instante, ves la pantalla fea de "Sin perfil".
+
+---
+
+### Por qué pasaba (más técnico, en cristiano)
+
+La pantalla del perfil estaba "**escuchando**" en cada momento si había sesión. En cuanto la sesión cambiaba a vacía, la pantalla se reconstruía y, como no tenía datos, mostraba "Sin perfil cargado".
+
+El botón cerraba sesión primero (esto es lo que avisa al servidor y borra los tokens) y SOLO DESPUÉS llamaba a la navegación al login. Entre paso 1 y paso 2, la pantalla ya se había repintado con la versión "vacía".
+
+**Analogía**: es como si para cerrar una tienda, primero apagaras las luces y después echaras las cortinas. Durante un instante la gente ve la tienda a oscuras desde fuera. Lo correcto es **echar las cortinas primero** (o a la vez), para que nunca se vea el local apagado.
+
+---
+
+### Solución
+
+En la pantalla de perfil añadimos un **"escucha"** sobre el estado de sesión. En cuanto detecta que la sesión pasa de **estar a no estar**, navega INMEDIATAMENTE a `/login` —antes de que el repintado de la pantalla muestre nada raro.
+
+Así, el orden ahora es:
+1. Sesión cambia a vacía.
+2. El "escucha" lo detecta y dispara `context.go('/login')` al instante.
+3. La pantalla de perfil ni se repinta porque ya hemos saltado al login.
+
+**Archivo**: `frontend_victorino/lib/features/cliente/perfil/presentation/perfil_cliente_screen.dart`
+
+**Diff**:
+```dart
+// ❌ Antes — la pantalla pintaba "Sin perfil cargado" durante el instante
+// que tardaba el botón en ejecutar context.go('/login').
+class PerfilClienteScreen extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final perfilAsync = ref.watch(perfilNotifierProvider);
+    return Scaffold(...);
+  }
+}
+
+// ✅ Después — añadimos un ref.listen que reacciona en cuanto la sesión se cierra
+// y navega a /login antes de pintar nada raro.
+class PerfilClienteScreen extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AsyncValue<SesionUsuario?>>(sesionProvider, (prev, next) {
+      final habiaSesion = prev?.value != null;
+      final hayAhora = next.value != null;
+      if (habiaSesion && !hayAhora && context.mounted) {
+        context.go('/login');
+      }
+    });
+    final perfilAsync = ref.watch(perfilNotifierProvider);
+    return Scaffold(...);
+  }
+}
+```
+
+---
+
+### Consejos para evitar este patrón
+
+- **No esperes** a hacer la navegación DESPUÉS de un cambio de estado global (sesión, login, logout). El intervalo entre "cambia el estado" y "se ejecuta la navegación" es suficiente para que la UI vea un estado intermedio.
+- Usa **`ref.listen`** en pantallas que dependen del estado de sesión: te permite reaccionar al cambio en lugar de tener que ejecutar la navegación manualmente desde cada botón.
+- El patrón "Pasó de X a Y → navega" es muy reutilizable. Sirve para sesión, pero también para "compra completada → ir a éxito" o "pedido cancelado → volver a la lista".
+- Esto también se aplica al botón **"Eliminar mi cuenta"**: como ambas acciones acaban cerrando la sesión, el mismo `ref.listen` cubre los dos casos automáticamente.
+
+---
+
+## 2026-05-16 · Frontend Cliente — Crash al cancelar cita desde el Home
+
+> 📸 **Captura asociada**: `cliente_error_cancelar_cita_1`
+
+**Síntoma**: al pulsar el botón **"Cancelar"** de la card "Mi próxima cita" en el Home del cliente, la app crasheaba con dos errores encadenados en consola:
+```
+You have popped the last page off of the stack, there are no pages left to show
+'package:go_router/src/delegate.dart': Failed assertion: line 175 pos 7:
+'currentConfiguration.isNotEmpty'
+
+'package:flutter/src/widgets/navigator.dart': Failed assertion: line 4081 pos 12:
+'!_debugLocked': is not true.
+```
+El diálogo de confirmación se quedaba en pantalla, la cita NO se cancelaba y la app entraba en un estado inconsistente del que no se podía salir sin reiniciar.
+
+---
+
+### Qué hace este botón (explicado fácil)
+
+La idea es muy simple: ves tu próxima cita en el Home, pulsas "Cancelar" y aparece un cartel con dos botones:
+- **"No"** → cierras el cartel y no pasa nada.
+- **"Sí, cancelar"** → cierras el cartel, el servidor cancela la cita y el peluquero recibe una notificación.
+
+Eso debería ser todo. Pero pasaba un follón gordo: al pulsar cualquiera de los dos botones, en lugar de cerrar el cartel se cerraba TODA la pantalla y la app se quedaba en un estado raro.
+
+---
+
+### Por qué pasaba (en cristiano)
+
+Imagina que tu aplicación tiene un sistema de "**ventanas apiladas**", como cuando abres pantallas dentro de pantallas. Hay dos jefes que mandan en esta pila:
+
+1. **El jefe grande (GoRouter)**: maneja las pantallas principales — Home, Reservar, Historial, Perfil. Cuando navegas entre pestañas, es él quien se encarga.
+2. **El jefe pequeño (Navigator)**: maneja las "ventanitas" más pequeñas que aparecen ENCIMA de la pantalla principal — los diálogos de confirmación, los bottom sheets, etc.
+
+Cuando abres un diálogo `showDialog(builder: (X) => AlertDialog(...))`, ese "X" es una **etiqueta** especial que solo conoce al jefe pequeño (al Navigator del diálogo). Esa etiqueta es la que tienes que usar cuando le pidas a alguien "cierra esto".
+
+**El bug**: en el código se ponía `builder: (_) => ...` (descartando la etiqueta) y dentro de los botones se hacía `Navigator.pop(context, ...)` usando el `context` GENERAL de la pantalla, no el del diálogo. Como ese `context` general lo conoce el JEFE GRANDE (GoRouter), el "pop" intentaba cerrar la PANTALLA entera en lugar del diálogo. Y como el Home es la primera pantalla del cliente y no hay nada debajo, el jefe grande lanzaba la excepción "ya no quedan pantallas que mostrar".
+
+**Analogía**: imagina que tienes una nota Post-it pegada en la puerta de tu casa, y un mensaje en el móvil del jefe de la empresa. Si quieres que alguien quite el Post-it y le dices al jefe "quita esto", entiende que quieres cerrar la puerta entera (¡y se queda sin oficina!), no quitar la nota. Tienes que ser específico: hablar con la persona que tiene la nota delante, no con el jefe grande.
+
+---
+
+### Solución
+
+Cambiar el nombre del parámetro del builder de `_` a `dialogContext` y usarlo en TODOS los `Navigator.pop(...)` dentro del diálogo. Así le hablamos al "jefe del diálogo" y no al "jefe grande de la app".
+
+**Archivos corregidos**: 5 diálogos en 4 archivos del módulo cliente.
+- `frontend_victorino/lib/features/cliente/home/presentation/home_cliente_screen.dart`
+- `frontend_victorino/lib/features/cliente/reservar/presentation/pestana_reservar_screen.dart`
+- `frontend_victorino/lib/features/cliente/historial/presentation/detalle_cita_screen.dart`
+- `frontend_victorino/lib/features/cliente/perfil/presentation/widgets/dialogo_eliminar_cuenta.dart`
+- `frontend_victorino/lib/features/cliente/reservar/presentation/widgets/dialogo_cita_existente.dart`
+
+**Diff** (el patrón se repite en los 5 diálogos):
+```dart
+// ❌ Antes — el builder descarta el contexto del diálogo (con "_") y se usa
+// el "context" general de la pantalla. Resultado: Navigator.pop pide cerrar
+// la pantalla entera a GoRouter → assertion error.
+showDialog<bool>(
+  context: context,
+  builder: (_) => AlertDialog(
+    title: const Text('Cancelar cita'),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(context, false),   // ⚠️ context exterior
+        child: const Text('No'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(context, true),    // ⚠️ context exterior
+        child: const Text('Sí, cancelar'),
+      ),
+    ],
+  ),
+);
+
+// ✅ Después — el builder captura el contexto del diálogo en "dialogContext"
+// y se usa en los Navigator.pop. Así solo se cierra el diálogo, sin tocar la
+// navegación principal de la app.
+showDialog<bool>(
+  context: context,
+  builder: (dialogContext) => AlertDialog(
+    title: const Text('Cancelar cita'),
+    actions: [
+      TextButton(
+        onPressed: () => Navigator.pop(dialogContext, false),
+        child: const Text('No'),
+      ),
+      FilledButton(
+        onPressed: () => Navigator.pop(dialogContext, true),
+        child: const Text('Sí, cancelar'),
+      ),
+    ],
+  ),
+);
+```
+
+---
+
+### Consejos para evitar este patrón
+
+- **Regla de oro**: cuando uses `showDialog`, `showModalBottomSheet` o cualquier pop-up parecido, **nunca descartes el `context` del builder con `_`**. Captúralo en una variable con nombre (`dialogContext`, `sheetContext`, etc.) y úsalo SIEMPRE en los `Navigator.pop` que estén dentro de ese pop-up.
+- Si te preguntas si necesitas el contexto del builder: la respuesta es **siempre sí** cuando vas a cerrar el pop-up. El `context` exterior es para acceder a temas, providers, scaffold messenger… pero NO para hacer pop.
+- Esto se vuelve crítico cuando combinas **GoRouter + diálogos**: GoRouter maneja la pila principal, los diálogos viven en una pila SECUNDARIA. Si los confundes, GoRouter intenta sacar de la pila principal y rompe la navegación.
+- Un truco para depurar: si ves el error "You have popped the last page off of the stack", busca todos tus `Navigator.pop` y revisa que cada uno use el contexto del builder más cercano, NO el context de la pantalla padre.
+
+---
+
 ## 2026-05-15 · Frontend — Pantalla roja al abrir "Incidencias de plantilla" tras cancelar citas (Negocio)
 
 **Síntoma**: después de arreglar el error del backend, al abrir la sección de "Incidencias de plantilla" en el panel Negocio la app se quedaba en rojo con el mensaje:
