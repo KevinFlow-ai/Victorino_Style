@@ -522,3 +522,141 @@ class _Seccion extends StatelessWidget {
     );
   }
 }
+
+
+/*
+          PARA PONER EL OJO EN EL CAMPO DE CAMBIAR CONTRASEÑA
+
+         // ============================================================
+        //  SECCIÓN — seguridad (cambio de contraseña)
+        // ============================================================
+        class _SeccionSeguridad extends ConsumerStatefulWidget {
+          const _SeccionSeguridad();
+
+          @override
+          ConsumerState<_SeccionSeguridad> createState() => _SeccionSeguridadState();
+        }
+
+        class _SeccionSeguridadState extends ConsumerState<_SeccionSeguridad> {
+          final _actual = TextEditingController();
+          final _nueva = TextEditingController();
+          final _repetir = TextEditingController();
+          bool _guardando = false;
+
+          // Visibilidad de cada campo de contraseña.
+          bool _verActual = false;
+          bool _verNueva = false;
+          bool _verRepetir = false;
+
+          @override
+          void dispose() {
+            _actual.dispose();
+            _nueva.dispose();
+            _repetir.dispose();
+            super.dispose();
+          }
+
+          Future<void> _cambiar() async {
+            if (_nueva.text != _repetir.text) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Las contraseñas nuevas no coinciden')),
+              );
+              return;
+            }
+            setState(() => _guardando = true);
+            try {
+              await ref.read(perfilNotifierProvider.notifier).cambiarPassword(
+                    actual: _actual.text,
+                    nueva: _nueva.text,
+                  );
+              if (mounted) {
+                _actual.clear();
+                _nueva.clear();
+                _repetir.clear();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Contraseña actualizada')),
+                );
+              }
+            } on ApiException catch (ex) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(ex.failure.mensaje)),
+                );
+              }
+            } finally {
+              if (mounted) setState(() => _guardando = false);
+            }
+          }
+
+          @override
+          Widget build(BuildContext context) {
+            return _Seccion(
+              titulo: 'Seguridad',
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _actual,
+                    obscureText: !_verActual,
+                    decoration: InputDecoration(
+                      labelText: 'Contraseña actual',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _verActual ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          color: AppColors.textMuted,
+                          size: 20,
+                        ),
+                        onPressed: () => setState(() => _verActual = !_verActual),
+                        tooltip: _verActual ? 'Ocultar' : 'Mostrar',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _nueva,
+                    obscureText: !_verNueva,
+                    decoration: InputDecoration(
+                      labelText: 'Nueva contraseña',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _verNueva ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          color: AppColors.textMuted,
+                          size: 20,
+                        ),
+                        onPressed: () => setState(() => _verNueva = !_verNueva),
+                        tooltip: _verNueva ? 'Ocultar' : 'Mostrar',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _repetir,
+                    obscureText: !_verRepetir,
+                    decoration: InputDecoration(
+                      labelText: 'Repite la nueva contraseña',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _verRepetir ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                          color: AppColors.textMuted,
+                          size: 20,
+                        ),
+                        onPressed: () => setState(() => _verRepetir = !_verRepetir),
+                        tooltip: _verRepetir ? 'Ocultar' : 'Mostrar',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.lock_reset),
+                      label: const Text('Cambiar contraseña'),
+                      onPressed: _guardando ? null : _cambiar,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+        }
+
+ */

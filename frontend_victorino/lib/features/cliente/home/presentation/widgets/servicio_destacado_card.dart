@@ -1,6 +1,6 @@
 // Card de un servicio destacado del Home (vertical, ancho completo).
 
-/ La imagen se renderiza con el widget compartido `FotoServicio`, que detecta
+// La imagen se renderiza con el widget compartido `FotoServicio`, que detecta
 // dinámicamente el aspect ratio real subido por el admin (1:1, 16:9, 4:3…).
 // Si el admin cambia el recorte de la foto en su panel, esta card lo reflejará
 // automáticamente la próxima vez que se recargue el catálogo: no hay que tocar
