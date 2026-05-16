@@ -67,6 +67,14 @@ public class SecurityConfig {
 
 
                         .requestMatchers("/admin/**").hasRole("ADMINISTRADOR")
+                        // Endpoints del cliente final: solo rol CLIENTE. El @PreAuthorize de cada
+                        // controller aplica el mismo filtro a nivel de método; este matcher es
+                        // la primera barrera global (defensa en profundidad).
+                        .requestMatchers("/cliente/**").hasRole("CLIENTE")
+                        // Catálogo público (servicios y empleados): autenticado, cualquier rol.
+                        // Permite que cliente, empleado y admin lo consulten para mostrar listados.
+                        .requestMatchers(HttpMethod.GET, "/servicios", "/servicios/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/empleados", "/empleados/**").authenticated()
                         // Cualquier otra petición exige token válido.
                         .anyRequest().authenticated()
                 )

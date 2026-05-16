@@ -407,6 +407,96 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
     List<Cita> findConfirmadasClienteSinNotifReserva(@Param("corte") LocalDate corte);
 
     // ------------------------------------------------------------------------
+    // ---- Queries para el modulo CLIENTE -----------------------------------
+    // ------------------------------------------------------------------------
+
+    // Citas ACTIVAS (CONFIRMADA o EN_PROCESO) del cliente en un rango de fechas.
+    // Lo usa CitaClienteService para validar las reglas "mismo dia" y "misma semana".
+    @Query("""
+           SELECT c FROM Cita c
+           WHERE c.idCliente.id = :idCliente
+             AND c.fechaCita BETWEEN :desde AND :hasta
+             AND c.estadoCita IN (
+                 org.victorino_style.entity.enums.EstadoCita.CONFIRMADA,
+                 org.victorino_style.entity.enums.EstadoCita.EN_PROCESO
+             )
+           ORDER BY c.fechaCita ASC, c.horaInicioCita ASC
+           """)
+    List<Cita> findActivasClienteEnRango(@Param("idCliente") Long idCliente,
+                                         @Param("desde") LocalDate desde,
+                                         @Param("hasta") LocalDate hasta);
+
+    // Citas ACTIVAS del cliente con un servicio concreto (independiente de la fecha).
+    // Lo usa CitaClienteService para validar la regla "mismo servicio activo".
+    @Query("""
+           SELECT c FROM Cita c
+           WHERE c.idCliente.id = :idCliente
+             AND c.idServicio.id = :idServicio
+             AND c.estadoCita IN (
+                 org.victorino_style.entity.enums.EstadoCita.CONFIRMADA,
+                 org.victorino_style.entity.enums.EstadoCita.EN_PROCESO
+             )
+           ORDER BY c.fechaCita ASC, c.horaInicioCita ASC
+           """)
+    List<Cita> findActivasClienteServicio(@Param("idCliente") Long idCliente,
+                                           @Param("idServicio") Long idServicio);
+
+    // Citas ACTIVAS del empleado en una fecha concreta con LOCK PESIMISTA.
+    // Lo usa CitaClienteService antes de reservar/modificar para bloquear la franja del empleado
+    // y evitar que dos clientes reserven la misma hora al mismo tiempo (race condition).
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+           SELECT c FROM Cita c
+           WHERE c.idEmpleado.id = :idEmpleado
+             AND c.fechaCita = :fecha
+             AND c.estadoCita IN (
+                 org.victorino_style.entity.enums.EstadoCita.CONFIRMADA,
+                 org.victorino_style.entity.enums.EstadoCita.EN_PROCESO
+             )
+           """)
+    List<Cita> findActivasEmpleadoFechaParaActualizar(@Param("idEmpleado") Long idEmpleado,
+                                                       @Param("fecha") LocalDate fecha);
+
+    // Citas activas del empleado en una fecha (sin lock). Lo usa DisponibilidadService al
+    // calcular huecos disponibles para el cliente (operacion de solo lectura).
+    @Query("""
+           SELECT c FROM Cita c
+           WHERE c.idEmpleado.id = :idEmpleado
+             AND c.fechaCita = :fecha
+             AND c.estadoCita IN (
+                 org.victorino_style.entity.enums.EstadoCita.CONFIRMADA,
+                 org.victorino_style.entity.enums.EstadoCita.EN_PROCESO
+             )
+           ORDER BY c.horaInicioCita ASC
+           """)
+    List<Cita> findActivasEmpleadoFecha(@Param("idEmpleado") Long idEmpleado,
+                                         @Param("fecha") LocalDate fecha);
+
+    // Citas del cliente filtradas opcionalmente por estado. Si estado es null, devuelve todas.
+    // Ordenadas descendente para que el historial muestre las mas recientes primero.
+    @Query("""
+           SELECT c FROM Cita c
+           WHERE c.idCliente.id = :idCliente
+             AND (:estado IS NULL OR c.estadoCita = :estado)
+           ORDER BY c.fechaCita DESC, c.horaInicioCita DESC
+           """)
+    List<Cita> findCitasCliente(@Param("idCliente") Long idCliente,
+                                @Param("estado") EstadoCita estado);
+
+    // Citas FUTURAS CONFIRMADAS del cliente (a partir de hoy). Lo usa PerfilClienteService al
+    // eliminar la cuenta para cancelar todas las citas pendientes una por una.
+    @Query("""
+           SELECT c FROM Cita c
+           WHERE c.idCliente.id = :idCliente
+             AND c.estadoCita = org.victorino_style.entity.enums.EstadoCita.CONFIRMADA
+             AND (c.fechaCita > :hoy
+                  OR (c.fechaCita = :hoy AND c.horaInicioCita > :horaActual))
+           """)
+    List<Cita> findFuturasConfirmadasCliente(@Param("idCliente") Long idCliente,
+                                              @Param("hoy") LocalDate hoy,
+                                              @Param("horaActual") java.time.LocalTime horaActual);
+
+    // ------------------------------------------------------------------------
     // Citas en una ventana temporal [fechaDesde/horaDesde, fechaHasta/horaHasta)
     // con un estado concreto. Lo usa RecordatorioScheduler para buscar las citas
     // que estan a ~24 h de distancia y enviar el recordatorio push.

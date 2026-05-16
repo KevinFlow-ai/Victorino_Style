@@ -55,7 +55,8 @@ public class GlobalExceptionHandler {
                 "Bad Request",                     // nombre del error
                 "Los datos enviados no son válidos", // mensaje genérico
                 req.getRequestURI(),               // endpoint donde ocurrió
-                campos                             // lista de errores de campo
+                campos,                            // lista de errores de campo
+                null                               // sin detalles extra
         );
         log.warn("Validación fallida en {}: {}", req.getRequestURI(), campos); // Log de advertencia con los campos inválidos
         return ResponseEntity.badRequest().body(error);
@@ -74,7 +75,7 @@ public class GlobalExceptionHandler {
                 .toList();
         ApiError error = new ApiError(
                 Instant.now(), HttpStatus.BAD_REQUEST.value(), "Bad Request",
-                "Datos inválidos", req.getRequestURI(), campos
+                "Datos inválidos", req.getRequestURI(), campos, null
         );
         return ResponseEntity.badRequest().body(error);
     }
@@ -176,18 +177,61 @@ public class GlobalExceptionHandler {
     }
 
     // ------------------------------------------------------------------------
-    // 409: cancelación masiva sin citas futuras / festivo duplicado / cita solapada / cita no modificable.
+    // 409: cancelación masiva sin citas futuras / festivo duplicado / cita solapada / cita no modificable /
+    //      fecha fuera del rango de antelación / contraseña actual incorrecta.
     // ------------------------------------------------------------------------
     @ExceptionHandler({
             NoCitasFuturasCancelablesException.class,
             FestivoDuplicadoException.class,
             CitaSolapadaException.class,
-            CitaNoModificableException.class
+            CitaNoModificableException.class,
+            CitaFueraDeAntelacionException.class,
+            PasswordIncorrectaException.class
     })
     public ResponseEntity<ApiError> manejarConflicto(RuntimeException ex,
                                                      HttpServletRequest req) {
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiError.sinCampos(409, "Conflict", ex.getMessage(), req.getRequestURI()));
+    }
+
+    // ------------------------------------------------------------------------
+    // 409: el cliente ya tiene otra cita activa esta semana ISO (lunes a domingo).
+    // A diferencia del handler anterior, este enriquece el ApiError con el campo "detalles"
+    // (id, fecha y hora de la cita ya existente) para que el frontend ofrezca el botón "Modificar".
+    // ------------------------------------------------------------------------
+    @ExceptionHandler(CitaSemanaDuplicadaException.class)
+    public ResponseEntity<ApiError> manejarCitaSemanaDuplicada(CitaSemanaDuplicadaException ex,
+                                                                HttpServletRequest req) {
+        log.info("Bloqueo regla semanal en {}: {}", req.getRequestURI(), ex.getDetalle());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.conDetalles(409, "Conflict", ex.getMessage(),
+                        req.getRequestURI(), ex.getDetalle()));
+    }
+
+    // ------------------------------------------------------------------------
+    // 409: el cliente ya tiene otra cita activa este mismo día. Misma estructura que la
+    // semana duplicada, pero con código distinto en "detalles.codigo" = "CITA_MISMO_DIA".
+    // ------------------------------------------------------------------------
+    @ExceptionHandler(CitaMismoDiaException.class)
+    public ResponseEntity<ApiError> manejarCitaMismoDia(CitaMismoDiaException ex,
+                                                        HttpServletRequest req) {
+        log.info("Bloqueo regla mismo día en {}: {}", req.getRequestURI(), ex.getDetalle());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.conDetalles(409, "Conflict", ex.getMessage(),
+                        req.getRequestURI(), ex.getDetalle()));
+    }
+
+    // ------------------------------------------------------------------------
+    // 409: el cliente ya tiene otra cita activa con el mismo servicio (independiente de la fecha).
+    // "detalles.codigo" = "CITA_MISMO_SERVICIO". El frontend muestra el nombre del servicio.
+    // ------------------------------------------------------------------------
+    @ExceptionHandler(CitaServicioDuplicadoException.class)
+    public ResponseEntity<ApiError> manejarCitaServicioDuplicado(CitaServicioDuplicadoException ex,
+                                                                  HttpServletRequest req) {
+        log.info("Bloqueo regla mismo servicio en {}: {}", req.getRequestURI(), ex.getDetalle());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiError.conDetalles(409, "Conflict", ex.getMessage(),
+                        req.getRequestURI(), ex.getDetalle()));
     }
 
     // ------------------------------------------------------------------------

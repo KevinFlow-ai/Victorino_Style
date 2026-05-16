@@ -47,6 +47,17 @@ public class NotificacionController {
         return ResponseEntity.ok().build();
     }
 
+    // Marcar TODAS las notificaciones del usuario autenticado como leidas. Endpoint
+    // compartido: lo invocan cliente, empleado y administrador desde su bandeja in-app.
+    // El id se extrae del JWT, no del body.
+    @PostMapping("/leer-todas")
+    public ResponseEntity<Void> marcarTodasLeidas(
+            @AuthenticationPrincipal String idUsuarioJwt) {
+        Long idUsuario = Long.parseLong(idUsuarioJwt);
+        notificacionService.marcarTodasComoLeidas(idUsuario);
+        return ResponseEntity.noContent().build();
+    }
+
     // Enviar aviso general a un usuario concreto. Solo administradores.
     @PostMapping("/aviso-general")
     @PreAuthorize("hasRole('ADMINISTRADOR')")

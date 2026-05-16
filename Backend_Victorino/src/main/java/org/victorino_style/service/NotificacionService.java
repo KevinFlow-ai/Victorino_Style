@@ -243,6 +243,15 @@ public class NotificacionService {
         notificacionRepository.save(n);
     }
 
+    // Marcar TODAS las notificaciones no leidas del usuario como leidas. Devuelve el numero
+    // de filas afectadas. Lo invoca POST /notificaciones/leer-todas (cualquier rol autenticado).
+    @Transactional
+    public int marcarTodasComoLeidas(Long idUsuario) {
+        int total = notificacionRepository.marcarTodasComoLeidas(idUsuario, Instant.now());
+        log.info("Usuario {} marco {} notificaciones como leidas", idUsuario, total);
+        return total;
+    }
+
     // ------------------------------------------------------------------------
     // Envia un aviso general a un usuario concreto (de un admin a cualquier usuario).
     // ------------------------------------------------------------------------

@@ -31,6 +31,17 @@ public interface NotificacionRepository extends JpaRepository<Notificacion, Long
             "WHERE n.idDestinatarioNotificacion.id = :idUsuario " +
             "AND n.fechaLecturaNotificacion IS NULL")
     void resetEnviadaPushParaNoLeidas(@Param("idUsuario") Long idUsuario);
+
+    // Marca como leidas TODAS las notificaciones del usuario que aun no lo estan.
+    // Devuelve el numero de filas afectadas. Lo usa POST /notificaciones/leer-todas, accesible
+    // a cualquier usuario autenticado (cliente, empleado o admin) desde su bandeja in-app.
+    @Modifying(clearAutomatically = true)
+    @Transactional
+    @Query("UPDATE Notificacion n SET n.fechaLecturaNotificacion = :ahora " +
+            "WHERE n.idDestinatarioNotificacion.id = :idUsuario " +
+            "AND n.fechaLecturaNotificacion IS NULL")
+    int marcarTodasComoLeidas(@Param("idUsuario") Long idUsuario,
+                              @Param("ahora") java.time.Instant ahora);
 }
 
 

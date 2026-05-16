@@ -19,6 +19,9 @@ public enum TipoNotificacion {
     // Notificación al empleado cuando le crean una cita nueva (incluye walk-in del admin).
     NUEVA_CITA_EMPLEADO,
 
+    // Notificación al empleado cuando el cliente modifica una cita ya confirmada (cambia hora, servicio, etc.).
+    MODIFICACION_CITA,
+
     // Aviso al usuario de que su contraseña ha sido modificada.
     CONTRASENA_ACTUALIZADA,
 
