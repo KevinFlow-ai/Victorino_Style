@@ -196,7 +196,6 @@ Un mensaje FCM puede llevar dos bloques:
 | `CANCELACION_CLIENTE` | `CitaService.cancelarPorCliente` | Empleado dueño de la cita | Inmediato | sí, si empleado fuera del rango de silencio |
 | `CANCELACION_PELUQUERIA` | `CancelacionMasivaService` (admin) | Cliente | Inmediato (una por cita cancelada) | sí |
 | `NUEVA_CITA_EMPLEADO` | `CitaService.crearWalkIn` (admin/empleado) | Empleado | Inmediato | sí, si empleado fuera de silencio |
-| `CONTRASENA_ACTUALIZADA` | `AuthService.cambiarPwd` | Usuario que cambia | Inmediato | sí |
 | `AVISO_GENERAL` | Admin manualmente | Cualquier rol | Manual | configurable |
 
 > Algunos disparadores aún no existen (ej. `CitaService.reservar` lo hará el módulo cliente cuando se implemente). Tú **NO los tienes que crear**: solo asegúrate de que `NotificacionService.crearNotificacion(...)` y `FirebaseService.enviarPush(...)` funcionan, y los demás módulos los irán llamando.
