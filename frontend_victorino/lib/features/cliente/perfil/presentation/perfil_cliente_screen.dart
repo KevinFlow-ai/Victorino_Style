@@ -368,46 +368,123 @@ class _SeccionCuenta extends ConsumerWidget {
       titulo: 'Cuenta',
       child: Column(
         children: [
-          OutlinedButton.icon(
-            icon: const Icon(Icons.logout),
-            label: const Text('Cerrar sesión'),
-            onPressed: () async {
+          // Cerrar sesión — acción neutra.
+          _TileCuenta(
+            icono: Icons.logout_rounded,
+            etiqueta: 'Cerrar sesión',
+            colorIcono: AppColors.primary,
+            fondoIcono: AppColors.primary,
+            onTap: () async {
               await ref.read(sesionProvider.notifier).cerrarSesion();
               if (context.mounted) context.go('/login');
             },
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.delete_outline),
-            label: const Text('Eliminar mi cuenta'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.error,
-              side: const BorderSide(color: AppColors.error),
+          // Zona de peligro — separada visualmente.
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.error.withValues(alpha: 0.05), // fondo sombreado.
+              borderRadius: BorderRadius.circular(18), // borde redondeado.
+              border: Border.all(
+                color: AppColors.error.withValues(alpha: 0.25),
+              ),
             ),
-            onPressed: () async {
-              final pwd = await mostrarDialogoEliminarCuenta(context);
-              if (pwd == null || !context.mounted) return;
-              try {
-                await ref
-                    .read(perfilNotifierProvider.notifier)
-                    .eliminarCuenta(pwd);
-                await ref.read(sesionProvider.notifier).cerrarSesion();
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Tu cuenta ha sido eliminada')),
-                  );
-                  context.go('/login');
+            child: _TileCuenta(
+              icono: Icons.delete_forever_rounded,
+              etiqueta: 'Eliminar mi cuenta',
+              colorIcono: AppColors.error,
+              fondoIcono: AppColors.error,
+              esDestructivo: true,
+              onTap: () async {
+                final pwd = await mostrarDialogoEliminarCuenta(context);
+                if (pwd == null || !context.mounted) return;
+                try {
+                  await ref
+                      .read(perfilNotifierProvider.notifier)
+                      .eliminarCuenta(pwd);
+                  await ref.read(sesionProvider.notifier).cerrarSesion();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Tu cuenta ha sido eliminada')),
+                    );
+                    context.go('/login');
+                  }
+                } on ApiException catch (ex) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(ex.failure.mensaje)),
+                    );
+                  }
                 }
-              } on ApiException catch (ex) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(ex.failure.mensaje)),
-                  );
-                }
-              }
-            },
+              },
+            ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _TileCuenta extends StatelessWidget {
+  const _TileCuenta({
+    required this.icono,
+    required this.etiqueta,
+    required this.colorIcono,
+    required this.fondoIcono,
+    required this.onTap,
+    this.esDestructivo = false,
+  });
+
+  final IconData icono;
+  final String etiqueta;
+  final Color colorIcono;
+  final Color fondoIcono;
+  final VoidCallback onTap;
+  final bool esDestructivo;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Row(
+            children: [
+              // Icono con fondo circular.
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: fondoIcono.withValues(alpha: 0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icono, color: colorIcono, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  etiqueta,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: esDestructivo ? AppColors.error : AppColors.textMain,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 20,
+                color: esDestructivo
+                    ? AppColors.error.withValues(alpha: 0.5)
+                    : AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
