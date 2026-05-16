@@ -76,8 +76,35 @@ class ApiEndpoints {
   /// Aviso general del admin (POST /notificaciones/aviso-general).
   static const notificacionesAvisoGeneral = '/notificaciones/aviso-general';
 
-  // Rutas del cliente.
-  /// Cancelar una cita propia (PATCH /cliente/citas/{id}/cancelar).
+  /// Marcar TODAS las notificaciones del usuario como leídas (POST /notificaciones/leer-todas).
+  /// Endpoint compartido por cualquier rol autenticado.
+  static const notificacionesLeerTodas = '/notificaciones/leer-todas';
+
+  // ==========================================================================
+  // CATÁLOGO PÚBLICO (autenticado, cualquier rol)
+  // ==========================================================================
+
+  /// Catálogo de servicios activos visible al cliente (GET /servicios).
+  static const servicios = '/servicios';
+
+  /// Catálogo de empleados activos visible al cliente (GET /empleados).
+  static const empleados = '/empleados';
+
+  // ==========================================================================
+  // RUTAS DEL CLIENTE FINAL (rol CLIENTE)
+  // ==========================================================================
+
+  // Perfil
+  static const clientePerfil = '/cliente/perfil';
+  static const clientePerfilFoto = '/cliente/perfil/foto';
+  static const clientePerfilCambiarPwd = '/cliente/perfil/cambiar-pwd';
+  static const clientePerfilNotificaciones = '/cliente/perfil/notificaciones';
+
+  // Citas
+  static const clienteCitas = '/cliente/citas';
+  static const clienteCitaActiva = '/cliente/citas/activa';
+  static const clienteCitaDisponibilidad = '/cliente/citas/disponibilidad';
+  static String clienteCitaPorId(int id) => '/cliente/citas/$id';
   static String clienteCancelarCita(int id) => '/cliente/citas/$id/cancelar';
 
   // ==========================================================================

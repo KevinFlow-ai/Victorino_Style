@@ -20,8 +20,14 @@ import '../../features/administrador/negocio/presentation/negocio_screen.dart';
 import '../../features/administrador/servicios/presentation/crear_editar_servicio_screen.dart';
 import '../../features/administrador/servicios/presentation/lista_servicios_screen.dart';
 import '../../features/administrador/shell/presentation/shell_admin_screen.dart';
-import '../../features/cliente/home/home_cliente.dart';
+import '../../features/cliente/historial/presentation/detalle_cita_screen.dart';
+import '../../features/cliente/historial/presentation/historial_screen.dart';
+import '../../features/cliente/home/presentation/home_cliente_screen.dart';
+import '../../features/cliente/perfil/presentation/perfil_cliente_screen.dart';
 import '../../features/cliente/registro/presentation/registro_screen.dart';
+import '../../features/cliente/reservar/presentation/pestana_reservar_screen.dart';
+import '../../features/cliente/reservar/presentation/wizard_reserva_screen.dart';
+import '../../features/cliente/shell/presentation/shell_cliente_screen.dart';
 import '../../features/empleado/home/home_empleado.dart';
 import '../../features/forgot_password/forgot_password_screen.dart';
 import '../../features/login_admin_empleado_cliente/presentation/login_screen.dart';
@@ -37,8 +43,75 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (_, _) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/registro', builder: (_, _) => const RegistroScreen()),
-      GoRoute(path: '/cliente/home', builder: (_, _) => const HomeCliente()),
       GoRoute(path: '/forgot-password', builder: (_, __) => const ForgotPasswordEmailScreen()),
+
+      // Panel CLIENTE con bottom nav y 4 ramas independientes.
+      StatefulShellRoute.indexedStack(
+        builder: (context, state, navigationShell) =>
+            ShellClienteScreen(navigationShell: navigationShell),
+        branches: [
+          // 1) Inicio (Home) — pestaña inicial
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/cliente/inicio',
+                builder: (_, _) => const HomeClienteScreen(),
+              ),
+            ],
+          ),
+          // 2) Reservar — bloqueo preventivo + wizard como ruta hija
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/cliente/reservar',
+                builder: (_, _) => const PestanaReservarScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'wizard',
+                    builder: (_, state) {
+                      final idServicioStr = state.uri.queryParameters['idServicio'];
+                      final idCitaStr = state.uri.queryParameters['idCita'];
+                      return WizardReservaScreen(
+                        idServicioPreseleccionado:
+                            idServicioStr == null ? null : int.tryParse(idServicioStr),
+                        idCitaEditar:
+                            idCitaStr == null ? null : int.tryParse(idCitaStr),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // 3) Historial
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/cliente/historial',
+                builder: (_, _) => const HistorialScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'detalle/:id',
+                    builder: (_, state) => DetalleCitaScreen(
+                      idCita: int.parse(state.pathParameters['id']!),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // 4) Perfil
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                path: '/cliente/perfil',
+                builder: (_, _) => const PerfilClienteScreen(),
+              ),
+            ],
+          ),
+        ],
+      ),
+
       GoRoute(path: '/empleado/home', builder: (_, _) => const HomeEmpleado()),
 
       // Panel ADMIN con bottom nav y 5 ramas independientes.
@@ -147,13 +220,15 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
       // Compatibilidad con la antigua ruta /admin/home → ahora /admin/agenda.
       if (hayLogin && ubicacion == '/admin/home') return '/admin/agenda';
+      // Compatibilidad con la antigua ruta /cliente/home → ahora /cliente/inicio.
+      if (hayLogin && ubicacion == '/cliente/home') return '/cliente/inicio';
 
       // Con sesión y en login/registro → home según rol.
       if (hayLogin && estaEnAuth) {
         return switch (sesion.rol) {
           'EMPLEADO' => '/empleado/home',
           'ADMINISTRADOR' => '/admin/agenda',
-          _ => '/cliente/home',
+          _ => '/cliente/inicio',
         };
       }
 
@@ -176,7 +251,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           return switch (sesion.rol) {
             'EMPLEADO' => '/empleado/home',
             'ADMINISTRADOR' => '/admin/agenda',
-            _ => '/cliente/home',
+            _ => '/cliente/inicio',
           };
         }
       }

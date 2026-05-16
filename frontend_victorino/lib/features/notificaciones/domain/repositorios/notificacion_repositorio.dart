@@ -10,6 +10,10 @@ abstract class NotificacionesRepositorio {
   /// Marca la notificación idNotificacion como leída en el backend.
   Future<void> marcarLeida(int idNotificacion);
 
+  /// Marca TODAS las notificaciones del usuario autenticado como leídas en una sola llamada.
+  /// Lo invoca el botón "marcar todas leídas" del bottom sheet del Home y de la bandeja.
+  Future<void> marcarTodasLeidas();
+
   /// Registra el token FCM del dispositivo en el backend para recibir push.
   /// [esLoginExplicito] = true  → login con credenciales (salta notificación bienvenida).
   /// [esLoginExplicito] = false → restauración de sesión (sin notificación).

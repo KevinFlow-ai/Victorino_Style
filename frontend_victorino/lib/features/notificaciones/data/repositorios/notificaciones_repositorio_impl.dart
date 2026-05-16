@@ -44,6 +44,15 @@ class NotificacionesRepositorioImpl implements NotificacionesRepositorio {
   }
 
   @override
+  Future<void> marcarTodasLeidas() async {
+    try {
+      await _dio.post<void>(ApiEndpoints.notificacionesLeerTodas);
+    } catch (e) {
+      throw ApiException(_errorMapper.mapear(e));
+    }
+  }
+
+  @override
   Future<void> registrarDeviceToken(int idUsuario, String tokenFcm, {bool esLoginExplicito = false}) async {
     try {
       // El endpoint /notificaciones/fcm-token es público; necesita idUsuario en el body.

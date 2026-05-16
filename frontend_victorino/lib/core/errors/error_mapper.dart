@@ -38,9 +38,24 @@ class ErrorMapper {
       401 => FailureCredenciales(mensaje ?? 'Sesión inválida'),
       403 => FailurePermiso(mensaje ?? 'Sin permiso'),
       404 => FailureNoEncontrado(mensaje ?? 'No encontrado'),
-      409 => FailureConflicto(mensaje ?? 'Conflicto al guardar'),
+      // Para los 409 leemos también el campo "detalles" si el backend lo envía (por ejemplo
+      // en CITA_MISMO_DIA / CITA_MISMA_SEMANA / CITA_MISMO_SERVICIO). El frontend lo usa para
+      // mostrar mensajes contextuales y abrir el wizard precargado con la cita existente.
+      409 => FailureConflicto(mensaje ?? 'Conflicto al guardar', _extraerDetalles(data)),
       _ => FailureServidor(mensaje ?? 'Error del servidor'),
     };
+  }
+
+  // Lee el payload "detalles" del ApiError (puede ser null si el 409 no lo envía).
+  // Convierte el Map<dynamic, dynamic> que produce Jackson a un Map<String, dynamic>.
+  Map<String, dynamic>? _extraerDetalles(dynamic data) {
+    if (data is Map<String, dynamic>) {
+      final det = data['detalles'];
+      if (det is Map) {
+        return det.map((k, v) => MapEntry(k.toString(), v));
+      }
+    }
+    return null;
   }
 
   // Lee el campo "message" del JSON ApiError. Si la respuesta no es JSON, devuelve null.

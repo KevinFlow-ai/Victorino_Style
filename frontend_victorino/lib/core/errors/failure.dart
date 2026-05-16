@@ -41,9 +41,23 @@ class FailureNoEncontrado extends Failure {
   const FailureNoEncontrado([String mensaje = 'No se ha encontrado lo solicitado']) : super(mensaje);
 }
 
-// 409 → conflicto (correo duplicado, hueco ya ocupado, etc.).
+// 409 → conflicto (correo duplicado, hueco ya ocupado, regla 1 cita por día/semana/servicio…).
+// El campo "detalles" llega cuando el backend envía contenido extra estructurado en el ApiError
+// (por ejemplo: id, fecha, hora y nombre del servicio de la cita existente que bloquea la nueva
+// reserva, junto con un código como CITA_MISMO_DIA / CITA_MISMA_SEMANA / CITA_MISMO_SERVICIO).
+// Es null cuando el 409 es genérico (correo duplicado, etc.).
 class FailureConflicto extends Failure {
-  const FailureConflicto(super.mensaje);
+  const FailureConflicto(super.mensaje, [this.detalles]);
+
+  final Map<String, dynamic>? detalles;
+
+  // Helper: lee el "codigo" del payload de detalles. Devuelve null si no hay payload o no hay código.
+  String? get codigo {
+    final d = detalles;
+    if (d == null) return null;
+    final c = d['codigo'];
+    return c is String ? c : null;
+  }
 }
 
 // 5xx o cualquier otro error inesperado.
