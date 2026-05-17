@@ -63,6 +63,25 @@ public class SecurityConfig {
                         // Endpoint de pruebas de notificaciones (solo DEV - eliminar en produccion).
                         .requestMatchers("/test/**").permitAll()
 
+// ACCESO A LA AGENDA Y RECURSOS RELACIONADOS PARA EMPLEADO Y ADMINISTRADOR:
+                                .requestMatchers(
+                                        "/admin/agenda/**",
+                                        "/admin/citas/**",
+                                        "/admin/clientes/**",
+                                        "/admin/empleados/**",
+                                        "/admin/empleados",
+                                        "/admin/servicios/**",
+                                        "/admin/servicios",
+                                        "/admin/horario/**",
+                                        "/admin/horario",
+                                        "/admin/festivos/**",
+                                        "/admin/festivos",
+                                        "/admin/cierre-anual/**",
+                                        "/admin/cierre-anual"
+                                ).hasAnyRole("ADMINISTRADOR", "EMPLEADO")
+
+                                // El resto de endpoints del panel administrador: solo rol ADMINISTRADOR.
+                                .requestMatchers("/admin/**").hasRole("ADMINISTRADOR")
 
 
 
@@ -87,7 +106,7 @@ public class SecurityConfig {
     // Provider que delega en CustomUserDetailsService + BCryptPasswordEncoder.
     @Bean
     public DaoAuthenticationProvider daoAuthenticationProvider(UserDetailsService userDetailsService,
-                                                              PasswordEncoder passwordEncoder) {
+                                                               PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         return provider;

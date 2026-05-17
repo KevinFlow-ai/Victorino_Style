@@ -33,7 +33,7 @@ import java.util.List;
 @RequestMapping("/admin/empleados") // Define la ruta base para todos los endpoints de este controlador.
 // Por ejemplo: /admin/empleados, /admin/empleados/{id}, /admin/empleados/{id}/foto, etc.
 
-@PreAuthorize("hasRole('ADMINISTRADOR')") // Indica que solo usuarios con el rol ADMINISTRADOR pueden acceder
+@PreAuthorize("hasAnyRole('ADMINISTRADOR', 'EMPLEADO')") // Indica que solo usuarios con el rol ADMINISTRADOR o EMPLEADO pueden acceder
 // a cualquiera de los métodos de este controlador.
 
 @RequiredArgsConstructor // Genera un constructor con los argumentos requeridos (los campos final).
@@ -90,6 +90,7 @@ public class EmpleadoController {
     }
 
     // ---- ALTA ----
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping // Método HTTP: POST. Ruta completa: POST /admin/empleados
     @ResponseStatus(HttpStatus.CREATED) // Si todo va bien, responde con código 201 CREATED.
     public EmpleadoAdminResponse crear(@Valid @RequestBody EmpleadoAdminRequest request) {
@@ -115,6 +116,7 @@ public class EmpleadoController {
     }
 
     // ---- EDICIÓN ----
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PutMapping("/{id}") // Método HTTP: PUT. Ruta completa: PUT /admin/empleados/{id}
     public EmpleadoAdminResponse editar(@PathVariable Long id,
                                         @Valid @RequestBody EmpleadoAdminRequest request) {
@@ -141,6 +143,7 @@ public class EmpleadoController {
     }
 
     // ---- BAJA LÓGICA ----
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @DeleteMapping("/{id}") // Método HTTP: DELETE. Ruta completa: DELETE /admin/empleados/{id}
     public ResponseEntity<Void> darBaja(@PathVariable Long id) {
         // @PathVariable id: identifica qué empleado se va a dar de baja.
@@ -162,6 +165,7 @@ public class EmpleadoController {
     }
 
     // ---- SUBIDA DE FOTO (multipart) ----
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping(value = "/{id}/foto", consumes = "multipart/form-data")
     // Método HTTP: POST. Ruta: POST /admin/empleados/{id}/foto
     // consumes = "multipart/form-data": indica que este endpoint recibe un formulario con archivos (subida de ficheros).
@@ -189,6 +193,7 @@ public class EmpleadoController {
     }
 
     // ---- CANCELACIÓN MASIVA DE CITAS FUTURAS ----
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @PostMapping("/{id}/cancelar-citas") // Método HTTP: POST. Ruta: POST /admin/empleados/{id}/cancelar-citas
     public CancelacionMasivaResponse cancelarCitasFuturas(@PathVariable Long id) {
         // @PathVariable id: empleado cuyas citas futuras se van a cancelar.

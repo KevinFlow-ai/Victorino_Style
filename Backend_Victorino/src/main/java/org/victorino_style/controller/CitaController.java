@@ -24,7 +24,7 @@ import java.util.List;
 @RequestMapping("/admin") // Define la ruta base para todos los endpoints de este controlador. Por ejemplo: /admin/agenda
 
 
-@PreAuthorize("hasRole('ADMINISTRADOR')") //  Indica que solo usuarios con el rol ADMINISTRADOR pueden acceder a
+@PreAuthorize("hasAnyRole('ADMINISTRADOR', 'EMPLEADO')")  //  Indica que solo usuarios con el rol ADMINISTRADOR pueden acceder a
 // cualquiera de los métodos de este controlador.
 
 @RequiredArgsConstructor //Genera un constructor con los argumentos requeridos. Un constructor que recibe CitaService.
@@ -88,12 +88,14 @@ public class CitaController {
 
     // ---- WALK-IN ----
     @PostMapping("/citas/walk-in") // Métoddo HTTP: POST. Ruta completa: /admin/citas/walk-in
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'EMPLEADO')")
     @ResponseStatus(HttpStatus.CREATED)
     public CitaAdminResponse crearWalkIn(@Valid @RequestBody WalkInRequest request) {
         return citaService.crearWalkIn(request);
     }
 
-    // ---- AVISOS DE CANCELACIONES FRECUENTES ----
+    // ---- AVISOS DE CANCELACIONES FRECUENTES
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     @GetMapping("/avisos/cancelaciones-frecuentes") // Métodoo HTTP: GET
     public List<AvisoClienteResponse> avisos() {
         return citaService.avisosCancelacionesFrecuentes();

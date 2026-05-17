@@ -24,24 +24,26 @@ import java.util.List;
 
 @RestController //Indica que esta clase expone endpoints REST y que todos los métodos devuelven JSON.
 @RequestMapping("/admin") // Define la ruta base: Todos los endpoints empiezan por /admin: /admin/horario
-@PreAuthorize("hasRole('ADMINISTRADOR')") // Solo usuarios con el rol ADMINISTRADOR pueden acceder a estos endpoints.
+@PreAuthorize("hasAnyRole('ADMINISTRADOR', 'EMPLEADO')") // Permitimos acceso general, afinaremos en cada método.
 @RequiredArgsConstructor
 public class ConfiguracionController {
 
     private final ConfiguracionService configuracionService;
 
     // ---- HORARIO SEMANAL ----
-    @GetMapping("/horario")
+    @GetMapping("/horario") // Acceso para EMPLEADO y ADMINISTRADOR (hereda de la clase)
     public HorarioPeluqueriaResponse obtenerHorario() {
         return configuracionService.obtenerHorario();
     }
 
+    @PreAuthorize("hasRole('ADMINISTRADOR')") // Solo el administrador puede editar el horario
     @PutMapping("/horario")
     public HorarioPeluqueriaResponse actualizarHorario(@Valid @RequestBody HorarioPeluqueriaRequest request) {
         return configuracionService.actualizarHorario(request);
     }
 
     // ---- DESCANSO POR EMPLEADO ----
+    @PreAuthorize("hasRole('ADMINISTRADOR')") // Solo el administrador configura descansos
     @PutMapping("/empleados/{id}/descanso")
     public DescansoResponse actualizarDescanso(@PathVariable Long id,
                                                @Valid @RequestBody DescansoRequest request) {
@@ -49,17 +51,19 @@ public class ConfiguracionController {
     }
 
     // ---- FESTIVOS ----
-    @GetMapping("/festivos")
+    @GetMapping("/festivos") // Acceso para EMPLEADO y ADMINISTRADOR
     public List<FestivoResponse> listarFestivos() {
         return configuracionService.listarFestivos();
     }
 
+    @PreAuthorize("hasRole('ADMINISTRADOR')") // Solo administrador crea festivos
     @PostMapping("/festivos")
     @ResponseStatus(HttpStatus.CREATED)
     public FestivoResponse crearFestivo(@Valid @RequestBody FestivoRequest request) {
         return configuracionService.crearFestivo(request);
     }
 
+    @PreAuthorize("hasRole('ADMINISTRADOR')") // Solo administrador elimina festivos
     @DeleteMapping("/festivos/{id}")
     public ResponseEntity<Void> eliminarFestivo(@PathVariable Long id) {
         configuracionService.eliminarFestivo(id);
@@ -72,6 +76,7 @@ public class ConfiguracionController {
         return configuracionService.obtenerCierreAnual();
     }
 
+    @PreAuthorize("hasRole('ADMINISTRADOR')") // Solo administrador edita el cierre anual
     @PutMapping("/cierre-anual")
     public CierreAnualResponse actualizarCierreAnual(@Valid @RequestBody CierreAnualRequest request) {
         return configuracionService.actualizarCierreAnual(request);
