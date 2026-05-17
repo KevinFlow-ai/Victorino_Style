@@ -94,6 +94,14 @@ public class CitaController {
         return citaService.crearWalkIn(request);
     }
 
+    // ---- Endpoint: Marcar como NO PRESENTADO ----
+    @PatchMapping("/citas/{id}/no-presentado") // Ruta completa: /admin/citas/{id}/no-presentado
+    @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'EMPLEADO')")
+    @ResponseStatus(HttpStatus.NO_CONTENT) // Devuelve 204 si todo va bien
+    public void marcarNoPresentado(@PathVariable Long id) {
+        citaService.marcarNoPresentado(id);
+    }
+
     // ---- AVISOS DE CANCELACIONES FRECUENTES
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @GetMapping("/avisos/cancelaciones-frecuentes") // Métodoo HTTP: GET

@@ -30,10 +30,6 @@ import org.victorino_style.repository.HorarioEmpleadoRepository;
 import org.victorino_style.repository.PeluqueriaRepository;
 import org.victorino_style.repository.ServicioRepository;
 
-// NOTIFICACIONES (los metodos reservar/cancelarPorCliente para el cliente final
-// se movieron al nuevo CitaClienteService en el modulo cliente).
-
-
 import java.time.DayOfWeek;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -41,14 +37,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 
-// Servicio del dominio CITA enfocado al panel del administrador.
-//
-// Aglutina:
-// - Lectura de la agenda global con filtros (fecha, empleado, estado).
-// - Historial completo de un cliente.
-// - Creación de citas walk-in (cliente registrado o invitado, validando disponibilidad).
-// - Avisos informativos sobre clientes con cancelaciones recientes.
-@Slf4j // generar automáticamente un logger llamado "log" dentro de la clase.
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CitaService {
@@ -65,7 +54,6 @@ public class CitaService {
     private final AuditoriaService auditoriaService;
     private final CitaMapper citaMapper;
 
-    // Umbral de cancelaciones recientes a partir del cual el cliente aparece en avisos.
     @Value("${victorino.avisos.umbral-cancelaciones:3}")
     private int umbralCancelaciones;
 
@@ -111,20 +99,15 @@ public class CitaService {
 
     @Transactional
     public CitaAdminResponse crearWalkIn(WalkInRequest dto) {
-        // 1) Carga referencias.
         Empleado empleado = empleadoRepository.findActivoById(dto.idEmpleado())
                 .orElseThrow(() -> new EmpleadoNoEncontradoException(dto.idEmpleado()));
         Servicio servicio = servicioRepository.findByIdAndFechaEliminacionServicioIsNull(dto.idServicio())
                 .orElseThrow(() -> new ServicioNoEncontradoException(dto.idServicio()));
 
-        // 2) Calcula hora_fin = hora_inicio + duracion del servicio.
         LocalTime horaFin = dto.horaInicio().plusMinutes(servicio.getDuracionServicio());
 
-        // 3) Valida disponibilidad: día abierto, no festivo, no cierre anual,
-        //    fuera de descanso del empleado, sin solape con otra cita.
         validarDisponibilidad(empleado, dto.fecha(), dto.horaInicio(), horaFin);
 
-        // 4) Construye la cita.
         Cita cita = new Cita();
         cita.setIdEmpleado(empleado);
         cita.setIdServicio(servicio);
@@ -138,7 +121,6 @@ public class CitaService {
         cita.setFechaModificacionCita(ahora);
         cita.setVersionCita(0L);
 
-        // 5) Resuelve identidad (XOR cliente / invitado).
         if (dto.idCliente() != null) {
             Cliente cliente = clienteRepository.findById(dto.idCliente())
                     .orElseThrow(() -> new RecursoNoEncontradoException(
@@ -158,7 +140,6 @@ public class CitaService {
 
         cita = citaRepository.save(cita);
 
-        // 6) Notifica al empleado por la nueva cita.
         notificacionService.crearNotificacion(
                 empleado.getUsuario(), cita, TipoNotificacion.NUEVA_CITA_EMPLEADO,
                 "Nueva cita asignada",
@@ -175,6 +156,29 @@ public class CitaService {
         return citaMapper.aRespuesta(cita);
     }
 
+    // ============================================================
+    //  MARCAR NO PRESENTADO
+    // ============================================================
+
+    @Transactional
+    public void marcarNoPresentado(Long idCita) {
+        // 1) Busca la cita.
+        Cita cita = citaRepository.findById(idCita)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Cita no encontrada con id " + idCita));
+
+        // 2) Cambia el estado y actualiza fecha de modificación.
+        cita.setEstadoCita(EstadoCita.NO_PRESENTADO);
+        cita.setFechaModificacionCita(Instant.now());
+
+        // 3) Guarda los cambios.
+        citaRepository.save(cita);
+
+        // 4) Auditoría.
+        auditoriaService.registrar("CITA_NO_PRESENTADO", "CITA", cita.getId(),
+                "Cita marcada como no presentado por el personal");
+
+        log.info("Cita marcada como NO ASISTIÓ: id={}", idCita);
+    }
 
     // ============================================================
     //  AVISOS DE CANCELACIONES FRECUENTES
@@ -203,11 +207,9 @@ public class CitaService {
 
     private void validarDisponibilidad(Empleado empleado, LocalDate fecha,
                                        LocalTime horaInicio, LocalTime horaFin) {
-        // 1) Festivo concreto.
         if (festivoRepository.existsByFechaFestivo(fecha)) {
             throw new CitaSolapadaException("La peluquería está cerrada (festivo) el " + fecha);
         }
-        // 2) Cierre anual.
         peluqueriaRepository.findFirstByOrderByIdAsc().ifPresent(p -> {
             LocalDate ini = p.getCierreAnualInicio();
             LocalDate fin = p.getCierreAnualFin();
@@ -216,7 +218,6 @@ public class CitaService {
                 throw new CitaSolapadaException("La peluquería está cerrada (vacaciones) el " + fecha);
             }
         });
-        // 3) Horario de apertura para el día de la semana.
         peluqueriaRepository.findFirstByOrderByIdAsc().ifPresent(p -> {
             LocalTime apertura = aperturaPara(p, fecha.getDayOfWeek());
             LocalTime cierre = cierrePara(p, fecha.getDayOfWeek());
@@ -227,23 +228,19 @@ public class CitaService {
                 throw new CitaSolapadaException("La franja queda fuera del horario de apertura.");
             }
         });
-        // 4) Descanso del empleado.
         horarioEmpleadoRepository.findByIdEmpleado_Id(empleado.getId()).ifPresent(he -> {
             LocalTime ini = he.getDescansoInicioHorario();
             LocalTime fin = ini.plusMinutes(he.getDescansoDuracionHorario());
-            // Solapa si la cita comienza antes de fin del descanso y termina después del inicio.
             if (horaInicio.isBefore(fin) && horaFin.isAfter(ini)) {
                 throw new CitaSolapadaException("El empleado descansa en esa franja.");
             }
         });
-        // 5) Solape con otras citas activas.
         long solapes = citaRepository.contarSolapes(empleado.getId(), fecha, horaInicio, horaFin);
         if (solapes > 0) {
             throw new CitaSolapadaException("El empleado ya tiene una cita en esa franja.");
         }
     }
 
-    // Devuelve la hora de apertura del día indicado.
     private LocalTime aperturaPara(org.victorino_style.entity.Peluqueria p, DayOfWeek d) {
         return switch (d) {
             case MONDAY    -> p.getAperturaLunes();
@@ -268,52 +265,3 @@ public class CitaService {
         };
     }
 }
-
-
-
-        // ------------------------------------------------------------------------
-        // @Slf4j
-        // ------------------------------------------------------------------------
-        // Esta anotación pertenece a Lombok. Lo que hace es generar automáticamente
-        // un logger llamado "log" dentro de la clase.
-        //
-        // Es decir, en vez de escribir:
-        //
-        //   private static final Logger log = LoggerFactory.getLogger(MiClase.class);
-        //
-        // Lombok lo genera por ti.
-        //
-        // ¿Para qué sirve?
-        //   → Para escribir logs fácilmente:
-        //        log.info("Mensaje");
-        //        log.error("Error", ex);
-        //        log.debug("Debug...");
-        //
-        // Es muy útil en servicios, repositorios y controladores para dejar trazas
-        // de lo que ocurre en la aplicación.
-        //
-        // ------------------------------------------------------------------------
-        // @Service
-        // ------------------------------------------------------------------------
-        // Esta anotación es de Spring. Marca la clase como un "servicio" dentro
-        // de la arquitectura de la aplicación.
-        //
-        // ¿Qué implica?
-        //   → Spring detecta la clase automáticamente (component scanning).
-        //   → La instancia se gestiona como un bean del contenedor.
-        //   → Puede ser inyectada en otras clases con @Autowired o constructor injection.
-        //
-        // En la arquitectura típica de Spring:
-        //
-        //   - @Controller  → capa de entrada (API)
-        //   - @Service     → lógica de negocio
-        //   - @Repository  → acceso a datos
-        //
-        // @Service indica que esta clase contiene reglas de negocio,
-        // validaciones, cálculos, operaciones complejas, etc.
-        //
-        // ------------------------------------------------------------------------
-        // En resumen:
-        //   @Slf4j   → añade un logger "log" automáticamente.
-        //   @Service → convierte la clase en un servicio gestionado por Spring.
-        // ------------------------------------------------------------------------
