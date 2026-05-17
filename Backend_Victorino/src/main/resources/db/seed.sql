@@ -161,8 +161,11 @@ VALUES (3, '16:00', 30);
 INSERT INTO servicio (id_servicio, nombre_servicio, descripcion_servicio,
                       duracion_servicio, precio_servicio, foto_servicio) VALUES
 (1, 'Corte de pelo',
-	'Refresca tu imagen con un corte totalmente personalizado, adaptado a tu forma de rostro y estilo '
-    'Incluye lavado y un acabado profesional con peinado para que salgas listo a comerte el mundo.',
+	'Refresca tu imagen con un corte totalmente personalizado. Incluye lavado y un acabado profesional con peinado para que salgas listo a comerte el mundo.  ',
+    
+    -- *********** DESCRIPCION ANTIGUA ****************
+	-- 'Refresca tu imagen con un corte totalmente personalizado, adaptado a tu forma de rostro y estilo '
+    -- 'Incluye lavado y un acabado profesional con peinado para que salgas listo a comerte el mundo.',
     30, 15.00, '/uploads/servicios/f85b25c4-8699-46af-acd3-10d8c6de2757.jpg'),
 
 (2, 'Barba',
@@ -171,14 +174,16 @@ INSERT INTO servicio (id_servicio, nombre_servicio, descripcion_servicio,
     15, 10.00, '/uploads/servicios/be6f02f2-4969-4d0f-b351-8cf82ce14c6f.jpg'),
 
 (3, 'Tinte de pelo',
-	'Si quieres verte más joven o simplemente renovar tu look, este servicio es para ti. '
-    'Aplicamos un color profesional que cubre canas o ajusta el tono. Utilizamos productos de alta calidad y realizamos un análisis capilar previo para garantizar un resultado natural, uniforme y duradero. ',
+	 'Rejuvenece tu look con un color profesional que cubre canas y realza tu estilo. Resultado natural, uniforme y duradero tras un análisis capilar previo.',
+	-- *********** DESCRIPCION ANTIGUA ****************
+    -- 'Si quieres verte más joven o simplemente renovar tu look, este servicio es para ti. '
+    -- 'Aplicamos un color profesional que cubre canas o ajusta el tono. Utilizamos productos de alta calidad y realizamos un análisis capilar previo para garantizar un resultado natural, uniforme y duradero. ',
 
     90, 35.00, '/uploads/servicios/6e05f56c-07c7-4978-bcd0-b24f262df126.jpg'),
 
 (4, 'Corte de pelo + barba',
-	'El combo definitivo: renueva tu estilo con un corte totalmente personalizado y un perfilado de barba.'
-    'Incluye tratamiento de toalla caliente y lavado para conseguir un acabado limpio y fresco.',
+	'El combo definitivo: renueva tu estilo con un corte totalmente personalizado y un perfilado de barba.
+	Incluye tratamiento de toalla caliente y lavado para conseguir un acabado limpio y fresco.',
     45, 20.00, '/uploads/servicios/servicio_2_corte_clasico.png');
 
 -- ======================================================================================
@@ -433,8 +438,8 @@ BEGIN
 
                 -- Nota aleatoria (~20% con texto, resto NULL).
                 SET v_nota = CASE FLOOR(RAND() * 10)
-                              WHEN 0 THEN 'Prefiere tijera antes que máquina'
-                              WHEN 1 THEN 'Le gusta el fade bajo'
+                              WHEN 0 THEN 'Prefiero tijera antes que máquina'
+                              WHEN 1 THEN 'Prefiero un look clásico y sencillo'
                               ELSE NULL
                             END;
 
