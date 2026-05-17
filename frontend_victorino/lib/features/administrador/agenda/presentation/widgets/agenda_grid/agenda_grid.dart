@@ -110,6 +110,10 @@ required String horaInicio,
 required String horaFinHueco,
 });
 
+/// Permite inyectar widgets personalizados sobre la tarjeta de la cita
+/// (ej: un botón de "no presentado").
+typedef AppointmentOverlayBuilder = Widget Function(BuildContext context, CitaAdmin cita);
+
 class AgendaGrid extends StatefulWidget {
   const AgendaGrid({
     super.key,
@@ -119,6 +123,7 @@ class AgendaGrid extends StatefulWidget {
     required this.citas,
     required this.onHuecoPulsado,
     this.anchoColumna = _kAnchoColumna, // Valor por defecto 170.0
+    this.appointmentOverlayBuilder,
   });
 
   final DateTime fecha;
@@ -127,6 +132,7 @@ class AgendaGrid extends StatefulWidget {
   final List<CitaAdmin> citas;
   final OnHuecoPulsado onHuecoPulsado;
   final double anchoColumna;
+  final AppointmentOverlayBuilder? appointmentOverlayBuilder;
 
   @override
   State<AgendaGrid> createState() => _AgendaGridState();
@@ -260,6 +266,7 @@ class _AgendaGridState extends State<AgendaGrid> {
                                       .toList(),
                                   onHueco: widget.onHuecoPulsado,
                                   anchoColumna: widget.anchoColumna,
+                                  overlayBuilder: widget.appointmentOverlayBuilder,
                                 ))
                                     .toList(),
                               ),
@@ -489,6 +496,7 @@ class _ColumnaEmpleado extends StatelessWidget {
     required this.citas,
     required this.onHueco,
     required this.anchoColumna,
+    this.overlayBuilder,
   });
 
   final Empleado empleado;
@@ -501,6 +509,7 @@ class _ColumnaEmpleado extends StatelessWidget {
   final List<CitaAdmin> citas;
   final OnHuecoPulsado onHueco;
   final double anchoColumna;
+  final AppointmentOverlayBuilder? overlayBuilder;
 
   @override
   Widget build(BuildContext context) {
@@ -542,7 +551,12 @@ class _ColumnaEmpleado extends StatelessWidget {
               horaFinHueco: h.horaFin,
             ),
           )),
-          ...citas.map((c) => _TarjetaCita(cita: c, rango: rango, ahora: ahora)),
+          ...citas.map((c) => _TarjetaCita(
+            cita: c,
+            rango: rango,
+            ahora: ahora,
+            overlay: overlayBuilder?.call(context, c),
+          )),
         ],
       ),
     );
@@ -676,10 +690,16 @@ class _PinturaPunteada extends CustomPainter {
 // ───────────────────────── Tarjeta de cita ─────────────────────────
 
 class _TarjetaCita extends StatelessWidget {
-  const _TarjetaCita({required this.cita, required this.rango, required this.ahora});
+  const _TarjetaCita({
+    required this.cita,
+    required this.rango,
+    required this.ahora,
+    this.overlay,
+  });
   final CitaAdmin cita;
   final RangoHorario rango;
   final DateTime ahora;
+  final Widget? overlay;
 
   @override
   Widget build(BuildContext context) {
@@ -692,15 +712,20 @@ class _TarjetaCita extends StatelessWidget {
       left: 4,
       right: 4,
       height: altura - 4,
-      child: _TarjetaContenido(cita: cita, ahora: ahora),
+      child: _TarjetaContenido(cita: cita, ahora: ahora, overlay: overlay),
     );
   }
 }
 
 class _TarjetaContenido extends StatelessWidget {
-  const _TarjetaContenido({required this.cita, required this.ahora});
+  const _TarjetaContenido({
+    required this.cita,
+    required this.ahora,
+    this.overlay,
+  });
   final CitaAdmin cita;
   final DateTime ahora;
+  final Widget? overlay;
 
   @override
   Widget build(BuildContext context) {
@@ -739,59 +764,66 @@ class _TarjetaContenido extends StatelessWidget {
               ),
             ],
           ),
-          // OverflowBox + alignment topLeft: si el contenido pide más altura
-          // que la disponible (cita muy corta), se dibuja hacia abajo y el
-          // clip exterior lo recorta — el orden visible siempre es:
-          // estado → nombre → hora → servicio.
-          child: OverflowBox(
-            alignment: Alignment.topLeft,
-            maxHeight: double.infinity,
-            child: SizedBox(
-              width: double.infinity,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _badgeEstado(colores, estado),
-                  const SizedBox(height: 3),
-                  Text(
-                    cita.nombreCliente,
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      color: AppColors.textMain,
-                      fontWeight: FontWeight.w800,
-                      height: 1.1,
-                      decoration: atenuada ? TextDecoration.lineThrough : null,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          // Usamos un Stack para que el overlay (botón) flote sobre el contenido
+          child: Stack(
+            children: [
+              OverflowBox(
+                alignment: Alignment.topLeft,
+                maxHeight: double.infinity,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _badgeEstado(colores, estado),
+                      const SizedBox(height: 3),
+                      Text(
+                        cita.nombreCliente,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color: AppColors.textMain,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                          decoration: atenuada ? TextDecoration.lineThrough : null,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${cita.horaInicio} – ${cita.horaFin}',
+                        style: GoogleFonts.poppins(
+                          fontSize: 9,
+                          color: AppColors.textMuted,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        cita.nombreServicio,
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          color: AppColors.textMuted,
+                          height: 1.2,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${cita.horaInicio} – ${cita.horaFin}',
-                    style: GoogleFonts.poppins(
-                      fontSize: 9,
-                      color: AppColors.textMuted,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    cita.nombreServicio,
-                    style: GoogleFonts.poppins(
-                      fontSize: 10,
-                      color: AppColors.textMuted,
-                      height: 1.2,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                ),
               ),
-            ),
+              if (overlay != null)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: overlay!,
+                ),
+            ],
           ),
         ),
       ),

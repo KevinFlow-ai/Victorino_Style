@@ -38,6 +38,7 @@ class ApiEndpoints {
   static String adminEmpleadoFoto(int id) => '/admin/empleados/$id/foto';
   static String adminEmpleadoCancelarCitas(int id) => '/admin/empleados/$id/cancelar-citas';
   static String adminEmpleadoDescanso(int id) => '/admin/empleados/$id/descanso';
+  static String adminCitaNoPresentado(int id) => '/admin/citas/$id/no-presentado';
 
   // Servicios
   static const adminServicios = '/admin/servicios';

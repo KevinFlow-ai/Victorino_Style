@@ -65,8 +65,8 @@ class AgendaAdminRepositorioImpl implements AgendaAdminRepositorio {
           'desde': desde,
           'hasta': hasta,
           // null-aware element: si el valor es null, NO se envía al backend.
-          'empleadoId': ?idEmpleado,
-          'estado': ?estadoStr,
+          'empleadoId': idEmpleado,
+          'estado': estadoStr,
         },
       );
 
@@ -77,6 +77,15 @@ class AgendaAdminRepositorioImpl implements AgendaAdminRepositorio {
 
     } catch (e) {
       // Si hay error HTTP, se mapea a ApiException.
+      throw ApiException(_errorMapper.mapear(e));
+    }
+  }
+
+  @override
+  Future<void> marcarNoPresentado(int idCita) async {
+    try {
+      await _dio.patch(ApiEndpoints.adminCitaNoPresentado(idCita));
+    } catch (e) {
       throw ApiException(_errorMapper.mapear(e));
     }
   }

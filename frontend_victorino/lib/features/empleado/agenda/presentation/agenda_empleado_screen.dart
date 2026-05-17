@@ -244,6 +244,40 @@ class _CuerpoAgenda extends ConsumerWidget {
             empleados: [empleado],
             citas: citasEmpleado,
             anchoColumna: anchoCalculado, // Aplicamos el ancho calculado aquí
+            appointmentOverlayBuilder: (context, cita) {
+              final ahora = DateTime.now();
+              final estadoEfectivo = estadoEfectivoCita(cita, ahora);
+
+              // Solo mostrar el botón si la cita está en curso (por tiempo)
+              // y su estado no es ya "No asistió" o cancelada.
+              if (estadoEfectivo == EstadoCita.enProceso &&
+                  cita.estado != EstadoCita.noPresentado) {
+                return GestureDetector(
+                  onTap: () => _confirmarNoPresentado(context, ref, cita),
+                  child: Container(
+                    margin: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Colors.redAccent,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black26,
+                          blurRadius: 4,
+                          offset: Offset(0, 2),
+                        )
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.person_off_rounded,
+                      color: Colors.white,
+                      size: 14,
+                    ),
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
             onHuecoPulsado: ({
               required int idEmpleado,
               required String nombreEmpleado,
@@ -263,6 +297,33 @@ class _CuerpoAgenda extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  void _confirmarNoPresentado(BuildContext context, WidgetRef ref, CitaAdmin cita) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿No se ha presentado?'),
+        content: Text(
+          '¿Confirmas que el cliente ${cita.nombreCliente} no ha asistido a su cita de las ${cita.horaInicio}?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CANCELAR'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref
+                  .read(agendaAdminNotifierProvider.notifier)
+                  .marcarNoPresentado(cita.idCita);
+              Navigator.pop(ctx);
+            },
+            child: const Text('CONFIRMAR', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
     );
   }
 

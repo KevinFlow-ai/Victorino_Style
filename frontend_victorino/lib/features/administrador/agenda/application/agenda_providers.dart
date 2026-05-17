@@ -40,6 +40,9 @@ Provider((ref) => CrearWalkIn(ref.read(agendaRepositorioProvider)));
 final obtenerAvisosProvider =
 Provider((ref) => ObtenerAvisosCancelaciones(ref.read(agendaRepositorioProvider)));
 
+final marcarNoPresentadoProvider =
+Provider((ref) => MarcarNoPresentado(ref.read(agendaRepositorioProvider)));
+
 
 // -----------------------------------------------------------------------------
 // ESTADO LOCAL: FILTROS DE LA AGENDA
@@ -113,6 +116,26 @@ class AgendaAdminNotifier extends AsyncNotifier<List<CitaAdmin>> {
     );
   }
 
+  // Método para marcar una cita como no asistido.
+  Future<void> marcarNoPresentado(int idCita) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() async {
+      // Ejecutamos el caso de uso.
+      await ref.read(marcarNoPresentadoProvider).ejecutar(idCita);
+
+      // Tras la actualización, recargamos los datos.
+      final f = ref.read(filtrosAgendaProvider);
+      final iso = DateFormat('yyyy-MM-dd').format(f.fecha);
+
+      return ref.read(obtenerAgendaProvider).ejecutar(
+        desde: iso,
+        hasta: iso,
+        idEmpleado: f.idEmpleado,
+        estado: f.estado,
+      );
+    });
+  }
+
   // Método para recargar manualmente la agenda.
   Future<void> recargar() async {
     // Indica que está cargando.
@@ -159,4 +182,3 @@ class AvisosNotifier extends AsyncNotifier<List<AvisoCliente>> {
 // Provider asociado al notifier de avisos.
 final avisosNotifierProvider =
 AsyncNotifierProvider<AvisosNotifier, List<AvisoCliente>>(AvisosNotifier.new);
-

@@ -53,4 +53,10 @@ abstract class AgendaAdminRepositorio {
   // ---------------------------------------------------------------------------
   // Devuelve una lista de clientes que han cancelado demasiadas veces.
   Future<List<AvisoCliente>> avisosCancelacionesFrecuentes();
+
+  // ---------------------------------------------------------------------------
+  // Marcar cita como No Presentado
+  // ---------------------------------------------------------------------------
+  // Cambia el estado de una cita a NO_PRESENTADO.
+  Future<void> marcarNoPresentado(int idCita);
 }

@@ -100,3 +100,14 @@ class ObtenerAvisosCancelaciones {
   Future<List<AvisoCliente>> ejecutar() =>
       _r.avisosCancelacionesFrecuentes();
 }
+
+// -----------------------------------------------------------------------------
+// CASO DE USO: Marcar cita como No Presentado
+// -----------------------------------------------------------------------------
+class MarcarNoPresentado {
+  MarcarNoPresentado(this._r);
+  final AgendaAdminRepositorio _r;
+
+  Future<void> ejecutar(int idCita) =>
+      _r.marcarNoPresentado(idCita);
+}
