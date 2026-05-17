@@ -29,7 +29,7 @@ class ApiEndpoints {
   static const authResetPassword = '/auth/reset-password';
 
   // ==========================================================================
-  // RUTAS DEL PANEL ADMIN
+  // RUTAS DEL PANEL ADMIN / EMPLEADO
   // ==========================================================================
 
   // Empleados
@@ -39,6 +39,10 @@ class ApiEndpoints {
   static String adminEmpleadoCancelarCitas(int id) => '/admin/empleados/$id/cancelar-citas';
   static String adminEmpleadoDescanso(int id) => '/admin/empleados/$id/descanso';
   static String adminCitaNoPresentado(int id) => '/admin/citas/$id/no-presentado';
+
+  // Perfil Empleado (Estadísticas y Seguridad)
+  static String empleadoPerfilResumen(int id) => '/admin/empleados/$id/resumen';
+  static const empleadoCambiarPassword = '/admin/empleados/me/password';
 
   // Servicios
   static const adminServicios = '/admin/servicios';
@@ -125,17 +129,3 @@ class ApiEndpoints {
     return '$baseUrl$rutaRelativa';
   }
 }
-
-/*
-RESUMEN DEL ARCHIVO
-Este archivo define la clase ApiEndpoints, cuyo propósito es centralizar la URL base del backend y todas las rutas de la API.
-Esto permite:
-- Cambiar entre entornos (desarrollo, producción, local, emulador) sin tocar el resto del código.
-- Evitar repetir strings de rutas en los repositorios.
-- Mantener un único punto de verdad para todas las URLs del backend.
-- Permitir configurar la URL base mediante --dart-define, lo cual es ideal para CI/CD o builds diferentes.
-
- En resumen:
- Este archivo es la fuente única de todas las rutas del backend, facilitando mantenimiento, consistencia y cambios de entorno.
-
- */
