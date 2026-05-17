@@ -5,12 +5,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.victorino_style.dto.admin.*; // Importamos todos los DTOs necesarios
 import org.victorino_style.entity.enums.EstadoCita;
 import org.victorino_style.service.CitaService;
 
-import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -62,24 +62,29 @@ public class CitaController {
 
     // ---- NUEVO: Resumen de Perfil por ID (Usado por la App) ----
     @GetMapping("/empleados/{id}/resumen")
-    public EmpleadoPerfilResumenDTO obtenerResumenEmpleado(@PathVariable Long id) {
-        // Buscamos directamente por ID recibido en la URL
-        return citaService.obtenerResumenPerfilPorId(id);
+    public EmpleadoPerfilResumenDTO obtenerMiResumen(
+            @AuthenticationPrincipal String idUsuarioJwt) {
+        Long idEmpleado = Long.parseLong(idUsuarioJwt);
+
+        return citaService.obtenerResumenPerfilPorId(idEmpleado);
     }
 
-    // ---- NUEVO: Cambio de contraseña ----
-    @PatchMapping("/empleados/me/password")
+    // ---- NUEVO: Cambio de contraseña por ID del empleado autenticado ----
+    @PatchMapping("/empleados/{id}/password")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    public void cambiarPassword(Principal principal, @RequestBody Map<String, String> passwords) {
-        // principal.getName() devuelve el identificador (ID en este proyecto) del usuario logueado
-        citaService.actualizarPassword(
-                principal.getName(),
+    public void cambiarMiPassword(
+            @AuthenticationPrincipal String idUsuarioJwt,
+            @RequestBody Map<String, String> passwords) {
+        Long idEmpleado = Long.parseLong(idUsuarioJwt);
+
+        citaService.actualizarPasswordPorId(
+                idEmpleado,
                 passwords.get("oldPassword"),
                 passwords.get("newPassword")
         );
     }
 
-    // ---- AVISOS DE CANCELACIONES FRECUENTES
+    // ---- AVISOS DE CANCELACIONES FRECUENTES ----
     @PreAuthorize("hasRole('ADMINISTRADOR')")
     @GetMapping("/avisos/cancelaciones-frecuentes")
     public List<AvisoClienteResponse> avisos() {

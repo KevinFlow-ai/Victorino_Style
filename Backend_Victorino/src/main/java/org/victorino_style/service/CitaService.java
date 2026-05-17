@@ -293,27 +293,26 @@ public class CitaService {
     // ---- NUEVO: Lógica del Perfil con manejo de nulos ----
     @Transactional(readOnly = true)
     public EmpleadoPerfilResumenDTO obtenerResumenPerfilPorId(Long id) {
-        // Buscamos directamente por ID, que es el valor infalible que devuelve Principal.getName()
+        // 1. Buscamos al empleado directamente por ID
         Empleado empleado = empleadoRepository.findActivoById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Empleado no encontrado"));
 
-        long completadas = citaRepository.countByIdEmpleado_IdAndEstadoCita(empleado.getId(), EstadoCita.COMPLETADA);
+        // 2. Contamos citas con estado COMPLETADA
+        long completadas = citaRepository.countByIdEmpleado_IdAndEstadoCita(
+                empleado.getId(),
+                EstadoCita.COMPLETADA
+        );
 
-        String experiencia = "Nuevo en el equipo";
-        try {
-            if (empleado.getUsuario() != null && empleado.getUsuario().getFechaCreacionUsuario() != null) {
-                LocalDate inicio = empleado.getUsuario().getFechaCreacionUsuario().atZone(ZoneId.systemDefault()).toLocalDate();
-                Period p = Period.between(inicio, LocalDate.now());
-                if (p.getYears() > 0) {
-                    experiencia = p.getYears() + (p.getYears() == 1 ? " año" : " años");
-                } else if (p.getMonths() > 0) {
-                    experiencia = p.getMonths() + (p.getMonths() == 1 ? " mes" : " meses");
-                } else {
-                    experiencia = "Este mes";
-                }
-            }
-        } catch (Exception e) {
-            log.warn("Error calculando experiencia para empleado {}: {}", id, e.getMessage());
+        // 3. Calculamos la experiencia desde que se creó su usuario
+        LocalDate inicio = empleado.getUsuario().getFechaCreacionUsuario()
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate();
+
+        Period periodo = Period.between(inicio, LocalDate.now());
+
+        String experiencia = String.format("%d años y %d meses", periodo.getYears(), periodo.getMonths());
+        if (periodo.getYears() == 0) {
+            experiencia = periodo.getMonths() + " meses";
         }
 
         return new EmpleadoPerfilResumenDTO(
@@ -327,7 +326,7 @@ public class CitaService {
 
     @Transactional
     public void actualizarPasswordPorId(Long id, String vieja, String nueva) {
-        // Buscamos al usuario por ID directamente
+        // Buscamos al empleado por ID directamente
         Empleado empleado = empleadoRepository.findActivoById(id)
                 .orElseThrow(() -> new RecursoNoEncontradoException("Empleado no encontrado"));
 
@@ -342,28 +341,15 @@ public class CitaService {
 
         usuarioRepository.save(usuario);
 
-        auditoriaService.registrar("CAMBIAR_PASSWORD_EMPLEADO", "USUARIO", usuario.getId(),
-                "Cambio de contraseña del empleado " + usuario.getCorreoUsuario());
+        auditoriaService.registrar(
+                "CAMBIAR_PASSWORD_EMPLEADO",
+                "USUARIO",
+                usuario.getId(),
+                "Cambio de contraseña del empleado " + usuario.getCorreoUsuario()
+        );
 
         log.info("Contraseña actualizada para el empleado id={}", empleado.getId());
     }
 
-    @Transactional
-    public void actualizarPassword(String correo, String vieja, String nueva) {
-        log.info("Intento de cambio de contraseña para: {}", correo);
-        // Buscamos al usuario por correo
-        Usuario usuario = usuarioRepository.findByCorreoUsuarioAndFechaEliminacionUsuarioIsNull(correo)
-                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado"));
 
-        if (!passwordEncoder.matches(vieja, usuario.getContrasenaUsuario())) {
-            throw new PasswordIncorrectaException();
-        }
-
-        usuario.setContrasenaUsuario(passwordEncoder.encode(nueva));
-        usuario.setFechaModificacionUsuario(Instant.now());
-        usuarioRepository.save(usuario);
-
-        auditoriaService.registrar("CAMBIAR_PASSWORD_EMPLEADO", "USUARIO", usuario.getId(),
-                "Cambio de contraseña del usuario " + correo);
-    }
 }
