@@ -47,9 +47,15 @@ final eliminarCuentaProvider = Provider(
 class PerfilNotifier extends AsyncNotifier<PerfilCliente?> {
   @override
   Future<PerfilCliente?> build() async {
-    // Solo carga si hay sesión activa de cliente.
-    final sesion = ref.watch(sesionProvider).value;
-    if (sesion == null || sesion.rol != 'CLIENTE') return null;
+    // Solo se reconstruye cuando cambia el idUsuario (login / logout).
+    // .select() evita que una renovación del access token vacíe el perfil.
+    final idUsuario = ref.watch(
+      sesionProvider.select((s) => s.value?.idUsuario),
+    );
+    if (idUsuario == null) return null;
+    // Leer el rol sin observar — no cambia dentro de una misma sesión.
+    final rol = ref.read(sesionProvider).value?.rol;
+    if (rol != 'CLIENTE') return null;
     return ref.read(obtenerPerfilProvider).ejecutar();
   }
 

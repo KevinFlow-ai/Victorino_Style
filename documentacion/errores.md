@@ -5,6 +5,200 @@
 
 ---
 
+## 2026-05-17 · Frontend Cliente — "No se pudieron cargar las notificaciones" al volver a la pestaña (segundo error)
+
+**Síntoma**: incluso después de aplicar el fix del `.select()`, al cambiar de pestaña y volver a la bandeja de notificaciones aparecía el mensaje 
+"No se pudieron cargar las notificaciones". La única forma de recuperarlas era hacer pull-to-refresh manualmente.
+
+---
+
+### Qué pasaba (explicado fácil)
+
+Imagina que tienes a un empleado que trabaja con dos herramientas: una bolsa para recoger notificaciones del servidor, y un 
+bolígrafo para marcarlas como leídas. El empleado las guarda en su bolsillo cuando empieza a trabajar por primera vez.
+
+En el código, esas "herramientas" se marcaban como `late final`: eso significa "te las doy la primera vez y **nunca las cambies**". El problema es que Riverpod, 
+en algunas situaciones (como cambiar de pestaña y volver), llama a `build()` — que es el "arranque" del empleado — más de una vez 
+**sobre el mismo empleado**, sin crear uno nuevo. La segunda vez que el 
+empleado intentaba guardar las herramientas en su bolsillo, Dart decía: "¡Oye, ya 
+tienes algo ahí y dijiste que era definitivo!". Lanzaba un error interno y la pantalla quedaba en estado de fallo.
+
+Lo más confuso del asunto: `recargar()` (el pull-to-refresh) sí funcionaba, porque ese método usaba 
+las herramientas directamente **sin intentar reasignarlas**. El error solo ocurría al entrar a `build()` una segunda vez.
+
+---
+
+### Causa técnica
+
+`NotificacionesNotifier` declaraba sus dependencias con `late final`:
+
+```dart
+// ❌ late final: solo se puede asignar una vez por instancia de la clase.
+late final ObtenerBandeja _obtenerBandeja;
+late final MarcarLeida _marcarLeida;
+
+@override
+Future<List<Notificacion>> build() async {
+  _obtenerBandeja = ref.read(obtenerBandejaProvider);  // OK en la 1ª llamada
+  _marcarLeida = ref.read(marcarLeidaProvider);         // OK en la 1ª llamada
+  ...
+}
+```
+
+Riverpod 3.x puede invocar `build()` varias veces sobre **la misma instancia** del notifier (por ejemplo, cuando la dependencia 
+observada con `.select()` cambia pero el notifier no se descarta). En la segunda llamada a `build()`, Dart lanzaba `LateInitializationError` 
+al intentar reasignar un `late final`, y Riverpod capturaba esa excepción convirtiéndola en `AsyncError` — de ahí el mensaje de error en pantalla.
+
+El pull-to-refresh **no fallaba** porque `recargar()` usaba `_obtenerBandeja` ya asignado (en la primera llamada a `build()`), sin 
+reasignarlo. Pero en la llamada a `build()` la segunda vuelta, el intento de asignación explotaba.
+
+---
+
+### Solución
+
+Cambiar `late final` por campos nullable ordinarios que se pueden reasignar sin restricciones:
+
+```dart
+// ✅ Nullable sin late final: se puede reasignar en cada llamada a build().
+ObtenerBandeja? _obtenerBandeja;
+MarcarLeida? _marcarLeida;
+
+@override
+Future<List<Notificacion>> build() async {
+  _obtenerBandeja = ref.read(obtenerBandejaProvider);  // siempre seguro
+  _marcarLeida = ref.read(marcarLeidaProvider);         // siempre seguro
+  ...
+  return _obtenerBandeja!.ejecutar();
+}
+```
+
+El `!` (null assertion) es seguro porque los campos se asignan siempre antes de usarlos dentro del mismo `build()`.
+
+**Archivo modificado**: `frontend_victorino/lib/features/notificaciones/application/notificaciones_notifier.dart`
+
+---
+
+### Consejo para evitar este patrón
+
+- **Nunca uses `late final` para campos que se inicializan dentro de `build()`** en un `AsyncNotifier` o `Notifier`. `build()` puede llamarse más de una vez en la vida de la misma instancia.
+- Usa `late final` solo para campos que se asignan **una única vez** fuera de `build()` (por ejemplo, en el constructor o en `initState` si fuera un `StatefulWidget`).
+- Como regla general: si un campo lo inicializas DENTRO de `build()`, decláralo sin `final` (o como nullable `T?`).
+
+---
+
+## 2026-05-17 · Frontend Cliente — Notificaciones (y otros datos) desaparecen al cambiar de pestaña
+
+**Síntoma**: las notificaciones, la próxima cita del Home y el historial de citas desaparecen y quedan vacíos cada vez que 
+el usuario cambia de pestaña (por ejemplo, de Inicio a Perfil y vuelta). La única forma de recuperar los datos es hacer **pull-to-refresh** manualmente.
+
+---
+
+### Qué hace la aplicación por dentro (explicado fácil)
+
+Imagina que la app tiene empleados que se encargan de ir a buscar información al servidor. Cada empleado solo trabaja 
+cuando alguien le avisa de que algo ha cambiado. El aviso llega a través de un tablón de anuncios llamado **sesión**:
+
+- Cuando el usuario inicia sesión, se pone en el tablón: "Hay un usuario activo: María".
+- Cuando cierra sesión, se pone: "No hay nadie".
+
+Los empleados de Notificaciones, Historial y Próxima Cita estaban mirando **todo lo que ponía en el tablón**: el 
+nombre del usuario, su rol… y también su **código de seguridad temporal** (el token de acceso). Ese código caduca y 
+se renueva automáticamente cada vez que se hace alguna consulta al servidor.
+
+El problema: **cada vez que el código se renovaba** (lo que ocurre al cambiar de pestaña, porque la nueva pestaña hace una consulta), 
+el tablón cambiaba. Los empleados lo veían, creían que había una novedad importante y **volvían a empezar su trabajo desde cero**: tiraban 
+los datos que ya tenían cargados y salían a buscarlos de nuevo al servidor. Mientras regresaban (eso tarda un segundo), la pantalla aparecía vacía.
+
+---
+
+### Causa técnica
+
+`NotificacionesNotifier`, `PerfilNotifier`, `HistorialNotifier` y `ProximaCitaNotifier` hacían `ref.watch(sesionProvider)` completo. El `sesionProvider` cambia no solo cuando el usuario hace login/logout, sino también cada vez que el interceptor Dio renueva el **access token** (llamada a `actualizarAccessToken()`). Esa llamada ocurre automáticamente al detectar un token caducado, que puede pasar en cualquier cambio de pestaña que dispare una petición HTTP.
+
+Resultado: cada renovación de token → sesionProvider cambia → los cuatro notifiers se reconstruyen → estado pasa a `AsyncLoading` → datos desaparecen → petición HTTP en curso → datos vuelven.
+
+---
+
+### Solución
+
+Usar **`sesionProvider.select()`** en lugar de observar el sesionProvider completo. Así cada notifier solo reacciona cuando cambia el **identificador del usuario** (`idUsuario`), que es lo único que importa para saber si hay que recargar datos. Si solo cambia el token pero el usuario sigue siendo el mismo, los notifiers no se molestan.
+
+**Archivos modificados**:
+- `frontend_victorino/lib/features/notificaciones/application/notificaciones_notifier.dart`
+- `frontend_victorino/lib/features/cliente/perfil/application/perfil_providers.dart`
+- `frontend_victorino/lib/features/cliente/historial/application/historial_providers.dart`
+- `frontend_victorino/lib/features/cliente/home/application/home_providers.dart`
+
+**Diff** (el mismo patrón en los cuatro):
+```dart
+// ❌ Antes — observa TODO el sesionProvider, incluyendo el token.
+// Se reconstruye en cada renovación de token → datos desaparecen.
+final sesion = ref.watch(sesionProvider).value;
+if (sesion == null) return const [];
+
+// ✅ Después — observa SOLO el idUsuario.
+// Solo se reconstruye cuando cambia el usuario (login/logout), no el token.
+final idUsuario = ref.watch(
+  sesionProvider.select((s) => s.value?.idUsuario),
+);
+if (idUsuario == null) return const [];
+```
+
+---
+
+### Consejo para evitar este patrón
+
+- Cuando un provider necesita "saber quién es el usuario para cargar sus datos", no debe observar el objeto de sesión entero. Debe usar **`.select()`** para observar solo el campo que determina la identidad del usuario (`idUsuario`).
+- El access token es un detalle de infraestructura, no de identidad. Los interceptores ya lo gestionan solos. Los providers de datos no tienen por qué enterarse de sus renovaciones.
+- **Regla de oro**: `ref.watch(sesionProvider.select((s) => s.value?.idUsuario))` en lugar de `ref.watch(sesionProvider).value` en cualquier notifier que cargue datos específicos de un usuario.
+
+---
+
+## 2026-05-17 · Frontend Cliente — Historial y próxima cita no se actualizaban al cambiar de cuenta
+
+**Síntoma**: al cerrar sesión con el clienteA e iniciar sesión con el clienteB, las pantallas de **Historial de citas** y la **tarjeta de próxima cita** 
+del Home seguían mostrando los datos del clienteA. Había que hacer pull-to-refresh en cada pantalla para que aparecieran los datos correctos.
+
+---
+
+### Qué pasaba (explicado fácil)
+
+Imagina que tienes dos cajones: uno para los datos de María (clienteA) y otro para los de Carlos (clienteB). Cuando María 
+cierra sesión, la app debería vaciar su cajón. Cuando Carlos inicia sesión, debería abrir el suyo y llenarlo con sus datos.
+
+El problema: los "empleados" encargados del Historial y la Próxima Cita **no estaban mirando el tablón de anuncios de sesión**. Nadie les 
+avisaba de que había cambiado el usuario. Seguían mostrando el cajón de María aunque ya estuviera Carlos.
+
+Los otros dos (Perfil y Notificaciones) sí estaban mirando el tablón, por eso sí se actualizaban solos. Pero Historial y Próxima Cita no.
+
+---
+
+### Causa técnica
+
+`HistorialNotifier.build()` y `ProximaCitaNotifier.build()` no incluían ningún `ref.watch(sesionProvider)`. Riverpod 
+no tenía forma de saber que estos providers dependían de la sesión, por lo que nunca les notificaba del cambio 
+de usuario. Sus datos se quedaban congelados con los del usuario anterior.
+
+---
+
+### Solución
+
+Añadir el guard de sesión en el `build()` de ambos notifiers, exactamente igual que ya tenían `PerfilNotifier` y `NotificacionesNotifier`:
+
+```dart
+// ✅ Añadido en HistorialNotifier.build() y ProximaCitaNotifier.build()
+final idUsuario = ref.watch(sesionProvider.select((s) => s.value?.idUsuario));
+if (idUsuario == null) return const []; // o null según el provider
+```
+
+Ahora Riverpod sabe que estos providers dependen de quién es el usuario activo y los reconstruye automáticamente al hacer login/logout.
+
+**Archivos modificados**:
+- `frontend_victorino/lib/features/cliente/historial/application/historial_providers.dart`
+- `frontend_victorino/lib/features/cliente/home/application/home_providers.dart`
+
+---
+
 ## 2026-05-16 · Frontend Cliente — "Mi perfil, sin perfil cargado" al cerrar sesión
 
 > 📸 **Captura asociada**: `cliente_error_cerrar_cesion`
@@ -43,7 +237,8 @@ El botón cerraba sesión primero (esto es lo que avisa al servidor y borra los 
 
 ### Solución
 
-En la pantalla de perfil añadimos un **"escucha"** sobre el estado de sesión. En cuanto detecta que la sesión pasa de **estar a no estar**, navega INMEDIATAMENTE a `/login` —antes de que el repintado de la pantalla muestre nada raro.
+En la pantalla de perfil añadimos un **"escucha"** sobre el estado de sesión. En cuanto detecta que la sesión pasa de **estar a no estar**, 
+navega INMEDIATAMENTE a `/login` —antes de que el repintado de la pantalla muestre nada raro.
 
 Así, el orden ahora es:
 1. Sesión cambia a vacía.
@@ -86,7 +281,8 @@ class PerfilClienteScreen extends ConsumerWidget {
 
 ### Consejos para evitar este patrón
 
-- **No esperes** a hacer la navegación DESPUÉS de un cambio de estado global (sesión, login, logout). El intervalo entre "cambia el estado" y "se ejecuta la navegación" es suficiente para que la UI vea un estado intermedio.
+- **No esperes** a hacer la navegación DESPUÉS de un cambio de estado global (sesión, login, logout). El intervalo entre 
+"cambia el estado" y "se ejecuta la navegación" es suficiente para que la UI vea un estado intermedio.
 - Usa **`ref.listen`** en pantallas que dependen del estado de sesión: te permite reaccionar al cambio en lugar de tener que ejecutar la navegación manualmente desde cada botón.
 - El patrón "Pasó de X a Y → navega" es muy reutilizable. Sirve para sesión, pero también para "compra completada → ir a éxito" o "pedido cancelado → volver a la lista".
 - Esto también se aplica al botón **"Eliminar mi cuenta"**: como ambas acciones acaban cerrando la sesión, el mismo `ref.listen` cubre los dos casos automáticamente.

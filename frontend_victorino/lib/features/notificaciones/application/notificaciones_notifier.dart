@@ -9,18 +9,27 @@ import '../../../shared/providers/sesion_provider.dart';
 // AsyncNotifier que gestiona la bandeja de notificaciones in-app.
 // Expone métodos para recargar y marcar como leída sin recargar toda la lista.
 class NotificacionesNotifier extends AsyncNotifier<List<Notificacion>> {
-  late final ObtenerBandeja _obtenerBandeja;
-  late final MarcarLeida _marcarLeida;
+  // NO son late final: Riverpod puede llamar a build() varias veces sobre la
+  // misma instancia del notifier (p.ej. al cambiar de pestaña y volver).
+  // Con late final, el segundo intento de asignación lanzaría LateInitializationError.
+  ObtenerBandeja? _obtenerBandeja;
+  MarcarLeida? _marcarLeida;
 
   @override
   Future<List<Notificacion>> build() async {
+    // Reasignación segura en cada llamada a build().
     _obtenerBandeja = ref.read(obtenerBandejaProvider);
     _marcarLeida = ref.read(marcarLeidaProvider);
 
-    final sesion = ref.watch(sesionProvider).value;
-    if (sesion == null) return const [];
+    // Solo se reconstruye cuando cambia el idUsuario (login / logout).
+    // Usar .select() evita que una renovación del access token (actualizarAccessToken)
+    // vacíe la bandeja, ya que el token cambia pero el idUsuario sigue siendo el mismo.
+    final idUsuario = ref.watch(
+      sesionProvider.select((s) => s.value?.idUsuario),
+    );
+    if (idUsuario == null) return const [];
     // El JWT se envía automáticamente; el backend extrae el idUsuario del token.
-    return _obtenerBandeja.ejecutar();
+    return _obtenerBandeja!.ejecutar();
   }
 
   /// Recarga la bandeja completa del backend.
@@ -29,7 +38,7 @@ class NotificacionesNotifier extends AsyncNotifier<List<Notificacion>> {
     final sesion = ref.read(sesionProvider).value;
     if (sesion == null) return;
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _obtenerBandeja.ejecutar());
+    state = await AsyncValue.guard(() => _obtenerBandeja!.ejecutar());
   }
 
   /// Marca la notificación como leída localmente (optimistic update) y
@@ -45,7 +54,7 @@ class NotificacionesNotifier extends AsyncNotifier<List<Notificacion>> {
     }).toList());
 
     try {
-      await _marcarLeida.ejecutar(idNotificacion);
+      await _marcarLeida!.ejecutar(idNotificacion);
     } catch (_) {
       // Si falla, revertimos al estado anterior.
       state = AsyncData(listaActual);
