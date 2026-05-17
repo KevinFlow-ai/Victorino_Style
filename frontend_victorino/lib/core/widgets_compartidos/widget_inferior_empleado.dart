@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../features/empleado/agenda/presentation/agenda_empleado_screen.dart';
+import '../../features/empleado/perfil/presentation/perfil_empleado_screen.dart';
 import '../theme/app_colores.dart';
 
 class WidgetInferiorEmpleado extends StatefulWidget {
@@ -15,7 +16,7 @@ class _WidgetInferiorEmpleadoState extends State<WidgetInferiorEmpleado> {
 
   final List<Widget> pages = const [
     AgendaEmpleadoScreen(),
-    Center(child: Text("Perfil", style: TextStyle(fontSize: 24))),
+    PerfilEmpleadoScreen(),
   ];
 
   final List<IconData> icons = [
