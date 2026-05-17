@@ -34,6 +34,7 @@ import '../../features/notificaciones/presentation/bandeja_notificaciones_screen
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../shared/providers/sesion_provider.dart';
 import '../widgets_compartidos/widget_inferior_empleado.dart';
+import '../../features/empleado/perfil/presentation/cambiar_password_screen.dart';
 
 
 
@@ -115,7 +116,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
 
 
       // Home del empleado: ahora usa el widget inferior que contiene la agenda.
-      GoRoute(path: '/empleado/home', builder: (_, _) => const WidgetInferiorEmpleado()),
+      GoRoute(
+          path: '/empleado/home',
+          builder: (_, _) => const WidgetInferiorEmpleado(),
+      ),
+
+      // ───────────────────────────────────────────────────────────────────────
+      // RUTA CORREGIDA: Cambio de contraseña para el empleado (Nivel Raíz)
+      // ───────────────────────────────────────────────────────────────────────
+      GoRoute(
+        path: '/empleado/perfil/cambiar-pwd',
+        builder: (_, _) => const CambiarPasswordEmpleadoScreen(),
+      ),
 
 
       // Panel ADMIN con bottom nav y 5 ramas independientes.
