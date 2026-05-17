@@ -21,6 +21,7 @@ import '../../../../../../core/theme/app_colores.dart';
 import '../../../../servicios/application/servicios_providers.dart';
 import '../../../application/agenda_providers.dart';
 import '../../../domain/entidades/cita.dart';
+import '../../../../../../shared/providers/sesion_provider.dart';
 
 class BottomSheetCrearCitaRapida extends ConsumerStatefulWidget {
   const BottomSheetCrearCitaRapida({
@@ -74,6 +75,7 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
   @override
   Widget build(BuildContext context) {
     final serviciosState = ref.watch(serviciosAdminNotifierProvider);
+    final sesion = ref.watch(sesionProvider).value;
     final mq = MediaQuery.of(context);
 
     return Padding(
@@ -81,7 +83,6 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
-          clipBehavior: Clip.hardEdge,
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
           child: Form(
             key: _form,
@@ -111,23 +112,65 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
                 const SizedBox(height: 16),
                 _selectorHora(),
                 const SizedBox(height: 12),
-                serviciosState.maybeWhen(
-                  orElse: () => const LinearProgressIndicator(),
+
+                // CORRECCIÓN: Mostramos error detallado para depuración
+                serviciosState.when(
+                  loading: () => const Column(
+                    children: [
+                      LinearProgressIndicator(),
+                      SizedBox(height: 4),
+                      Text('Cargando servicios...', style: TextStyle(fontSize: 10)),
+                    ],
+                  ),
+                  error: (err, stack) {
+                    print('-----------------------------------------');
+                    print('DEBUG ERROR SERVICIOS: $err');
+                    print('DEBUG ROL USUARIO: ${sesion?.rol}');
+                    print('-----------------------------------------');
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Error al cargar servicios:',
+                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                          ),
+                          const SizedBox(height: 4),
+                          Text('$err', style: const TextStyle(color: Colors.red, fontSize: 11)),
+                          const SizedBox(height: 4),
+                          Text('Rol detectado: ${sesion?.rol ?? "Desconocido"}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                          const SizedBox(height: 8),
+                          TextButton.icon(
+                            onPressed: () => ref.invalidate(serviciosAdminNotifierProvider),
+                            icon: const Icon(Icons.refresh, size: 16),
+                            label: const Text('Reintentar'),
+                          )
+                        ],
+                      ),
+                    );
+                  },
                   data: (lista) => DropdownButtonFormField<int>(
-                    initialValue: _idServicio,
-                    isExpanded: true,
+                    value: _idServicio,
+                    isExpanded: true,   // ← esta línea
                     decoration: _dec('Servicio'),
                     items: lista
                         .where((s) => s.activo)
                         .map((s) => DropdownMenuItem(
-                              value: s.id,
-                              child: Text('${s.nombre} (${s.duracionMinutos} min)'),
-                            ))
+                      value: s.id,
+                      child: Text('${s.nombre} (${s.duracionMinutos} min)'),
+                    ))
                         .toList(),
                     onChanged: (v) => setState(() => _idServicio = v),
                     validator: (v) => v == null ? 'Selecciona un servicio' : null,
                   ),
                 ),
+
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -195,20 +238,20 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
                     onPressed: _enviando ? null : _crear,
                     child: _enviando
                         ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
                         : Text(
-                            'Crear cita',
-                            style: GoogleFonts.poppins(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
+                      'Crear cita',
+                      style: GoogleFonts.poppins(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -261,15 +304,12 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
                 ],
               ),
             ),
-            Flexible(
-              child: Text(
-                'Libre ${widget.horaInicio} – ${widget.horaFinHueco}',
-                style: GoogleFonts.poppins(
-                  fontSize: 11,
-                  color: AppColors.textMuted,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
+            Text(
+              'Libre ${widget.horaInicio} – ${widget.horaFinHueco}',
+              style: GoogleFonts.poppins(
+                fontSize: 11,
+                color: AppColors.textMuted,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],
@@ -320,7 +360,7 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
    */
 
 
-   // ============  WIDGET PARA ELEGIR LA HORA NUEVO ESTILO IPHONE ============
+  // ============  WIDGET PARA ELEGIR LA HORA NUEVO ESTILO IPHONE ============
 
   Future<void> _elegirHora() async {
     TimeOfDay? seleccion = _hora;
@@ -788,15 +828,15 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
 
 
   Widget _drag() => Center(
-        child: Container(
-          width: 40,
-          height: 4,
-          decoration: BoxDecoration(
-            color: Colors.grey.shade300,
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      );
+    child: Container(
+      width: 40,
+      height: 4,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade300,
+        borderRadius: BorderRadius.circular(2),
+      ),
+    ),
+  );
 
   String? _validarTexto(String? v) {
     if (v == null || v.trim().isEmpty) return 'Campo obligatorio';
@@ -807,14 +847,14 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
   }
 
   InputDecoration _dec(String label) => InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: AppColors.surface,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      );
+    labelText: label,
+    filled: true,
+    fillColor: AppColors.surface,
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
+      borderSide: BorderSide.none,
+    ),
+  );
 
   static TimeOfDay _parse(String hhmm) {
     final p = hhmm.split(':');
@@ -836,6 +876,7 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
       widget.fecha.year, widget.fecha.month, widget.fecha.day,
       _hora.hour, _hora.minute,
     );
+
     if (!citaDateTime.isAfter(DateTime.now())) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No puedes reservar una hora que ya ha pasado.')),
@@ -844,7 +885,10 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
     }
 
     setState(() => _enviando = true);
+
     try {
+      print('DEBUG: Intentando crear cita para empleado ID: ${widget.idEmpleado}');
+
       final datos = DatosWalkIn(
         idEmpleado: widget.idEmpleado,
         idServicio: _idServicio!,
@@ -855,28 +899,47 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
         telefonoInvitado: _telefono.text.trim().isEmpty ? null : _telefono.text,
         nota: _nota.text.trim().isEmpty ? null : _nota.text,
       );
+
+      // Llamada al backend
       await ref.read(crearWalkInProvider).ejecutar(datos);
-      await ref.read(agendaAdminNotifierProvider.notifier).recargar();
+      print('DEBUG: Cita creada con éxito en el backend');
+
+      // Intentamos recargar la agenda
+      try {
+        await ref.read(agendaAdminNotifierProvider.notifier).recargar();
+      } catch (e) {
+        print('DEBUG: Error al recargar agenda global (ignorable si es empleado): $e');
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Cita creada')),
+          const SnackBar(
+            content: Text('Cita creada correctamente'),
+            backgroundColor: Colors.green,
+          ),
         );
+        // Cerramos devolviendo true para que la pantalla anterior sepa que debe refrescarse
         Navigator.of(context).pop(true);
       }
     } on ApiException catch (e) {
+      print('DEBUG: Error de API: ${e.failure.mensaje}');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(e.failure.mensaje)),
         );
       }
     } catch (e) {
+      print('DEBUG: Error inesperado: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e')),
+          SnackBar(content: Text('Error al conectar con el servidor: $e')),
         );
       }
     } finally {
-      if (mounted) setState(() => _enviando = false);
+      // IMPORTANTE: Aseguramos que el estado de carga se quite siempre
+      if (mounted) {
+        setState(() => _enviando = false);
+      }
     }
   }
 }

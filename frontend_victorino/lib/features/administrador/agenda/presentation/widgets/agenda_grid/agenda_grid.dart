@@ -99,15 +99,15 @@ bool _estadoAtenuado(EstadoCita e) {
 // suficiente para abrir el bottom-sheet sin que el grid conozca rutas
 // ni providers.
 typedef OnHuecoPulsado = void Function({
-  required int idEmpleado,
-  required String nombreEmpleado,
-  required DateTime fecha,
-  // Hora inicial sugerida (inicio del hueco), alineada al slot.
-  required String horaInicio,
-  // Límite superior del hueco: al pulsar el "+" el usuario podrá elegir
-  // cualquier hora dentro de [horaInicio, horaFinHueco) para encajar
-  // la cita a la hora exacta que pida el cliente.
-  required String horaFinHueco,
+required int idEmpleado,
+required String nombreEmpleado,
+required DateTime fecha,
+// Hora inicial sugerida (inicio del hueco), alineada al slot.
+required String horaInicio,
+// Límite superior del hueco: al pulsar el "+" el usuario podrá elegir
+// cualquier hora dentro de [horaInicio, horaFinHueco) para encajar
+// la cita a la hora exacta que pida el cliente.
+required String horaFinHueco,
 });
 
 class AgendaGrid extends StatefulWidget {
@@ -118,6 +118,7 @@ class AgendaGrid extends StatefulWidget {
     required this.empleados,
     required this.citas,
     required this.onHuecoPulsado,
+    this.anchoColumna = _kAnchoColumna, // Valor por defecto 170.0
   });
 
   final DateTime fecha;
@@ -125,6 +126,7 @@ class AgendaGrid extends StatefulWidget {
   final List<Empleado> empleados;
   final List<CitaAdmin> citas;
   final OnHuecoPulsado onHuecoPulsado;
+  final double anchoColumna;
 
   @override
   State<AgendaGrid> createState() => _AgendaGridState();
@@ -223,6 +225,7 @@ class _AgendaGridState extends State<AgendaGrid> {
           _Encabezado(
             empleados: activos,
             controller: _horHeader,
+            anchoColumna: widget.anchoColumna,
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -240,7 +243,7 @@ class _AgendaGridState extends State<AgendaGrid> {
                         scrollDirection: Axis.horizontal,
                         physics: const ClampingScrollPhysics(),
                         child: SizedBox(
-                          width: activos.length * (_kAnchoColumna + 8),
+                          width: activos.length * (widget.anchoColumna + 8),
                           height: altoGridPx,
                           child: Stack(
                             children: [
@@ -248,15 +251,16 @@ class _AgendaGridState extends State<AgendaGrid> {
                               Row(
                                 children: activos
                                     .map((e) => _ColumnaEmpleado(
-                                          empleado: e,
-                                          fecha: widget.fecha,
-                                          rango: widget.rango,
-                                          ahora: _ahora,
-                                          citas: widget.citas
-                                              .where((c) => c.idEmpleado == e.id)
-                                              .toList(),
-                                          onHueco: widget.onHuecoPulsado,
-                                        ))
+                                  empleado: e,
+                                  fecha: widget.fecha,
+                                  rango: widget.rango,
+                                  ahora: _ahora,
+                                  citas: widget.citas
+                                      .where((c) => c.idEmpleado == e.id)
+                                      .toList(),
+                                  onHueco: widget.onHuecoPulsado,
+                                  anchoColumna: widget.anchoColumna,
+                                ))
                                     .toList(),
                               ),
                             ],
@@ -278,9 +282,14 @@ class _AgendaGridState extends State<AgendaGrid> {
 // ───────────────────────── Encabezado de empleados ─────────────────────────
 
 class _Encabezado extends StatelessWidget {
-  const _Encabezado({required this.empleados, required this.controller});
+  const _Encabezado({
+    required this.empleados,
+    required this.controller,
+    required this.anchoColumna,
+  });
   final List<Empleado> empleados;
   final ScrollController controller;
+  final double anchoColumna;
 
   @override
   Widget build(BuildContext context) {
@@ -309,7 +318,9 @@ class _Encabezado extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               physics: const ClampingScrollPhysics(),
               child: Row(
-                children: empleados.map(_TarjetaEmpleado.new).toList(),
+                children: empleados
+                    .map((e) => _TarjetaEmpleado(e, anchoColumna: anchoColumna))
+                    .toList(),
               ),
             ),
           ),
@@ -320,13 +331,14 @@ class _Encabezado extends StatelessWidget {
 }
 
 class _TarjetaEmpleado extends StatelessWidget {
-  const _TarjetaEmpleado(this.empleado);
+  const _TarjetaEmpleado(this.empleado, {required this.anchoColumna});
   final Empleado empleado;
+  final double anchoColumna;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: _kAnchoColumna,
+      width: anchoColumna,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
         color: AppColors.surface,
@@ -395,12 +407,12 @@ class _FotoEmpleado extends StatelessWidget {
   }
 
   Widget _placeholder() => Container(
-        width: tam,
-        height: tam,
-        color: AppColors.accentGlow,
-        alignment: Alignment.center,
-        child: Icon(Icons.person, color: AppColors.primary, size: tam * 0.6),
-      );
+    width: tam,
+    height: tam,
+    color: AppColors.accentGlow,
+    alignment: Alignment.center,
+    child: Icon(Icons.person, color: AppColors.primary, size: tam * 0.6),
+  );
 }
 
 // ───────────────────────── Columna de horas (fija) ─────────────────────────
@@ -476,6 +488,7 @@ class _ColumnaEmpleado extends StatelessWidget {
     required this.ahora,
     required this.citas,
     required this.onHueco,
+    required this.anchoColumna,
   });
 
   final Empleado empleado;
@@ -487,6 +500,7 @@ class _ColumnaEmpleado extends StatelessWidget {
   final DateTime ahora;
   final List<CitaAdmin> citas;
   final OnHuecoPulsado onHueco;
+  final double anchoColumna;
 
   @override
   Widget build(BuildContext context) {
@@ -503,7 +517,7 @@ class _ColumnaEmpleado extends StatelessWidget {
     );
 
     return Container(
-      width: _kAnchoColumna,
+      width: anchoColumna,
       margin: const EdgeInsets.symmetric(horizontal: 4),
       child: Stack(
         clipBehavior: Clip.hardEdge,
@@ -518,16 +532,16 @@ class _ColumnaEmpleado extends StatelessWidget {
           ),
           if (descanso != null) _FranjaDescanso(descanso: descanso, rango: rango),
           ...huecos.map((h) => _Hueco(
-                hueco: h,
-                rango: rango,
-                onPulsar: () => onHueco(
-                  idEmpleado: empleado.id,
-                  nombreEmpleado: empleado.nombreCompleto,
-                  fecha: fecha,
-                  horaInicio: h.horaInicio,
-                  horaFinHueco: h.horaFin,
-                ),
-              )),
+            hueco: h,
+            rango: rango,
+            onPulsar: () => onHueco(
+              idEmpleado: empleado.id,
+              nombreEmpleado: empleado.nombreCompleto,
+              fecha: fecha,
+              horaInicio: h.horaInicio,
+              horaFinHueco: h.horaFin,
+            ),
+          )),
           ...citas.map((c) => _TarjetaCita(cita: c, rango: rango, ahora: ahora)),
         ],
       ),
@@ -816,17 +830,17 @@ class CartelCerrado extends StatelessWidget {
   Widget build(BuildContext context) {
     final (IconData icono, String titulo, String detalle) = switch (motivo) {
       MotivoCierre.domingoSinHorario =>
-        (Icons.event_busy, 'Peluquería cerrada', 'Hoy no hay horario de apertura.'),
+      (Icons.event_busy, 'Peluquería cerrada', 'Hoy no hay horario de apertura.'),
       MotivoCierre.festivo =>
-        (Icons.flag_outlined, 'Día festivo', 'La peluquería permanece cerrada por festivo.'),
+      (Icons.flag_outlined, 'Día festivo', 'La peluquería permanece cerrada por festivo.'),
       MotivoCierre.vacaciones =>
-        (Icons.beach_access_outlined, 'Vacaciones', 'La peluquería está cerrada por vacaciones.'),
+      (Icons.beach_access_outlined, 'Vacaciones', 'La peluquería está cerrada por vacaciones.'),
       MotivoCierre.mantenimiento =>
-        (Icons.build_outlined, 'Mantenimiento', 'Cerrado por trabajos de mantenimiento.'),
+      (Icons.build_outlined, 'Mantenimiento', 'Cerrado por trabajos de mantenimiento.'),
       MotivoCierre.cierreAnual =>
-        (Icons.calendar_today_outlined, 'Cierre anual', 'Estamos en el periodo de cierre anual.'),
+      (Icons.calendar_today_outlined, 'Cierre anual', 'Estamos en el periodo de cierre anual.'),
       MotivoCierre.abierto =>
-        (Icons.check_circle_outline, 'Abierto', ''),
+      (Icons.check_circle_outline, 'Abierto', ''),
     };
 
     return Center(

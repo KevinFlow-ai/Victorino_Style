@@ -28,12 +28,13 @@ import '../../features/cliente/registro/presentation/registro_screen.dart';
 import '../../features/cliente/reservar/presentation/pestana_reservar_screen.dart';
 import '../../features/cliente/reservar/presentation/wizard_reserva_screen.dart';
 import '../../features/cliente/shell/presentation/shell_cliente_screen.dart';
-import '../../features/empleado/home/home_empleado.dart';
 import '../../features/forgot_password/forgot_password_screen.dart';
 import '../../features/login_admin_empleado_cliente/presentation/login_screen.dart';
 import '../../features/notificaciones/presentation/bandeja_notificaciones_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../shared/providers/sesion_provider.dart';
+import '../widgets_compartidos/widget_inferior_empleado.dart';
+
 
 
 final appRouterProvider = Provider<GoRouter>((ref) {
@@ -112,7 +113,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      GoRoute(path: '/empleado/home', builder: (_, _) => const HomeEmpleado()),
+
+      // Home del empleado: ahora usa el widget inferior que contiene la agenda.
+      GoRoute(path: '/empleado/home', builder: (_, _) => const WidgetInferiorEmpleado()),
+
 
       // Panel ADMIN con bottom nav y 5 ramas independientes.
       StatefulShellRoute.indexedStack(

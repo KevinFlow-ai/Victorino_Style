@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_colores.dart';
+import '../../features/empleado/agenda/presentation/agenda_empleado_screen.dart';
+import '../theme/app_colores.dart';
 
 class WidgetInferiorEmpleado extends StatefulWidget {
   const WidgetInferiorEmpleado({super.key});
@@ -13,7 +14,7 @@ class _WidgetInferiorEmpleadoState extends State<WidgetInferiorEmpleado> {
   int selectedIndex = 0;
 
   final List<Widget> pages = const [
-    Center(child: Text("Agenda", style: TextStyle(fontSize: 24))),
+    AgendaEmpleadoScreen(),
     Center(child: Text("Perfil", style: TextStyle(fontSize: 24))),
   ];
 
@@ -31,8 +32,10 @@ class _WidgetInferiorEmpleadoState extends State<WidgetInferiorEmpleado> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: pages[selectedIndex],
-
+      body: IndexedStack(
+        index: selectedIndex,
+        children: pages,
+      ),
       bottomNavigationBar: Container(
         margin: const EdgeInsets.all(12),
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -41,7 +44,7 @@ class _WidgetInferiorEmpleadoState extends State<WidgetInferiorEmpleado> {
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: AppColors.black.withOpacity(0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
