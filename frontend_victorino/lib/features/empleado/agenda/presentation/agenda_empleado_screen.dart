@@ -70,6 +70,12 @@ class AgendaEmpleadoScreen extends ConsumerWidget {
               fecha: filtros.fecha,
               onCambiarFecha: () =>
                   _seleccionarFecha(context, ref, filtros.fecha),
+              onRefrescar: () {
+                ref.invalidate(horarioNotifierProvider);
+                ref.invalidate(festivosNotifierProvider);
+                ref.invalidate(cierreAnualNotifierProvider);
+                ref.read(agendaAdminNotifierProvider.notifier).recargar();
+              },
             ),
             const SizedBox(height: 4), // Un pequeño respiro antes de la agenda
             Expanded(
@@ -287,10 +293,15 @@ class _CuerpoAgenda extends ConsumerWidget {
 }
 
 class _CabeceraFecha extends StatelessWidget {
-  const _CabeceraFecha({required this.fecha, required this.onCambiarFecha});
+  const _CabeceraFecha({
+    required this.fecha,
+    required this.onCambiarFecha,
+    required this.onRefrescar,
+  });
 
   final DateTime fecha;
   final VoidCallback onCambiarFecha;
+  final VoidCallback onRefrescar;
 
   @override
   Widget build(BuildContext context) {
@@ -311,6 +322,14 @@ class _CabeceraFecha extends StatelessWidget {
                 letterSpacing: 0.5,
               ),
             ),
+          ),
+          IconButton(
+            icon: const Icon(
+              Icons.refresh_rounded,
+              size: 20,
+              color: AppColors.primary,
+            ),
+            onPressed: onRefrescar,
           ),
           IconButton(
             icon: const Icon(

@@ -157,7 +157,7 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
                   },
                   data: (lista) => DropdownButtonFormField<int>(
                     value: _idServicio,
-                    isExpanded: true,   // ← esta línea
+                    isExpanded: true,   // ← esta línea, error 0.189 pixels
                     decoration: _dec('Servicio'),
                     items: lista
                         .where((s) => s.activo)
