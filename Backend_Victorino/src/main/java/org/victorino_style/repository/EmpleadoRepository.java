@@ -21,9 +21,14 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
            """)
     Optional<Empleado> findActivoById(Long id);
 
-
-
-
+    // ------------------------------------------------------------------------
+    // Busca un empleado activo por el correo de su usuario.
+    // ------------------------------------------------------------------------
+    @Query("""
+           SELECT e FROM Empleado e
+           WHERE e.usuario.correoUsuario = :correo AND e.usuario.fechaEliminacionUsuario IS NULL
+           """)
+    Optional<Empleado> findByUsuario_CorreoUsuario(String correo);
 
     // ------------------------------------------------------------------------
     // Devuelve todos los empleados activos, ordenados por nombre.
@@ -34,18 +39,6 @@ public interface EmpleadoRepository extends JpaRepository<Empleado, Long> {
            ORDER BY e.nombreEmpleado ASC, e.apellidosEmpleado ASC
            """)
     List<Empleado> findAllActivos();
-    // ------------------------------------------------------------------------
-    // findAllActivos()
-    // ------------------------------------------------------------------------
-    // Devuelve TODOS los empleados activos (sin soft-delete),
-    // ordenados por nombre y apellidos.
-    //
-    // ¿Para qué sirve?
-    //   → Para mostrar en el panel admin solo empleados vigentes.
-    //   → Para listarlos en combos, asignaciones, etc.
-
-
-
 
     // ------------------------------------------------------------------------
     // Devuelve TODOS los empleados (activos + inactivos), ordenados por nombre.

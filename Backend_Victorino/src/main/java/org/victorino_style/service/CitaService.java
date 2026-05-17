@@ -3,21 +3,16 @@ package org.victorino_style.service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.victorino_style.dto.admin.AvisoClienteResponse;
-import org.victorino_style.dto.admin.CitaAdminResponse;
-import org.victorino_style.dto.admin.HistorialClienteResponse;
-import org.victorino_style.dto.admin.WalkInRequest;
-import org.victorino_style.entity.Cita;
-import org.victorino_style.entity.Cliente;
-import org.victorino_style.entity.ClienteInvitado;
-import org.victorino_style.entity.Empleado;
-import org.victorino_style.entity.Servicio;
+import org.victorino_style.dto.admin.*;
+import org.victorino_style.entity.*; // Importamos todas las entidades (incluye Peluqueria y Usuario)
 import org.victorino_style.entity.enums.EstadoCita;
 import org.victorino_style.entity.enums.TipoNotificacion;
 import org.victorino_style.exception.CitaSolapadaException;
 import org.victorino_style.exception.EmpleadoNoEncontradoException;
+import org.victorino_style.exception.PasswordIncorrectaException;
 import org.victorino_style.exception.RecursoNoEncontradoException;
 import org.victorino_style.exception.ServicioNoEncontradoException;
 import org.victorino_style.mapper.CitaMapper;
@@ -29,15 +24,24 @@ import org.victorino_style.repository.FestivoRepository;
 import org.victorino_style.repository.HorarioEmpleadoRepository;
 import org.victorino_style.repository.PeluqueriaRepository;
 import org.victorino_style.repository.ServicioRepository;
+import org.victorino_style.repository.UsuarioRepository;
 
-import java.time.DayOfWeek;
-import java.time.Instant;
-import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.*; // Importamos java.time.* para incluir Period, LocalDate, LocalTime, etc.
 import java.util.ArrayList;
 import java.util.List;
 
-@Slf4j
+// NOTIFICACIONES (los metodos reservar/cancelarPorCliente para el cliente final
+// se movieron al nuevo CitaClienteService en el modulo cliente).
+
+
+// Servicio del dominio CITA enfocado al panel del administrador.
+//
+// Aglutina:
+// - Lectura de la agenda global con filtros (fecha, empleado, estado).
+// - Historial completo de un cliente.
+// - Creación de citas walk-in (cliente registrado o invitado, validando disponibilidad).
+// - Avisos informativos sobre clientes con cancelaciones recientes.
+@Slf4j // generar automáticamente un logger llamado "log" dentro de la clase.
 @Service
 @RequiredArgsConstructor
 public class CitaService {
@@ -53,7 +57,10 @@ public class CitaService {
     private final NotificacionService notificacionService;
     private final AuditoriaService auditoriaService;
     private final CitaMapper citaMapper;
+    private final PasswordEncoder passwordEncoder;
+    private final UsuarioRepository usuarioRepository;
 
+    // Umbral de cancelaciones recientes a partir del cual el cliente aparece en avisos.
     @Value("${victorino.avisos.umbral-cancelaciones:3}")
     private int umbralCancelaciones;
 
@@ -99,15 +106,20 @@ public class CitaService {
 
     @Transactional
     public CitaAdminResponse crearWalkIn(WalkInRequest dto) {
+        // 1) Carga referencias.
         Empleado empleado = empleadoRepository.findActivoById(dto.idEmpleado())
                 .orElseThrow(() -> new EmpleadoNoEncontradoException(dto.idEmpleado()));
         Servicio servicio = servicioRepository.findByIdAndFechaEliminacionServicioIsNull(dto.idServicio())
                 .orElseThrow(() -> new ServicioNoEncontradoException(dto.idServicio()));
 
+        // 2) Calcula hora_fin = hora_inicio + duracion del servicio.
         LocalTime horaFin = dto.horaInicio().plusMinutes(servicio.getDuracionServicio());
 
+        // 3) Valida disponibilidad: día abierto, no festivo, no cierre anual,
+        //    fuera de descanso del empleado, sin solape con otra cita.
         validarDisponibilidad(empleado, dto.fecha(), dto.horaInicio(), horaFin);
 
+        // 4) Construye la cita.
         Cita cita = new Cita();
         cita.setIdEmpleado(empleado);
         cita.setIdServicio(servicio);
@@ -121,6 +133,7 @@ public class CitaService {
         cita.setFechaModificacionCita(ahora);
         cita.setVersionCita(0L);
 
+        // 5) Resuelve identidad (XOR cliente / invitado).
         if (dto.idCliente() != null) {
             Cliente cliente = clienteRepository.findById(dto.idCliente())
                     .orElseThrow(() -> new RecursoNoEncontradoException(
@@ -140,6 +153,7 @@ public class CitaService {
 
         cita = citaRepository.save(cita);
 
+        // 6) Notifica al empleado por la nueva cita.
         notificacionService.crearNotificacion(
                 empleado.getUsuario(), cita, TipoNotificacion.NUEVA_CITA_EMPLEADO,
                 "Nueva cita asignada",
@@ -195,7 +209,7 @@ public class CitaService {
             String nombre = (String) fila[1];
             String apellidos = (String) fila[2];
             String correo = (String) fila[3];
-            long count = (Long) fila[4];
+            long count = ((Number) fila[4]).longValue();
             avisos.add(new AvisoClienteResponse(idCliente, nombre + " " + apellidos, correo, count));
         }
         return avisos;
@@ -207,9 +221,11 @@ public class CitaService {
 
     private void validarDisponibilidad(Empleado empleado, LocalDate fecha,
                                        LocalTime horaInicio, LocalTime horaFin) {
+        // 1) Festivo concreto.
         if (festivoRepository.existsByFechaFestivo(fecha)) {
             throw new CitaSolapadaException("La peluquería está cerrada (festivo) el " + fecha);
         }
+        // 2) Cierre anual.
         peluqueriaRepository.findFirstByOrderByIdAsc().ifPresent(p -> {
             LocalDate ini = p.getCierreAnualInicio();
             LocalDate fin = p.getCierreAnualFin();
@@ -218,6 +234,7 @@ public class CitaService {
                 throw new CitaSolapadaException("La peluquería está cerrada (vacaciones) el " + fecha);
             }
         });
+        // 3) Horario de apertura para el día de la semana.
         peluqueriaRepository.findFirstByOrderByIdAsc().ifPresent(p -> {
             LocalTime apertura = aperturaPara(p, fecha.getDayOfWeek());
             LocalTime cierre = cierrePara(p, fecha.getDayOfWeek());
@@ -228,20 +245,24 @@ public class CitaService {
                 throw new CitaSolapadaException("La franja queda fuera del horario de apertura.");
             }
         });
+        // 4) Descanso del empleado.
         horarioEmpleadoRepository.findByIdEmpleado_Id(empleado.getId()).ifPresent(he -> {
             LocalTime ini = he.getDescansoInicioHorario();
             LocalTime fin = ini.plusMinutes(he.getDescansoDuracionHorario());
+            // Solapa si la cita comienza antes de fin del descanso y termina después del inicio.
             if (horaInicio.isBefore(fin) && horaFin.isAfter(ini)) {
                 throw new CitaSolapadaException("El empleado descansa en esa franja.");
             }
         });
+        // 5) Solape con otras citas activas.
         long solapes = citaRepository.contarSolapes(empleado.getId(), fecha, horaInicio, horaFin);
         if (solapes > 0) {
             throw new CitaSolapadaException("El empleado ya tiene una cita en esa franja.");
         }
     }
 
-    private LocalTime aperturaPara(org.victorino_style.entity.Peluqueria p, DayOfWeek d) {
+    // Devuelve la hora de apertura del día indicado.
+    private LocalTime aperturaPara(Peluqueria p, DayOfWeek d) {
         return switch (d) {
             case MONDAY    -> p.getAperturaLunes();
             case TUESDAY   -> p.getAperturaMartes();
@@ -253,7 +274,7 @@ public class CitaService {
         };
     }
 
-    private LocalTime cierrePara(org.victorino_style.entity.Peluqueria p, DayOfWeek d) {
+    private LocalTime cierrePara(Peluqueria p, DayOfWeek d) {
         return switch (d) {
             case MONDAY    -> p.getCierreLunes();
             case TUESDAY   -> p.getCierreMartes();
@@ -263,5 +284,86 @@ public class CitaService {
             case SATURDAY  -> p.getCierreSabado();
             case SUNDAY    -> p.getCierreDomingo();
         };
+    }
+
+    // ============================================================
+    //  PERFIL EMPLEADO: ESTADÍSTICAS Y SEGURIDAD
+    // ============================================================
+
+    // ---- NUEVO: Lógica del Perfil con manejo de nulos ----
+    @Transactional(readOnly = true)
+    public EmpleadoPerfilResumenDTO obtenerResumenPerfilPorId(Long id) {
+        // Buscamos directamente por ID, que es el valor infalible que devuelve Principal.getName()
+        Empleado empleado = empleadoRepository.findActivoById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Empleado no encontrado"));
+
+        long completadas = citaRepository.countByIdEmpleado_IdAndEstadoCita(empleado.getId(), EstadoCita.COMPLETADA);
+
+        String experiencia = "Nuevo en el equipo";
+        try {
+            if (empleado.getUsuario() != null && empleado.getUsuario().getFechaCreacionUsuario() != null) {
+                LocalDate inicio = empleado.getUsuario().getFechaCreacionUsuario().atZone(ZoneId.systemDefault()).toLocalDate();
+                Period p = Period.between(inicio, LocalDate.now());
+                if (p.getYears() > 0) {
+                    experiencia = p.getYears() + (p.getYears() == 1 ? " año" : " años");
+                } else if (p.getMonths() > 0) {
+                    experiencia = p.getMonths() + (p.getMonths() == 1 ? " mes" : " meses");
+                } else {
+                    experiencia = "Este mes";
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Error calculando experiencia para empleado {}: {}", id, e.getMessage());
+        }
+
+        return new EmpleadoPerfilResumenDTO(
+                empleado.getId(),
+                empleado.getNombreEmpleado() + " " + empleado.getApellidosEmpleado(),
+                empleado.getFotoEmpleado(),
+                completadas,
+                experiencia
+        );
+    }
+
+    @Transactional
+    public void actualizarPasswordPorId(Long id, String vieja, String nueva) {
+        // Buscamos al usuario por ID directamente
+        Empleado empleado = empleadoRepository.findActivoById(id)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Empleado no encontrado"));
+
+        Usuario usuario = empleado.getUsuario();
+
+        if (!passwordEncoder.matches(vieja, usuario.getContrasenaUsuario())) {
+            throw new PasswordIncorrectaException();
+        }
+
+        usuario.setContrasenaUsuario(passwordEncoder.encode(nueva));
+        usuario.setFechaModificacionUsuario(Instant.now());
+
+        usuarioRepository.save(usuario);
+
+        auditoriaService.registrar("CAMBIAR_PASSWORD_EMPLEADO", "USUARIO", usuario.getId(),
+                "Cambio de contraseña del empleado " + usuario.getCorreoUsuario());
+
+        log.info("Contraseña actualizada para el empleado id={}", empleado.getId());
+    }
+
+    @Transactional
+    public void actualizarPassword(String correo, String vieja, String nueva) {
+        log.info("Intento de cambio de contraseña para: {}", correo);
+        // Buscamos al usuario por correo
+        Usuario usuario = usuarioRepository.findByCorreoUsuarioAndFechaEliminacionUsuarioIsNull(correo)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Usuario no encontrado"));
+
+        if (!passwordEncoder.matches(vieja, usuario.getContrasenaUsuario())) {
+            throw new PasswordIncorrectaException();
+        }
+
+        usuario.setContrasenaUsuario(passwordEncoder.encode(nueva));
+        usuario.setFechaModificacionUsuario(Instant.now());
+        usuarioRepository.save(usuario);
+
+        auditoriaService.registrar("CAMBIAR_PASSWORD_EMPLEADO", "USUARIO", usuario.getId(),
+                "Cambio de contraseña del usuario " + correo);
     }
 }

@@ -10,6 +10,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.victorino_style.dto.admin.EmpleadoAdminRequest;
 import org.victorino_style.dto.admin.EmpleadoAdminResponse;
 import org.victorino_style.dto.admin.FotoResponse;
+import org.victorino_style.dto.empleado.ConfiguracionEmpleadoRequest;
+import org.victorino_style.dto.empleado.PerfilEmpleadoResponse;
 import org.victorino_style.entity.Empleado;
 import org.victorino_style.entity.Usuario;
 import org.victorino_style.entity.enums.RolUsuario;
@@ -24,15 +26,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
 
-// Servicio del dominio EMPLEADO para el panel del administrador.
-//
-// Responsabilidades:
-// - Alta de empleados (Usuario + Empleado en una sola transacción).
-// - Edición de datos básicos (nombre, apellidos, correo, contraseña opcional).
-// - Baja lógica (soft-delete: marca fecha_eliminacion_usuario).
-// - Listado activos / activos+inactivos.
-// - Subida de foto obligatoria.
-// - Auditoría de todas las escrituras.
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -45,12 +38,8 @@ public class EmpleadoService {
     private final FileStorageService fileStorageService;
     private final AuditoriaService auditoriaService;
 
-    // Subcarpeta donde se guardan las fotos de empleados dentro de /uploads/.
     private static final String CARPETA_FOTOS = "empleados";
 
-    // ------------------------------------------------------------------------
-    // Lista de empleados. Si incluirInactivos=true devuelve todos; si no, solo activos.
-    // ------------------------------------------------------------------------
     @Transactional(readOnly = true)
     public List<EmpleadoAdminResponse> listar(boolean incluirInactivos) {
         List<Empleado> empleados = incluirInactivos
@@ -59,9 +48,6 @@ public class EmpleadoService {
         return empleados.stream().map(empleadoMapper::aRespuesta).toList();
     }
 
-    // ------------------------------------------------------------------------
-    // Detalle de un empleado activo por id. 404 si no existe o está dado de baja.
-    // ------------------------------------------------------------------------
     @Transactional(readOnly = true)
     public EmpleadoAdminResponse obtener(Long idEmpleado) {
         Empleado empleado = empleadoRepository.findActivoById(idEmpleado)
@@ -69,11 +55,26 @@ public class EmpleadoService {
         return empleadoMapper.aRespuesta(empleado);
     }
 
-    // ------------------------------------------------------------------------
-    // Alta. Crea Usuario + Empleado y devuelve la respuesta. La foto se sube
-    // después con un endpoint multipart dedicado: hasta entonces, foto_empleado
-    // queda con un placeholder vacío que la lista pinta como "sin foto".
-    // ------------------------------------------------------------------------
+    @Transactional(readOnly = true)
+    public PerfilEmpleadoResponse obtenerPerfil(Long idEmpleado) {
+        Empleado empleado = empleadoRepository.findActivoById(idEmpleado)
+                .orElseThrow(() -> new EmpleadoNoEncontradoException(idEmpleado));
+        return empleadoMapper.aPerfilRespuesta(empleado);
+    }
+
+    @Transactional
+    public void actualizarConfiguracion(Long idEmpleado, ConfiguracionEmpleadoRequest request) {
+        Empleado empleado = empleadoRepository.findActivoById(idEmpleado)
+                .orElseThrow(() -> new EmpleadoNoEncontradoException(idEmpleado));
+
+        empleado.setSilencioInicioEmpleado(request.silencioInicio());
+        empleado.setSilencioFinEmpleado(request.silencioFin());
+        empleado.setNoMolestarEmpleado(request.noMolestar());
+
+        empleadoRepository.save(empleado);
+        log.info("Configuración actualizada para empleado ID: {}", idEmpleado);
+    }
+
     @Transactional
     public EmpleadoAdminResponse crear(EmpleadoAdminRequest dto) {
         String correo = dto.correo().trim().toLowerCase(Locale.ROOT);
@@ -98,7 +99,6 @@ public class EmpleadoService {
         empleado.setUsuario(usuario);
         empleado.setNombreEmpleado(dto.nombre().trim());
         empleado.setApellidosEmpleado(dto.apellidos().trim());
-        // Foto provisional vacía: se rellena con POST /admin/empleados/{id}/foto.
         empleado.setFotoEmpleado("");
         empleado.setNoMolestarEmpleado(false);
         empleado = empleadoRepository.save(empleado);
@@ -110,16 +110,12 @@ public class EmpleadoService {
         return empleadoMapper.aRespuesta(empleado);
     }
 
-    // ------------------------------------------------------------------------
-    // Edición. Actualiza nombre, apellidos, correo y, opcionalmente, la pwd.
-    // ------------------------------------------------------------------------
     @Transactional
     public EmpleadoAdminResponse editar(Long idEmpleado, EmpleadoAdminRequest dto) {
         Empleado empleado = empleadoRepository.findActivoById(idEmpleado)
                 .orElseThrow(() -> new EmpleadoNoEncontradoException(idEmpleado));
         Usuario usuario = empleado.getUsuario();
 
-        // Si cambia el correo, valida unicidad antes.
         String correoNuevo = dto.correo().trim().toLowerCase(Locale.ROOT);
         if (!correoNuevo.equals(usuario.getCorreoUsuario())
                 && usuarioRepository.existsByCorreoUsuario(correoNuevo)) {
@@ -131,7 +127,6 @@ public class EmpleadoService {
         usuario.setCorreoUsuario(correoNuevo);
         usuario.setFechaModificacionUsuario(Instant.now());
 
-        // Solo se cambia la pwd si llega un valor no vacío.
         if (dto.passwordProvisional() != null && !dto.passwordProvisional().isBlank()) {
             usuario.setContrasenaUsuario(passwordEncoder.encode(dto.passwordProvisional()));
         }
@@ -145,15 +140,11 @@ public class EmpleadoService {
         return empleadoMapper.aRespuesta(empleado);
     }
 
-    // ------------------------------------------------------------------------
-    // Baja lógica. Marca fecha_eliminacion_usuario. Bloquea autobaja del admin actual.
-    // ------------------------------------------------------------------------
     @Transactional
     public void darBaja(Long idEmpleado) {
         Empleado empleado = empleadoRepository.findActivoById(idEmpleado)
                 .orElseThrow(() -> new EmpleadoNoEncontradoException(idEmpleado));
 
-        // Autoprotección: el admin no puede darse de baja a sí mismo desde aquí.
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getName() != null
                 && auth.getName().equalsIgnoreCase(empleado.getUsuario().getCorreoUsuario())) {
@@ -171,9 +162,6 @@ public class EmpleadoService {
         log.info("Empleado dado de baja lógica: id={}", empleado.getId());
     }
 
-    // ------------------------------------------------------------------------
-    // Subida de foto. Es un endpoint independiente porque viaja como multipart.
-    // ------------------------------------------------------------------------
     @Transactional
     public FotoResponse subirFoto(Long idEmpleado, MultipartFile archivo) {
         if (archivo == null || archivo.isEmpty()) throw new FotoObligatoriaException();
@@ -181,7 +169,6 @@ public class EmpleadoService {
         Empleado empleado = empleadoRepository.findActivoById(idEmpleado)
                 .orElseThrow(() -> new EmpleadoNoEncontradoException(idEmpleado));
 
-        // Reemplaza la foto antigua si la había.
         String fotoAnterior = empleado.getFotoEmpleado();
         String url = fileStorageService.reemplazar(archivo, CARPETA_FOTOS, fotoAnterior);
 
