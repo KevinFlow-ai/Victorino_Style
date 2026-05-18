@@ -115,13 +115,15 @@ class _CambiarPasswordEmpleadoScreenState extends ConsumerState<CambiarPasswordE
                 controller: _nuevaController,
                 obscureText: _obscureNueva,
                 decoration: _inputDecoration(
-                  hint: 'Mínimo 8 caracteres',
+                  hint: 'Min. 8 carac., Mayús. y Número',
                   isObscured: _obscureNueva,
                   onToggle: () => setState(() => _obscureNueva = !_obscureNueva),
                 ),
                 validator: (v) {
                   if (v == null || v.isEmpty) return 'Campo obligatorio';
                   if (v.length < 8) return 'Mínimo 8 caracteres';
+                  if (!RegExp(r'[A-Z]').hasMatch(v)) return 'Debe contener al menos una mayúscula';
+                  if (!RegExp(r'[0-9]').hasMatch(v)) return 'Debe contener al menos un número';
                   return null;
                 },
               ),
