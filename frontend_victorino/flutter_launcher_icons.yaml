@@ -1,0 +1,32 @@
+# Configuración de íconos de lanzamiento para todas las plataformas.
+# Fuente: assets/logos_app/logo_app1.3.png (fondo transparente)
+# Color de fondo: salmón rosado #E8A898
+# Ejecutar con: dart run flutter_launcher_icons
+
+flutter_launcher_icons:
+  image_path: "assets/logos_app/logo_app1.3.png"
+
+  # ── Android ──────────────────────────────────────────────────────────────
+  android: true
+  # Ícono adaptativo (Android 8+): fondo negro exterior + logo como foreground
+  adaptive_icon_background: "#0A0A0F"
+  adaptive_icon_foreground: "assets/logos_app/logo_app1.3.png"
+
+  # ── iOS ──────────────────────────────────────────────────────────────────
+  ios: true
+  # iOS no permite transparencia en íconos: se compone sobre fondo negro
+  remove_alpha_ios: true
+  background_color_ios: "#0A0A0F"
+
+  # ── Web ──────────────────────────────────────────────────────────────────
+  web:
+    generate: true
+    image_path: "assets/logos_app/logo_app1.3.png"
+    background_color: "#0A0A0F"
+    theme_color: "#0A0A0F"
+
+  # ── Linux ────────────────────────────────────────────────────────────────
+  # Requiere que exista el directorio linux/ (flutter create --platforms=linux .)
+  linux:
+    generate: true
+    image_path: "assets/logos_app/logo_app1.3.png"
