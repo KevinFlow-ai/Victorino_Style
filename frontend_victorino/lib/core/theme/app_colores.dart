@@ -11,4 +11,11 @@ class AppColors {
   static const Color accentGlow = Color(0x267C4DFF); // 15% opacidad
   static const Color error = Color(0xFFFF3B30); // Rojo sistema
   static const Color black = Color(0xFF000000); // Para logo y detalles elegantes
+
+  // ── Paleta de para el splash + fondo de ícono ───────────────
+  static const Color lilasuave    = Color(0xFFC4A8C8); // Lila suave
+  static const Color salmonRosado = Color(0xFFE8A898); // Salmón rosado
+  static const Color naranjasuave = Color(0xFFD4906A); // Naranja suave
+
+
 }
