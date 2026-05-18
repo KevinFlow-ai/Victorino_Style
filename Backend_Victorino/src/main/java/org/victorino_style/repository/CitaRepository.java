@@ -72,10 +72,19 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
             @Param("estado") EstadoCita estado
     );
 
+    // ... existing code ...
     // ------------------------------------------------------------------------
     // Historial completo de un cliente registrado, ordenado descendente.
     // ------------------------------------------------------------------------
     List<Cita> findByIdCliente_IdOrderByFechaCitaDescHoraInicioCitaDesc(Long idCliente);
+
+    // ------------------------------------------------------------------------
+    // Historial de un cliente registrado filtrado por empleado, ordenado descendente.
+    // ------------------------------------------------------------------------
+    List<Cita> findByIdCliente_IdAndIdEmpleado_IdOrderByFechaCitaDescHoraInicioCitaDesc(
+            Long idCliente,
+            Long idEmpleado
+    );
 
     // ------------------------------------------------------------------------
     // Cuenta citas de un empleado por estado.

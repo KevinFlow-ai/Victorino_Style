@@ -46,6 +46,14 @@ public class CitaController {
         return citaService.historialCliente(id);
     }
 
+    // ---- Endpoint: HISTORIAL DE CLIENTE CON EMPLEADO ----
+    @GetMapping("/clientes/{idCliente}/historial-con-empleado/{idEmpleado}")
+    public HistorialClienteResponse historialClienteConEmpleado(@PathVariable Long idCliente,
+                                                                @PathVariable Long idEmpleado) {
+        return citaService.historialClienteConEmpleado(idCliente, idEmpleado);
+    }
+
+
     // ---- WALK-IN ----
     @PostMapping("/citas/walk-in")
     @ResponseStatus(HttpStatus.CREATED)

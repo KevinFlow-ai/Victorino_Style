@@ -100,6 +100,32 @@ public class CitaService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public HistorialClienteResponse historialClienteConEmpleado(Long idCliente, Long idEmpleado) {
+        Cliente cliente = clienteRepository.findById(idCliente)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Cliente no encontrado con id " + idCliente));
+
+        empleadoRepository.findById(idEmpleado)
+                .orElseThrow(() -> new RecursoNoEncontradoException("Empleado no encontrado con id " + idEmpleado));
+
+        List<CitaAdminResponse> citas = citaRepository
+                .findByIdCliente_IdAndIdEmpleado_IdOrderByFechaCitaDescHoraInicioCitaDesc(idCliente, idEmpleado)
+                .stream().map(citaMapper::aRespuesta).toList();
+
+        return new HistorialClienteResponse(
+                cliente.getId(),
+                cliente.getNombreCliente() + " " + cliente.getApellidosCliente(),
+                cliente.getUsuario().getCorreoUsuario(),
+                cliente.getTelefonoCliente(),
+                cliente.getFotoCliente(),
+                cliente.getUsuario().getFechaEliminacionUsuario() == null,
+                citas.size(),
+                citas
+        );
+    }
+
+
+
     // ============================================================
     //  WALK-IN
     // ============================================================
