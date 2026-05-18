@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/providers/sesion_provider.dart';
 import '../../../../shared/providers/dio_provider.dart';
+import '../../../administrador/agenda/domain/entidades/cita.dart';
 import '../data/repositorios/perfil_empleado_repositorio_impl.dart';
 import '../domain/entidades/perfil_resumen_empleado.dart';
 import '../domain/repositorios/perfil_empleado_repositorio.dart';
@@ -13,10 +14,8 @@ final perfilEmpleadoRepositorioProvider = Provider<PerfilEmpleadoRepositorio>((r
 class PerfilEmpleadoResumenNotifier extends AsyncNotifier<PerfilResumenEmpleado> {
   @override
   Future<PerfilResumenEmpleado> build() async {
-    // Obtenemos la sesión actual para sacar el ID del usuario
     final sesion = ref.watch(sesionProvider).value;
     if (sesion == null) throw Exception('No hay sesión activa');
-
     return ref.read(perfilEmpleadoRepositorioProvider).obtenerResumen(sesion.idUsuario);
   }
 
@@ -29,6 +28,17 @@ class PerfilEmpleadoResumenNotifier extends AsyncNotifier<PerfilResumenEmpleado>
 final perfilEmpleadoResumenProvider =
     AsyncNotifierProvider<PerfilEmpleadoResumenNotifier, PerfilResumenEmpleado>(
         PerfilEmpleadoResumenNotifier.new);
+
+/// Provider para el historial de un cliente con el empleado actual.
+final historialClienteConEmpleadoProvider =
+    FutureProvider.family<HistorialCliente, int>((ref, idCliente) async {
+  final sesion = ref.watch(sesionProvider).value;
+  if (sesion == null) throw Exception('No hay sesión activa');
+  
+  return ref
+      .read(perfilEmpleadoRepositorioProvider)
+      .obtenerHistorialClienteConEmpleado(idCliente, sesion.idUsuario);
+});
 
 /// Notifier para el proceso de cambio de contraseña.
 class CambiarPasswordEmpleadoNotifier extends AsyncNotifier<void> {

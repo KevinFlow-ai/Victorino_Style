@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import '../../../../../core/api/api_endpoints.dart';
 import '../../../../../core/errors/api_exception.dart';
 import '../../../../../core/errors/error_mapper.dart';
+import '../../../../administrador/agenda/data/modelos/agenda_dtos.dart';
+import '../../../../administrador/agenda/domain/entidades/cita.dart';
 import '../../domain/entidades/perfil_resumen_empleado.dart';
 import '../../domain/repositorios/perfil_empleado_repositorio.dart';
 
@@ -41,6 +43,18 @@ class PerfilEmpleadoRepositorioImpl implements PerfilEmpleadoRepositorio {
         ApiEndpoints.empleadoCambiarPassword,
         data: {'oldPassword': actual, 'newPassword': nueva},
       );
+    } catch (e) {
+      throw ApiException(_errorMapper.mapear(e));
+    }
+  }
+
+  @override
+  Future<HistorialCliente> obtenerHistorialClienteConEmpleado(int idCliente, int idEmpleado) async {
+    try {
+      final resp = await _dio.get<Map<String, dynamic>>(
+        ApiEndpoints.historialClienteConEmpleado(idCliente, idEmpleado),
+      );
+      return HistorialClienteDto(resp.data!).aEntidad();
     } catch (e) {
       throw ApiException(_errorMapper.mapear(e));
     }

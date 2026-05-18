@@ -44,6 +44,10 @@ class ApiEndpoints {
   static String empleadoPerfilResumen(int id) => '/admin/empleados/$id/resumen';
   static const empleadoCambiarPassword = '/admin/empleados/me/password';
 
+  // Historial de cliente específico con un empleado
+  static String historialClienteConEmpleado(int idCliente, int idEmpleado) => 
+      '/admin/clientes/$idCliente/historial-con-empleado/$idEmpleado';
+
   // Servicios
   static const adminServicios = '/admin/servicios';
   static String adminServicioPorId(int id) => '/admin/servicios/$id';

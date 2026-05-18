@@ -124,6 +124,7 @@ class AgendaGrid extends StatefulWidget {
     required this.onHuecoPulsado,
     this.anchoColumna = _kAnchoColumna, // Valor por defecto 170.0
     this.appointmentOverlayBuilder,
+    this.onCitaPulsada,
   });
 
   final DateTime fecha;
@@ -133,6 +134,7 @@ class AgendaGrid extends StatefulWidget {
   final OnHuecoPulsado onHuecoPulsado;
   final double anchoColumna;
   final AppointmentOverlayBuilder? appointmentOverlayBuilder;
+  final Function(CitaAdmin)? onCitaPulsada;
 
   @override
   State<AgendaGrid> createState() => _AgendaGridState();
@@ -267,6 +269,7 @@ class _AgendaGridState extends State<AgendaGrid> {
                                   onHueco: widget.onHuecoPulsado,
                                   anchoColumna: widget.anchoColumna,
                                   overlayBuilder: widget.appointmentOverlayBuilder,
+                                  onCitaPulsada: widget.onCitaPulsada,
                                 ))
                                     .toList(),
                               ),
@@ -352,7 +355,7 @@ class _TarjetaEmpleado extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: Colors.black.withOpacity(0.04),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -497,6 +500,7 @@ class _ColumnaEmpleado extends StatelessWidget {
     required this.onHueco,
     required this.anchoColumna,
     this.overlayBuilder,
+    this.onCitaPulsada,
   });
 
   final Empleado empleado;
@@ -510,6 +514,7 @@ class _ColumnaEmpleado extends StatelessWidget {
   final OnHuecoPulsado onHueco;
   final double anchoColumna;
   final AppointmentOverlayBuilder? overlayBuilder;
+  final Function(CitaAdmin)? onCitaPulsada;
 
   @override
   Widget build(BuildContext context) {
@@ -556,6 +561,7 @@ class _ColumnaEmpleado extends StatelessWidget {
             rango: rango,
             ahora: ahora,
             overlay: overlayBuilder?.call(context, c),
+            onTap: () => onCitaPulsada?.call(c),
           )),
         ],
       ),
@@ -582,7 +588,7 @@ class _FranjaDescanso extends StatelessWidget {
       height: altura - 4,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.grey.shade300.withValues(alpha: 0.55),
+          color: Colors.grey.shade300.withOpacity(0.55),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: Colors.grey.shade400, width: 0.5),
         ),
@@ -630,7 +636,7 @@ class _Hueco extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         child: DottedBorderBox(
           child: Center(
-            child: Icon(Icons.add, color: AppColors.primary.withValues(alpha: 0.7), size: 22),
+            child: Icon(Icons.add, color: AppColors.primary.withOpacity(0.7), size: 22),
           ),
         ),
       ),
@@ -647,7 +653,7 @@ class DottedBorderBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CustomPaint(
-      painter: _PinturaPunteada(color: AppColors.primary.withValues(alpha: 0.45)),
+      painter: _PinturaPunteada(color: AppColors.primary.withOpacity(0.45)),
       child: child,
     );
   }
@@ -695,11 +701,13 @@ class _TarjetaCita extends StatelessWidget {
     required this.rango,
     required this.ahora,
     this.overlay,
+    this.onTap,
   });
   final CitaAdmin cita;
   final RangoHorario rango;
   final DateTime ahora;
   final Widget? overlay;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -712,7 +720,10 @@ class _TarjetaCita extends StatelessWidget {
       left: 4,
       right: 4,
       height: altura - 4,
-      child: _TarjetaContenido(cita: cita, ahora: ahora, overlay: overlay),
+      child: GestureDetector(
+        onTap: onTap,
+        child: _TarjetaContenido(cita: cita, ahora: ahora, overlay: overlay),
+      ),
     );
   }
 }
@@ -758,7 +769,7 @@ class _TarjetaContenido extends StatelessWidget {
             border: Border(left: BorderSide(color: colores.acento, width: 4)),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
+                color: Colors.black.withOpacity(0.05),
                 blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
@@ -881,7 +892,7 @@ class CartelCerrado extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icono, size: 64, color: AppColors.primary.withValues(alpha: 0.7)),
+            Icon(icono, size: 64, color: AppColors.primary.withOpacity(0.7)),
             const SizedBox(height: 16),
             Text(
               titulo,

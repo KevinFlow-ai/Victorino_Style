@@ -35,6 +35,7 @@ import '../../features/splash/presentation/splash_screen.dart';
 import '../../shared/providers/sesion_provider.dart';
 import '../widgets_compartidos/widget_inferior_empleado.dart';
 import '../../features/empleado/perfil/presentation/cambiar_password_screen.dart';
+import '../../features/empleado/perfil/presentation/historial_cliente_empleado_screen.dart';
 
 
 
@@ -121,12 +122,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
           builder: (_, _) => const WidgetInferiorEmpleado(),
       ),
 
-      // ───────────────────────────────────────────────────────────────────────
-      // RUTA CORREGIDA: Cambio de contraseña para el empleado (Nivel Raíz)
-      // ───────────────────────────────────────────────────────────────────────
+      // Ruta de cambio de contraseña movida fuera para que el path coincida con context.push('/empleado/perfil/cambiar-pwd')
       GoRoute(
         path: '/empleado/perfil/cambiar-pwd',
         builder: (_, _) => const CambiarPasswordEmpleadoScreen(),
+      ),
+
+      // Nueva ruta: Historial de cliente para el empleado
+      GoRoute(
+        path: '/empleado/cliente/:id/historial',
+        builder: (_, state) => HistorialClienteEmpleadoScreen(
+          idCliente: int.parse(state.pathParameters['id']!),
+        ),
       ),
 
 

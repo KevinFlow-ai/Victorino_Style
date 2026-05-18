@@ -244,6 +244,11 @@ class _CuerpoAgenda extends ConsumerWidget {
             empleados: [empleado],
             citas: citasEmpleado,
             anchoColumna: anchoCalculado, // Aplicamos el ancho calculado aquí
+            onCitaPulsada: (cita) {
+              if (cita.idCliente != null) {
+                context.push('/empleado/cliente/${cita.idCliente}/historial');
+              }
+            },
             appointmentOverlayBuilder: (context, cita) {
               final ahora = DateTime.now();
               final estadoEfectivo = estadoEfectivoCita(cita, ahora);
