@@ -1,18 +1,69 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Theme applied to the Android Window while the process is starting when the OS's Dark Mode setting is off -->
-    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <!-- Show a splash screen on the activity. Automatically removed when
-             the Flutter engine draws its first frame -->
-        <item name="android:windowBackground">@drawable/launch_background</item>
-    </style>
-    <!-- Theme applied to the Android Window as soon as the process has started.
-         This theme determines the color of the Android Window while your
-         Flutter UI initializes, as well as behind your Flutter UI while its
-         running.
 
-         This Theme is only used starting with V2 of Flutter's Android embedding. -->
-    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
-        <item name="android:windowBackground">?android:colorBackground</item>
+<!-- define el tema que usa Android mientras Flutter arranca   -->
+
+    <!--
+        LaunchTheme:
+        Este tema se aplica MIENTRAS la app está arrancando,
+        antes de que Flutter dibuje su primer frame.
+        Es decir: controla la pantalla de splash inicial.
+    -->
+    <style name="LaunchTheme" parent="@android:style/Theme.Light.NoTitleBar">
+
+        <!--
+            android:windowBackground:
+            Define el fondo que se muestra mientras Flutter aún no ha dibujado nada.
+            Normalmente apunta a una imagen o color del splash screen.
+        -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
+
+        <!--
+            android:forceDarkAllowed:
+            Evita que Android aplique automáticamente el modo oscuro a este tema.
+            Mantiene el splash igual independientemente del modo del sistema.
+        -->
+        <item name="android:forceDarkAllowed">false</item>
+
+        <!--
+            android:windowFullscreen:
+            Si es false, mantiene visible la barra de estado durante el splash.
+        -->
+        <item name="android:windowFullscreen">false</item>
+
+        <!--
+            android:windowDrawsSystemBarBackgrounds:
+            Si es false, la ventana no dibuja las barras del sistema.
+            Esto evita parpadeos o cambios bruscos durante el arranque.
+        -->
+        <item name="android:windowDrawsSystemBarBackgrounds">false</item>
+
+        <!--
+            android:windowLayoutInDisplayCutoutMode:
+            Permite usar el área del notch en pantallas con recorte.
+            "shortEdges" significa que se puede usar el área del notch
+            cuando el dispositivo está en vertical.
+        -->
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
+
+
+    <!--
+        NormalTheme:
+        Este tema se aplica una vez que el proceso ya ha arrancado,
+        pero antes de que Flutter termine de inicializar su UI.
+
+        Su función es definir el color o fondo que se ve detrás de la UI de Flutter
+        mientras se está cargando, y también sirve como fallback si Flutter tarda
+        en dibujar.
+
+        Este tema solo se usa en el sistema de embedding V2 de Flutter.
+    -->
+    <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
+        <!-- Aquí normalmente se define un color de fondo, por ejemplo:
+        <item name="android:windowBackground">@color/white</item>
+        -->
+    </style>
+
 </resources>
+
