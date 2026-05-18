@@ -10,18 +10,36 @@
 // - Un borde lateral coloreado según el estado
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../../core/theme/app_colores.dart';
 import '../../domain/entidades/cita.dart';
 
 class CitaAdminCard extends StatelessWidget {
-  const CitaAdminCard({super.key, required this.cita});
+  const CitaAdminCard({
+    super.key,
+    required this.cita,
+    this.showDate = false, // Parámetro opcional para mostrar la fecha
+  });
+
   final CitaAdmin cita; // La cita que se va a mostrar en la tarjeta
+  final bool showDate;  // Si se debe mostrar la fecha (útil en historiales)
 
   @override
   Widget build(BuildContext context) {
     // Color según el estado de la cita (confirmada, cancelada, etc.)
     final color = _colorEstado(cita.estado);
+
+    // Formatear la fecha si es necesario
+    String? fechaFormateada;
+    if (showDate) {
+      try {
+        final DateTime parsedDate = DateTime.parse(cita.fecha);
+        fechaFormateada = DateFormat('dd/MM/yyyy').format(parsedDate);
+      } catch (_) {
+        fechaFormateada = cita.fecha;
+      }
+    }
 
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -46,21 +64,37 @@ class CitaAdminCard extends StatelessWidget {
       // Contenido principal de la tarjeta
       child: Row(
         children: [
-          // Bloque con la hora de inicio y fin
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              '${cita.horaInicio} - ${cita.horaFin}',
-              style: TextStyle(
-                color: color,
-                fontWeight: FontWeight.w700,
-                fontSize: 12,
+          // Bloque con la hora (y fecha si aplica)
+          Column(
+            children: [
+              if (showDate && fechaFormateada != null)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text(
+                    fechaFormateada,
+                    style: TextStyle(
+                      color: AppColors.textMuted,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  '${cita.horaInicio} - ${cita.horaFin}',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
 
           const SizedBox(width: 12),

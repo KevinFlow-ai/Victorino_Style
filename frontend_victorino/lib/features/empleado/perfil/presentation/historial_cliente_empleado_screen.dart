@@ -122,7 +122,10 @@ class HistorialClienteEmpleadoScreen extends ConsumerWidget {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (context, index) {
                     final cita = historial.citas[index];
-                    return CitaAdminCard(cita: cita);
+                    return CitaAdminCard(
+                      cita: cita,
+                      showDate: true, // Habilita la visualización de la fecha
+                    );
                   },
                 ),
               ),
