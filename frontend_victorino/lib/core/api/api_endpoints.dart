@@ -8,13 +8,14 @@ class ApiEndpoints {
   // baseUrl recomendado por plataforma:
   // - Android emulador → http://10.0.2.2:8080/api/v1
   // - iOS simulador / web / desktop → http://localhost:8080/api/v1
-  // - Dispositivo físico → IP del host en la LAN
+  // - Dispositivo físico (LAN) → http://192.168.1.37:8080/api/v1
   //
-  // Para no decidir aquí, se lee desde --dart-define con fallback a 10.0.2.2
-  // (compatible con Android Emulator que es el caso de uso por defecto).
+  // Se lee desde --dart-define=API_BASE_URL=<url> para sobreescribir en CI/CD.
+  // El defaultValue apunta a la IP LAN del servidor de desarrollo (dispositivo físico).
+  // Para emulador: flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8080/api/v1
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8080/api/v1',
+    defaultValue: 'http://192.168.1.37:8080/api/v1',
   );
 
   // Rutas de autenticación.

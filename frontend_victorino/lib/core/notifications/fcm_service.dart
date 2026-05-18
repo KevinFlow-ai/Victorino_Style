@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -85,7 +87,15 @@ class FcmService {
       _pendingInitialMessage = true;
     }
 
-    final token = await FirebaseMessaging.instance.getToken();
+    // Timeout de 10 s: si Google Play Services no responde (sin red o sin GPS),
+    // continuamos sin token en lugar de dejar la app colgada en pantalla en blanco.
+    final token = await FirebaseMessaging.instance.getToken().timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        debugPrint('[FCM] getToken() timeout (10 s) – continúa sin token FCM');
+        return null;
+      },
+    );
     if (token == null) {
       debugPrint('[FCM] Token FCM NULL – posibles causas:\n'
           '   Emulador sin Google Play Services (usa imagen "Google APIs")\n'

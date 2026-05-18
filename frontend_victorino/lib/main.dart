@@ -12,8 +12,6 @@ import 'package:intl/date_symbol_data_local.dart';
 
 // *********  FIREBASE
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'firebase_messaging_handler.dart';
 import 'firebase_options.dart';
 import 'core/notifications/fcm_service.dart';
 import 'core/notifications/local_notifications.dart';
@@ -30,17 +28,26 @@ Future<void> main() async {
   // DateFormat.yMMMd('es') lanza LocaleDataException en runtime.
   await initializeDateFormatting('es_ES');
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Inicializaciones de Firebase/FCM envueltas en try-catch para que,
+  // aunque fallen (sin Google Play Services, sin red, token timeout…),
+  // runApp() se llame siempre y la app no se quede en pantalla en blanco.
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
 
-  // Handler para mensajes FCM cuando la app está cerrada o en background.
-  // Debe registrarse antes de runApp y en el top-level (no dentro de un widget).
-  // Inicializa las notificaciones locales (para foreground).
-  await LocalNotificationsService.inicializar();
+    // Handler para mensajes FCM cuando la app está cerrada o en background.
+    // Debe registrarse antes de runApp y en el top-level (no dentro de un widget).
+    // Inicializa las notificaciones locales (para foreground).
+    await LocalNotificationsService.inicializar();
 
-  // Inicializa FCM: registra el handler de background y escucha mensajes.
-  await FcmService.inicializar();
+    // Inicializa FCM: registra el handler de background y escucha mensajes.
+    await FcmService.inicializar();
+  } catch (e, stack) {
+    // Si Firebase/FCM falla (dispositivo sin Google Play Services, sin red,
+    // google-services.json incorrecto…), la app sigue funcionando sin push.
+    debugPrint('[main] Advertencia: error al inicializar Firebase/FCM: $e\n$stack');
+  }
 
   runApp(const ProviderScope(child: VictorinoApp()));
 
