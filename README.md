@@ -2,6 +2,7 @@
 
 <img src="frontend_victorino/assets/logos_app/logo_app1.3.png" width="180" alt="Victorino Style"/>
 
+
 # Victorino Style
 
 ### Reserva tu cita en menos tiempo del que tardas en pedir un café. ☕
@@ -37,13 +38,10 @@ Una app multiplataforma — **Android, iOS y web** — que digitaliza por comple
 
 No es solo "una app de citas". Es el **sistema operativo completo del negocio**: catálogo de servicios, plantilla, agenda en tiempo real, métricas, notificaciones y todo lo necesario para que la peluquería deje de gestionarse a mano.
 
+Cuenta con 3 roles: Administrador, Empleado y Cliente.
+
 <div align="center">
 
-<!--
-  IMAGEN H3 (foto real del local)
-  Sugerencia: la foto del interior que ya existe.
-  Archivo: frontend_victorino/assets/imagenes/local_por_dentro.png
--->
 <img src="frontend_victorino/assets/imagenes/local.png" width="640" alt="El local"/>
 
 </div>
@@ -75,9 +73,8 @@ Wizard de 4 pasos guiados, próxima cita siempre visible, historial completo y n
 <!--
   IMAGEN H5a (mockup del cliente)
   Sugerencia: captura del Home del cliente con la card "Mi próxima cita" visible.
-  Archivo nuevo: documentacion/imagenes_readme/mockup_cliente.png
 -->
-<!-- <img src="documentacion/imagenes_readme/mockup_cliente.png" width="220"/> -->
+<img src="frontend_victorino/prototipo_de_interfaces/cliente/home_cliente_con_cita.png" width="220" alt="Home del cliente"/>
 
 </td>
 <td align="center" width="33%">
@@ -85,14 +82,9 @@ Wizard de 4 pasos guiados, próxima cita siempre visible, historial completo y n
 ### ✂️ Empleado
 **Su agenda al día**
 
-Citas del día, walk-ins instantáneos para clientes presenciales y estados de cita en tiempo real.
+Citas del día con estado en tiempo real, walk-ins instantáneos para clientes presenciales y perfil personalizable.
 
-<!--
-  IMAGEN H5b (mockup del empleado)
-  Sugerencia: agenda diaria del empleado con citas marcadas.
-  Archivo nuevo: documentacion/imagenes_readme/mockup_empleado.png
--->
-<!-- <img src="documentacion/imagenes_readme/mockup_empleado.png" width="220"/> -->
+<img src="frontend_victorino/prototipo_de_interfaces/empleado/agenda_empleado.png" width="220" alt="Agenda del empleado"/>
 
 </td>
 <td align="center" width="33%">
@@ -102,7 +94,7 @@ Citas del día, walk-ins instantáneos para clientes presenciales y estados de c
 
 Catálogo, plantilla, horarios, festivos y métricas: todo lo que el dueño necesita para tomar decisiones.
 
-<img src="frontend_victorino/prototipo_de_interfaces/agenda_global_admin.png" width="220" alt="Agenda admin"/>
+<img src="frontend_victorino/prototipo_de_interfaces/admin/estadisticas1.png" width="220" alt="Métricas admin"/>
 
 </td>
 </tr>
@@ -116,7 +108,7 @@ Catálogo, plantilla, horarios, festivos y métricas: todo lo que el dueño nece
 <tr>
 <td width="33%">
 
-### 🪄 Wizard 4 pasos
+###  ✨ Wizard 4 pasos
 Servicio · Peluquero · Día y hora · Confirmar. Reserva en menos de 30 segundos.
 
 </td>
@@ -159,16 +151,14 @@ Anonimización al borrar cuenta, contraseñas BCrypt, tokens firmados, datos cif
 
 ## 🏗️ Cómo funciona por dentro
 
-```mermaid
-flowchart LR
-  A["📱 App Flutter<br/>Cliente · Empleado · Admin"] -->|HTTP + JWT| B["☕ Backend Spring Boot"]
-  B -->|JPA| C[("🗃️ MySQL 8")]
-  B -->|Push opcional| D["🔔 Firebase Cloud Messaging"]
-  D -.->|Notificación push| A
-```
+<div align="center">
 
-**Arquitectura cliente-servidor de 3 capas** + Firebase para notificaciones. 
-Frontend Flutter consume la API REST del backend Java; el backend persiste en MySQL y dispara push vía Firebase cuando hay novedades.
+<img src="frontend_victorino/prototipo_de_interfaces/fotos_compartidas/Arquitectura.jpeg" width="780" alt="Arquitectura del sistema"/>
+
+</div>
+
+**Arquitectura cliente-servidor de 3 capas** + Firebase para notificaciones.
+Frontend-Flutter consume la API REST del backend Java; el backend persiste en MySQL y dispara push vía Firebase cuando hay novedades.
 
 ---
 
@@ -185,24 +175,42 @@ Frontend Flutter consume la API REST del backend Java; el backend persiste en My
 
 ---
 
-## 📸 Vista previa
+## 📸 Wizard del cliente: paso a paso para reservar una cita
+
+> Reservar una cita es **literalmente** desplazar el dedo cuatro veces.
 
 <div align="center">
 
-<!--
-  IMAGEN H7 (galería demo, 3 imágenes side-by-side)
-  Sugerencia: tres capturas del wizard del cliente puestas en fila.
-    1) Paso 2 (elegir peluquero) — ya existe parcialmente como mockup en
-       frontend_victorino/prototipo_de_interfaces/cliente_reservar_elegir_peluquero.png
-    2) Paso 3 (día y hora) — ya existe parcialmente como mockup en
-       frontend_victorino/prototipo_de_interfaces/cliente_reservar_seleccionar fecha_hora.png
-    3) Home con próxima cita activa — NUEVO, capturar del emulador.
-       documentacion/imagenes_readme/home_proxima_cita.png
--->
+<img src="frontend_victorino/prototipo_de_interfaces/cliente/wizar_paso1_servicio.png" width="200" alt="Paso 1 — Servicio"/>
+<img src="frontend_victorino/prototipo_de_interfaces/cliente/wizar_paso2_elegir_peluquero.png" width="200" alt="Paso 2 — Peluquero"/>
+<img src="frontend_victorino/prototipo_de_interfaces/cliente/wizar_paso3_elegir_fecha_hora.png" width="200" alt="Paso 3 — Día y hora"/>
+<img src="frontend_victorino/prototipo_de_interfaces/cliente/wizar_paso4_resumen_cita.png" width="200" alt="Paso 4 — Confirmar"/>
 
-<img src="frontend_victorino/prototipo_de_interfaces/cliente_reservar_elegir_peluquero.png" width="240" alt="Paso 2"/>
-<img src="frontend_victorino/prototipo_de_interfaces/cliente_reservar_seleccionar fecha_hora.png" width="240" alt="Paso 3"/>
-<!-- <img src="documentacion/imagenes_readme/home_proxima_cita.png" width="240" alt="Home con cita"/> -->
+</div>
+
+---
+
+## 🧑‍💼 Para los profesionales
+
+<div align="center">
+
+<table>
+<tr>
+<td align="center">
+  <img src="frontend_victorino/prototipo_de_interfaces/admin/agenda_global.png" width="280" alt="Agenda global"/>
+  <br><sub><b>Agenda global del admin</b></sub>
+</td>
+<td align="center">
+  <img src="frontend_victorino/prototipo_de_interfaces/admin/gestion_empleado.png" width="280" alt="Gestión de empleados"/>
+  <br><sub><b>Gestión de la plantilla de empleados</b></sub>
+</td>
+<td align="center">
+  <img src="frontend_victorino/prototipo_de_interfaces/admin/estadisticas2.png" width="280" alt="Dashboard de métricas"/>
+  <br><sub><b>Dashboard de métricas</b></sub>
+</td>
+
+</tr>
+</table>
 
 </div>
 
@@ -210,23 +218,46 @@ Frontend Flutter consume la API REST del backend Java; el backend persiste en My
 
 ## 🌟 Roadmap
 
-- ☑ MVP con los 3 módulos (cliente, empleado, administrador)
-- ☑ Wizard de reserva en 4 pasos guiados
-- ☑ Notificaciones push (Firebase Cloud Messaging) + recordatorio 24 h
-- ☑ Métricas en tiempo real del negocio
-- ☑ Cumplimiento RGPD con anonimización por soft-delete
-- ☐ Pagos integrados (Stripe / Redsys)
-- ☐ Programa de fidelización por puntos
-- ☐ Sugerencia de corte con IA a partir de selfie
-- ☐ Multi-tenant: una sola instancia para varias peluquerías
-- ☐ Intercambio de turnos entre empleados
+- ☑ MVP con los 3 módulos (cliente, empleado, administrador).
+- ☑ Wizard de reserva en 4 pasos guiados.
+- ☑ Notificaciones push (Firebase Cloud Messaging) + recordatorio 24 h.
+- ☑ Métricas en tiempo real del negocio.
+- ☑ Cumplimiento RGPD con anonimización por soft-delete.
+- ☐ Pagos integrados (Stripe / Redsys).
+- ☐ Programa de fidelización por puntos.
+- ☐ Sugerencia de corte con IA a partir de selfie.
+- ☐ Multi-tenant: una sola instancia para varias peluquerías.
+- ☐ Intercambio de turnos entre empleados.
+- ☐ Envío de notificaciones por correo electrónico.
+- ☐ Sistema de reseñas para que los clientes valoren su experiencia.
+- ☐ Gestión de inventario con métricas detalladas de ingresos y gastos.
+- ☐ Modo oscuro y selector de idioma para personalizar la interfaz.
+
+
+
+
+
+
+
+---
+## 👨‍💻 Sobre mí
+
+Soy un desarrollador con enfoque en **resolver problemas reales a través de la tecnología**.
+
+¡Conectemos!
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Kevin_Flores-blue?style=for-the-badge&logo=linkedin)](https://www.linkedin.com/in/kevin-flores-full-stack-developer)
+
 
 ---
 
+> *"La tecnología no sirve de nada si no ahorra tiempo y esfuerzo a las personas que la utilizan."*
+
 <div align="center">
 
-### Hecho con ♥ para que reservar una cita sea **tan simple como un swipe**.
+### Hecho con ♥ para que reservar una cita sea tan simple como un swipe. 
+<br>Tu mejor versión empieza aquí con Victorino Style.
 
-<img src="frontend_victorino/assets/logos_app/logo_app1.3.png" width="64" alt="Victorino Style"/>
+<img src="frontend_victorino/assets/logos_app/logo_app1.3.png" width="80" alt="Victorino Style"/>
 
 </div>
