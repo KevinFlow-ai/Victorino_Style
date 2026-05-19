@@ -10,6 +10,8 @@
 // Reutiliza `crearWalkInProvider` para no duplicar la llamada al backend.
 // Al éxito devuelve `true` y recarga la agenda.
 
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,6 +59,13 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
   // Hora actualmente elegida. Arranca con la propuesta inicial del hueco.
   late TimeOfDay _hora;
 
+  // Aviso visible dentro del propio bottom-sheet (en su parte inferior).
+  // Lo gestionamos manualmente porque `ScaffoldMessenger` muestra los
+  // SnackBar en el Scaffold raíz, y el modal los tapaba.
+  String? _aviso;
+  Color _avisoColor = const Color(0xFF323232);
+  Timer? _timerAviso;
+
   @override
   void initState() {
     super.initState();
@@ -65,11 +74,26 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
 
   @override
   void dispose() {
+    _timerAviso?.cancel();
     _nombre.dispose();
     _apellidos.dispose();
     _telefono.dispose();
     _nota.dispose();
     super.dispose();
+  }
+
+  // Muestra un aviso dentro del bottom-sheet, fijado en su parte inferior.
+  // Si ya había uno visible, reinicia el temporizador.
+  void _mostrarAviso(String texto, {Color? color}) {
+    _timerAviso?.cancel();
+    setState(() {
+      _aviso = texto;
+      _avisoColor = color ?? const Color(0xFF323232);
+    });
+    _timerAviso = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _aviso = null);
+    });
   }
 
   @override
@@ -82,181 +106,214 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
       padding: EdgeInsets.only(bottom: mq.viewInsets.bottom),
       child: SafeArea(
         top: false,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-          child: Form(
-            key: _form,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _drag(),
-                const SizedBox(height: 8),
-                Text(
-                  'Nueva cita',
-                  style: GoogleFonts.poppins(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textMain,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${widget.nombreEmpleado}  ·  ${DateFormat.yMMMd('es').format(widget.fecha)}',
-                  style: GoogleFonts.poppins(
-                    fontSize: 13,
-                    color: AppColors.textMuted,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _selectorHora(),
-                const SizedBox(height: 12),
-
-                // CORRECCIÓN: Mostramos error detallado para depuración
-                serviciosState.when(
-                  loading: () => const Column(
-                    children: [
-                      LinearProgressIndicator(),
-                      SizedBox(height: 4),
-                      Text('Cargando servicios...', style: TextStyle(fontSize: 10)),
-                    ],
-                  ),
-                  error: (err, stack) {
-                    print('-----------------------------------------');
-                    print('DEBUG ERROR SERVICIOS: $err');
-                    print('DEBUG ROL USUARIO: ${sesion?.rol}');
-                    print('-----------------------------------------');
-                    return Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.shade200),
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              // Dejamos un hueco extra abajo para que el aviso no tape el
+              // botón "Crear cita" cuando aparece.
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+              child: Form(
+                key: _form,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _drag(),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Nueva cita',
+                      style: GoogleFonts.poppins(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textMain,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${widget.nombreEmpleado}  ·  ${DateFormat.yMMMd('es').format(widget.fecha)}',
+                      style: GoogleFonts.poppins(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    _selectorHora(),
+                    const SizedBox(height: 12),
+
+                    // CORRECCIÓN: Mostramos error detallado para depuración
+                    serviciosState.when(
+                      loading: () => const Column(
                         children: [
-                          const Text(
-                            'Error al cargar servicios:',
-                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
-                          ),
-                          const SizedBox(height: 4),
-                          Text('$err', style: const TextStyle(color: Colors.red, fontSize: 11)),
-                          const SizedBox(height: 4),
-                          Text('Rol detectado: ${sesion?.rol ?? "Desconocido"}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                          const SizedBox(height: 8),
-                          TextButton.icon(
-                            onPressed: () => ref.invalidate(serviciosAdminNotifierProvider),
-                            icon: const Icon(Icons.refresh, size: 16),
-                            label: const Text('Reintentar'),
-                          )
+                          LinearProgressIndicator(),
+                          SizedBox(height: 4),
+                          Text('Cargando servicios...', style: TextStyle(fontSize: 10)),
                         ],
                       ),
-                    );
-                  },
-                  data: (lista) => DropdownButtonFormField<int>(
-                    value: _idServicio,
-                    isExpanded: true,   // ← esta línea, error 0.189 pixels
-                    decoration: _dec('Servicio'),
-                    items: lista
-                        .where((s) => s.activo)
-                        .map((s) => DropdownMenuItem(
-                      value: s.id,
-                      child: Text('${s.nombre} (${s.duracionMinutos} min)'),
-                    ))
-                        .toList(),
-                    onChanged: (v) => setState(() => _idServicio = v),
-                    validator: (v) => v == null ? 'Selecciona un servicio' : null,
-                  ),
-                ),
+                      error: (err, stack) {
+                        print('-----------------------------------------');
+                        print('DEBUG ERROR SERVICIOS: $err');
+                        print('DEBUG ROL USUARIO: ${sesion?.rol}');
+                        print('-----------------------------------------');
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.red.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Error al cargar servicios:',
+                                style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
+                              ),
+                              const SizedBox(height: 4),
+                              Text('$err', style: const TextStyle(color: Colors.red, fontSize: 11)),
+                              const SizedBox(height: 4),
+                              Text('Rol detectado: ${sesion?.rol ?? "Desconocido"}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              TextButton.icon(
+                                onPressed: () => ref.invalidate(serviciosAdminNotifierProvider),
+                                icon: const Icon(Icons.refresh, size: 16),
+                                label: const Text('Reintentar'),
+                              )
+                            ],
+                          ),
+                        );
+                      },
+                      data: (lista) => DropdownButtonFormField<int>(
+                        value: _idServicio,
+                        isExpanded: true,   // ← esta línea, error 0.189 pixels
+                        decoration: _dec('Servicio'),
+                        items: lista
+                            .where((s) => s.activo)
+                            .map((s) => DropdownMenuItem(
+                          value: s.id,
+                          child: Text('${s.nombre} (${s.duracionMinutos} min)'),
+                        ))
+                            .toList(),
+                        onChanged: (v) => setState(() => _idServicio = v),
+                        validator: (v) => v == null ? 'Selecciona un servicio' : null,
+                      ),
+                    ),
 
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.accentGlow,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.info_outline, size: 16, color: AppColors.primary),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Cliente sin cuenta (walk-in)',
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppColors.accentGlow,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.info_outline, size: 16, color: AppColors.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Cliente sin cuenta (walk-in)',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _nombre,
+                      decoration: _dec('Nombre'),
+                      validator: _validarTexto,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _apellidos,
+                      decoration: _dec('Apellidos'),
+                      validator: _validarTexto,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _telefono,
+                      decoration: _dec('Teléfono (opcional)'),
+                      keyboardType: TextInputType.phone,
+                      validator: (v) {
+                        if (v == null || v.trim().isEmpty) return null;
+                        if (!RegExp(r'^[0-9 ]+$').hasMatch(v.trim())) {
+                          return 'Solo números';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: _nota,
+                      decoration: _dec('Nota (opcional)'),
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: _enviando ? null : _crear,
+                        child: _enviando
+                            ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                            : Text(
+                          'Crear cita',
                           style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _nombre,
-                  decoration: _dec('Nombre'),
-                  validator: _validarTexto,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _apellidos,
-                  decoration: _dec('Apellidos'),
-                  validator: _validarTexto,
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _telefono,
-                  decoration: _dec('Teléfono (opcional)'),
-                  keyboardType: TextInputType.phone,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return null;
-                    if (!RegExp(r'^[0-9 ]+$').hasMatch(v.trim())) {
-                      return 'Solo números';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 12),
-                TextFormField(
-                  controller: _nota,
-                  decoration: _dec('Nota (opcional)'),
-                  maxLines: 2,
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onPressed: _enviando ? null : _crear,
-                    child: _enviando
-                        ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                        : Text(
-                      'Crear cita',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+            // Aviso in-sheet: se ancla en la parte inferior del propio
+            // bottom-sheet, encima del contenido, para que el usuario lo
+            // vea aunque el SnackBar global quedaría tapado por el modal.
+            if (_aviso != null)
+              Positioned(
+                left: 12,
+                right: 12,
+                bottom: 0,
+                child: Material(
+                  elevation: 5,
+                  color: _avisoColor,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    child: Text(
+                      _aviso!,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -438,13 +495,9 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
 
     if (eleccionMin < inicioMin || eleccionMin >= finMin) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Esa hora cae fuera del hueco libre '
-                  '(${widget.horaInicio} – ${widget.horaFinHueco}).',
-            ),
-          ),
+        _mostrarAviso(
+          'Esa hora cae fuera del hueco libre '
+              '(${widget.horaInicio} – ${widget.horaFinHueco}).',
         );
       }
       return;
@@ -878,9 +931,7 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
     );
 
     if (!citaDateTime.isAfter(DateTime.now())) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No puedes reservar una hora que ya ha pasado.')),
-      );
+      _mostrarAviso('No puedes reservar una hora que ya ha pasado.');
       return;
     }
 
@@ -924,16 +975,12 @@ class _BottomSheetCrearCitaRapidaState extends ConsumerState<BottomSheetCrearCit
     } on ApiException catch (e) {
       print('DEBUG: Error de API: ${e.failure.mensaje}');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.failure.mensaje)),
-        );
+        _mostrarAviso(e.failure.mensaje);
       }
     } catch (e) {
       print('DEBUG: Error inesperado: $e');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al conectar con el servidor: $e')),
-        );
+        _mostrarAviso('Error al conectar con el servidor: $e');
       }
     } finally {
       // IMPORTANTE: Aseguramos que el estado de carga se quite siempre
