@@ -16,6 +16,14 @@ public record PerfilEmpleadoResponse(
         RolUsuario rol,
         LocalTime silencioInicio,
         LocalTime silencioFin,
-        boolean noMolestar
+        boolean noMolestar,
+
+        // Hora de inicio del descanso fijo diario en formato "HH:mm".
+        // Null si el empleado todavía no tiene descanso configurado.
+        // Lo consume la agenda del empleado para pintar la franja gris.
+        String horaDescanso,
+
+        // Duración del descanso en minutos. Null si no está configurado.
+        Integer duracionDescansoMinutos
 ) {
 }

@@ -59,4 +59,21 @@ class PerfilEmpleadoRepositorioImpl implements PerfilEmpleadoRepositorio {
       throw ApiException(_errorMapper.mapear(e));
     }
   }
+
+  @override
+  Future<({String? horaDescanso, int? duracionDescansoMinutos})> obtenerDescanso() async {
+    try {
+      final resp = await _dio.get<Map<String, dynamic>>(ApiEndpoints.empleadoPerfil);
+      final data = resp.data;
+      if (data == null) {
+        return (horaDescanso: null, duracionDescansoMinutos: null);
+      }
+      return (
+        horaDescanso: data['horaDescanso'] as String?,
+        duracionDescansoMinutos: (data['duracionDescansoMinutos'] as num?)?.toInt(),
+      );
+    } catch (e) {
+      throw ApiException(_errorMapper.mapear(e));
+    }
+  }
 }

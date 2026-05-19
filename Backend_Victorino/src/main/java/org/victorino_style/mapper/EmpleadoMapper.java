@@ -54,6 +54,19 @@ public class EmpleadoMapper {
     // Conversión para el perfil propio del empleado
     public PerfilEmpleadoResponse aPerfilRespuesta(Empleado empleado) {
         Usuario usuario = empleado.getUsuario();
+
+        HorarioEmpleado horario = horarioEmpleadoRepository
+                .findByIdEmpleado_Id(empleado.getId())
+                .orElse(null);
+
+        String horaDescanso = null;
+        Integer duracionDescansoMinutos = null;
+        if (horario != null && horario.getDescansoInicioHorario() != null) {
+            String horaStr = horario.getDescansoInicioHorario().toString();
+            horaDescanso = horaStr.length() >= 5 ? horaStr.substring(0, 5) : horaStr;
+            duracionDescansoMinutos = horario.getDescansoDuracionHorario();
+        }
+
         return new PerfilEmpleadoResponse(
                 empleado.getId(),
                 empleado.getNombreEmpleado(),
@@ -63,7 +76,9 @@ public class EmpleadoMapper {
                 usuario.getRolUsuario(),
                 empleado.getSilencioInicioEmpleado(),
                 empleado.getSilencioFinEmpleado(),
-                empleado.getNoMolestarEmpleado()
+                empleado.getNoMolestarEmpleado(),
+                horaDescanso,
+                duracionDescansoMinutos
         );
     }
 }

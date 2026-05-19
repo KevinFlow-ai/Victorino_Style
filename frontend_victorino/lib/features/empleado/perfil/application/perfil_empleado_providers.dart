@@ -40,6 +40,18 @@ final historialClienteConEmpleadoProvider =
       .obtenerHistorialClienteConEmpleado(idCliente, sesion.idUsuario);
 });
 
+/// Datos de descanso del empleado autenticado.
+/// Los consume la agenda del empleado para pintar la franja gris del descanso.
+final descansoEmpleadoProvider =
+    FutureProvider<({String? horaDescanso, int? duracionDescansoMinutos})>(
+        (ref) async {
+  final sesion = ref.watch(sesionProvider).value;
+  if (sesion == null) {
+    return (horaDescanso: null, duracionDescansoMinutos: null);
+  }
+  return ref.read(perfilEmpleadoRepositorioProvider).obtenerDescanso();
+});
+
 /// Notifier para el proceso de cambio de contraseña.
 class CambiarPasswordEmpleadoNotifier extends AsyncNotifier<void> {
   @override

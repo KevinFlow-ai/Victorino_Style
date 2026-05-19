@@ -43,6 +43,8 @@ class ApiEndpoints {
   // Perfil Empleado (Estadísticas y Seguridad)
   static String empleadoPerfilResumen(int id) => '/admin/empleados/$id/resumen';
   static const empleadoCambiarPassword = '/admin/empleados/me/password';
+  // Perfil del empleado autenticado (incluye descanso para pintar la agenda).
+  static const empleadoPerfil = '/empleado/perfil';
 
   // Historial de cliente específico con un empleado
   static String historialClienteConEmpleado(int idCliente, int idEmpleado) => 

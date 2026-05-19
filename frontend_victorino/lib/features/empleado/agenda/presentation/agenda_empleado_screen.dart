@@ -16,6 +16,7 @@ import '../../../administrador/agenda/presentation/widgets/agenda_grid/bottom_sh
 import '../../../administrador/negocio/application/negocio_providers.dart';
 import '../../../administrador/negocio/domain/entidades/horario_peluqueria.dart';
 import '../../../administrador/empleados/domain/entidades/empleado.dart';
+import '../../perfil/application/perfil_empleado_providers.dart';
 
 class AgendaEmpleadoScreen extends ConsumerWidget {
   const AgendaEmpleadoScreen({super.key});
@@ -223,6 +224,12 @@ class _CuerpoAgenda extends ConsumerWidget {
             ? partesNombre.sublist(1).join(' ')
             : '';
 
+        // Los datos del descanso vienen de GET /empleado/perfil. Mientras
+        // carga (o si falla) caemos a null y simplemente no se pinta la
+        // franja gris, igual que ahora — la lógica del backend ya impide
+        // reservar en esa franja, esto es solo visual.
+        final descanso = ref.watch(descansoEmpleadoProvider).value;
+
         final empleado = Empleado(
           id: sesion.idUsuario,
           nombre: nombre,
@@ -232,8 +239,8 @@ class _CuerpoAgenda extends ConsumerWidget {
           fotoUrl: sesion.foto ?? '',
           activo: true,
           esAdministrador: false,
-          horaDescanso: null,
-          duracionDescansoMinutos: null,
+          horaDescanso: descanso?.horaDescanso,
+          duracionDescansoMinutos: descanso?.duracionDescansoMinutos,
         );
 
         return Padding(

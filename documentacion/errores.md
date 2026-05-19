@@ -5,6 +5,343 @@
 
 ---
 
+## 2026-05-19 · Frontend Empleado — La franja gris del descanso no aparecía en la agenda del empleado
+
+**Síntoma**: en la agenda del **administrador** se ve perfectamente la franja gris del descanso de cada empleado, pero 
+en la agenda del **empleado** (su propia agenda) esa franja no se pinta. La lógica del backend impide 
+reservar en ese rango (si pides una cita en la hora del descanso devuelve 409), así que 
+era **solo un problema visual**: el empleado no ve marcado su descanso aunque exista.
+
+Encontré el bug. En agenda_empleado_screen.dart:226-237 se construye un Empleado "manualmente" a partir 
+de la sesión, pasando horaDescanso: null y duracionDescansoMinutos: null. Por eso _FranjaDescanso nunca se 
+pinta en la agenda del empleado (en admin sí porque viene del provider real con datos completos).
+
+Diagnóstico confirmado. El bug está en agenda_empleado_screen.dart:226-237:
+final empleado = Empleado(
+  ...
+  horaDescanso: null,          // ← nunca se rellena
+  duracionDescansoMinutos: null,  // ← nunca se rellena
+);
+
+_FranjaDescanso solo pinta si esos dos campos no son null. En admin sí se ven porque vienen 
+del provider empleadosAdminNotifierProvider (usa GET /admin/empleados, que es de admin). Mirando los DTOs:
+
+SesionUsuario no guarda nada del descanso.
+EmpleadoPublicoResponse (GET /empleados) solo expone id, nombre, apellidos y foto.
+EmpleadoAdminResponse (GET /admin/empleados) sí tiene descanso, pero ese endpoint es solo admin.
+Es decir, hoy no hay forma de que el empleado obtenga su propio descanso desde el backend.
+
+¿Cómo prefieres que el empleado obtenga su descanso?
+Endpoint nuevo GET /empleados/
+
+Una nota antes de implementar: investigando vi que ya existe GET /empleado/perfil (PerfilEmpleadoController.java) que 
+devuelve PerfilEmpleadoResponse del empleado autenticado. Solo le falta horaDescanso y duracionDescansoMinutos. El proyecto sigue el patrón:
+empleados/... (plural) → catálogo público
+/empleado/... (singular) → gestión propia del empleado autenticado
+Crear GET /empleados/me añadiría un endpoint nuevo que pisa esa convención. Lo más limpio sería añadir los 2 campos al 
+PerfilEmpleadoResponse existente y usar el endpoint ya creado.
+
+Resumen del fix (7 archivos):
+
+Backend — el endpoint GET /empleado/perfil ahora devuelve el descanso:
+
+PerfilEmpleadoResponse.java: añadidos campos horaDescanso y duracionDescansoMinutos.
+EmpleadoMapper.java:55: aPerfilRespuesta consulta el horario del empleado y rellena ambos campos.actualizar EmpleadoMapper.aPerfilRespuesta 
+para incluir los datos del descanso:
+
+Frontend — la agenda del empleado consume el descanso real:
+
+api_endpoints.dart:46: constante empleadoPerfil. añadir endpoint en api_endpoints.dart:
+perfil_empleado_repositorio.dart: método nuevo obtenerDescanso() en la interfaz. añadir método a la interfaz del repo:
+perfil_empleado_repositorio_impl.dart: implementación que llama a GET /empleado/perfil y mapea solo los dos campos.  implementar el método en el repo HTTP:
+perfil_empleado_providers.dart: descansoEmpleadoProvider (FutureProvider). provider Riverpod para el descans
+agenda_empleado_screen.dart:230: ref.watch(descansoEmpleadoProvider) y se pasan los datos reales al Empleado (en vez de los null que había). usar el provider en la agenda del empleado:
+
+Notas:
+Mientras el provider carga (o si falla la petición) los campos quedan null y el comportamiento es el mismo que antes (no se pinta la franja). La lógica del backend ya impide reservar en el descanso, así que esto era solo visual como dijiste.
+---
+
+### Qué pasaba (explicado fácil)
+
+El widget que pinta la columna de un empleado en la agenda (`_ColumnaEmpleado`) es compartido entre 
+admin y empleado. Para decidir si pinta la franja gris del descanso mira dos campos del objeto `Empleado` 
+que recibe: `horaDescanso` y `duracionDescansoMinutos`. Si los dos vienen rellenos, pinta la franja; 
+si vienen a `null`, no pinta nada.
+
+En la pantalla del **admin**, los empleados se obtienen del servidor con todos sus datos (la lista del panel de empleados), 
+así que esos campos siempre llegan rellenos. En la pantalla del **empleado**, en cambio, no había forma 
+de pedir al servidor "dame mi propio descanso" — el único endpoint público de empleados (`GET /empleados`) 
+devuelve solo foto + nombre, y el endpoint admin (`GET /admin/empleados`) sí los devuelve pero está restringido a admin.
+
+La consecuencia: la pantalla del empleado construía un objeto `Empleado` "a mano" a partir de los datos
+de la sesión (nombre, foto, id…) y rellenaba a fuerza `horaDescanso: null` y `duracionDescansoMinutos: null`. 
+Por eso la franja gris nunca aparecía.
+
+---
+
+### Causa técnica
+
+En `agenda_empleado_screen.dart`, dentro de `_CuerpoAgenda.build()`, el `Empleado` que se pasa a `AgendaGrid` se construía así:
+
+```dart
+final empleado = Empleado(
+  id: sesion.idUsuario,
+  nombre: nombre,
+  apellidos: apellidos,
+  correo: '',
+  telefono: '',
+  fotoUrl: sesion.foto ?? '',
+  activo: true,
+  esAdministrador: false,
+  horaDescanso: null,            // ⚠️ nunca se rellenaba
+  duracionDescansoMinutos: null, // ⚠️ nunca se rellenaba
+);
+```
+
+Y `_FranjaDescanso` solo se renderiza si la función `franjaDescansoDelDia(...)` devuelve algo, lo cual exige que 
+ambos campos no sean `null`. Por eso en admin sí salía (los empleados venían del `empleadosAdminNotifierProvider` con datos completos) y en empleado no.
+
+Además, mirando los DTOs del backend:
+- `EmpleadoPublicoResponse` (de `GET /empleados`): solo id, nombre, apellidos, fotoUrl. No expone descanso.
+- `EmpleadoAdminResponse` (de `GET /admin/empleados`): sí expone descanso, pero el endpoint requiere rol ADMINISTRADOR.
+- `PerfilEmpleadoResponse` (de `GET /empleado/perfil`, accesible al empleado autenticado): tampoco incluía descanso.
+
+Es decir, **el empleado no tenía ningún endpoint que le devolviera su propio descanso**.
+
+---
+
+### Solución
+
+Aprovechar el endpoint que ya existía para el empleado autenticado (`GET /empleado/perfil`) y ampliarlo para 
+que devuelva también los datos del descanso. En el frontend, crear un provider que lo consuma y rellenar el `Empleado` 
+con los datos reales en lugar de pasar `null`.
+
+**Backend (2 archivos)**:
+
+`PerfilEmpleadoResponse.java` — añadir dos campos al record:
+```java
+// ✅ Después
+public record PerfilEmpleadoResponse(
+        Long idEmpleado,
+        String nombre,
+        String apellidos,
+        String correo,
+        String fotoUrl,
+        RolUsuario rol,
+        LocalTime silencioInicio,
+        LocalTime silencioFin,
+        boolean noMolestar,
+        String horaDescanso,              // ← NUEVO
+        Integer duracionDescansoMinutos   // ← NUEVO
+) {}
+```
+
+`EmpleadoMapper.aPerfilRespuesta(...)` — consultar el horario del empleado y rellenar los nuevos campos (mismo patrón que ya usaba `aRespuesta` para el panel admin):
+```java
+HorarioEmpleado horario = horarioEmpleadoRepository
+        .findByIdEmpleado_Id(empleado.getId())
+        .orElse(null);
+
+String horaDescanso = null;
+Integer duracionDescansoMinutos = null;
+if (horario != null && horario.getDescansoInicioHorario() != null) {
+    String horaStr = horario.getDescansoInicioHorario().toString();
+    horaDescanso = horaStr.length() >= 5 ? horaStr.substring(0, 5) : horaStr;
+    duracionDescansoMinutos = horario.getDescansoDuracionHorario();
+}
+```
+
+**Frontend (5 archivos)**:
+
+1. `api_endpoints.dart` — nueva constante:
+   ```dart
+   static const empleadoPerfil = '/empleado/perfil';
+   ```
+
+2. `perfil_empleado_repositorio.dart` (interfaz) — método nuevo:
+   ```dart
+   Future<({String? horaDescanso, int? duracionDescansoMinutos})> obtenerDescanso();
+   ```
+
+3. `perfil_empleado_repositorio_impl.dart` — implementación: GET al endpoint y mapea solo los dos campos del descanso.
+
+4. `perfil_empleado_providers.dart` — `FutureProvider` nuevo:
+   ```dart
+   final descansoEmpleadoProvider =
+       FutureProvider<({String? horaDescanso, int? duracionDescansoMinutos})>(
+           (ref) async { ... });
+   ```
+
+5. `agenda_empleado_screen.dart` — consumir el provider:
+   ```dart
+   // ❌ Antes
+   final empleado = Empleado(
+     ...
+     horaDescanso: null,
+     duracionDescansoMinutos: null,
+   );
+
+   // ✅ Después
+   final descanso = ref.watch(descansoEmpleadoProvider).value;
+   final empleado = Empleado(
+     ...
+     horaDescanso: descanso?.horaDescanso,
+     duracionDescansoMinutos: descanso?.duracionDescansoMinutos,
+   );
+   ```
+
+Mientras el provider carga (o si la petición falla) los campos quedan `null` y la franja simplemente 
+no se pinta — comportamiento idéntico al de antes, sin pantalla roja.
+
+---
+
+### Consejo para evitar este patrón
+
+- Cuando un widget de dominio (como `Empleado`) tiene campos opcionales que afectan al renderizado (descanso, foto, flags), 
+**no construyas el objeto "a mano" rellenándolos con `null`** si esa información sí existe en el backend. Es preferible: 
+o reutilizar el DTO completo del servidor, o crear un endpoint específico que devuelva justo lo necesario.
+- Si tu app tiene una pantalla compartida entre roles (admin/empleado) que muestra los mismos datos, asegúrate de que 
+**ambos roles tienen un endpoint** que les devuelve la misma información. No basta con que el admin tenga acceso "completo" y 
+el empleado se construya un objeto a medias: la pantalla se ve incompleta.
+- Antes de añadir un endpoint nuevo, comprueba si **ya existe uno parecido** (en este caso, `GET /empleado/perfil` ya existía y 
+faltaban dos campos). Ampliar un DTO existente suele ser preferible a duplicar endpoints.
+- Importante: tras tocar el DTO hay que **reiniciar el backend** (no es hot-reloadable). Lo mismo con el frontend si Riverpod cachea el provider.
+
+---
+
+## 2026-05-19 · Frontend Empleado — El SnackBar de errores queda tapado por el bottom sheet al crear una cita walk-in
+
+**Síntoma**: al crear una cita walk-in desde la agenda del **empleado** (pulsando el "+" de un hueco libre), cuando saltaba un 
+error de validación — "no puedes reservar una hora que ya ha pasado", "esa hora cae fuera del hueco libre", "hueco ocupado" 
+(409 del backend), "fuera de horario", etc. — el SnackBar **sí se disparaba**, pero quedaba renderizado **por detrás del bottom sheet** y 
+el usuario no lo veía. En la agenda del **administrador** se veía a medias porque el sheet del admin era más bajo y 
+dejaba un trocito de pantalla libre por abajo donde el SnackBar asomaba.
+
+---
+
+### Qué pasaba (explicado fácil)
+
+Cuando llamas a `ScaffoldMessenger.of(context).showSnackBar(...)` desde dentro de un `showModalBottomSheet`, Flutter 
+busca el `ScaffoldMessenger` más cercano hacia arriba en el árbol de widgets. Encuentra el del `Scaffold` **raíz** (el 
+de la pantalla padre), no uno propio del bottom sheet — porque el bottom sheet no tiene `Scaffold` propio. Así que el 
+SnackBar se pinta sobre el `Scaffold` raíz, en la parte inferior de la **pantalla**. Pero el bottom sheet, que está 
+dibujado encima del Scaffold raíz, **lo tapa visualmente**.
+
+En la agenda del admin el sheet era más bajo, dejaba 100-200 px libres abajo y el usuario llegaba a ver el SnackBar a 
+duras penas. En la del empleado el sheet ocupaba más alto y lo escondía del todo.
+
+---
+
+### Causa técnica
+
+El widget `BottomSheetCrearCitaRapida` (compartido entre admin y empleado) usaba `ScaffoldMessenger.of(context).showSnackBar(...)` 
+en 4 puntos para mostrar errores de validación al usuario. Como el árbol de widgets dentro del modal era:
+
+```
+showModalBottomSheet
+  └── Padding > SafeArea > SingleChildScrollView > Form > Column > ...
+```
+
+…no había ningún `Scaffold` o `ScaffoldMessenger` propio en el sheet, así que los SnackBars subían al messenger raíz y se renderizaban detrás del modal.
+
+**Por qué no se puede arreglar simplemente "envolviendo el body en `Scaffold`"**: un `Scaffold` siempre intenta ocupar `double.infinity` 
+en alto. Si el `showModalBottomSheet` se invoca con `isScrollControlled: true` (como aquí), el sheet se auto-dimensiona al alto de su hijo, 
+con un `Column(mainAxisSize: MainAxisSize.min)`. Si ese hijo es un `Scaffold`, el sheet se expandiría a pantalla completa y rompería la UX.
+
+---
+
+### Solución
+
+Implementar un "aviso in-sheet" propio: un widget posicionado en la parte inferior del propio bottom sheet, con 
+el mismo look que un SnackBar estándar (gris oscuro `#323232`, texto blanco, 4 s), gestionado por estado local en el `State`.
+
+**Patrón aplicado** en `bottom_sheet_crear_cita_rapida.dart`:
+
+```dart
+// Estado del aviso
+String? _aviso;
+Color _avisoColor = const Color(0xFF323232);
+Timer? _timerAviso;
+
+void _mostrarAviso(String texto, {Color? color}) {
+  _timerAviso?.cancel();
+  setState(() {
+    _aviso = texto;
+    _avisoColor = color ?? const Color(0xFF323232);
+  });
+  _timerAviso = Timer(const Duration(seconds: 4), () {
+    if (!mounted) return;
+    setState(() => _aviso = null);
+  });
+}
+
+@override
+void dispose() {
+  _timerAviso?.cancel();
+  ...
+  super.dispose();
+}
+```
+
+Y el árbol del `build()` pasa de:
+
+```dart
+// ❌ Antes
+Padding > SafeArea > SingleChildScrollView > Form > Column
+```
+
+…a:
+
+```dart
+// ✅ Después
+Padding > SafeArea > Stack > [
+  SingleChildScrollView > Form > Column,
+  if (_aviso != null) Positioned(
+    left: 12, right: 12, bottom: 12,
+    child: Material(
+      elevation: 6,
+      color: _avisoColor,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Text(_aviso!, style: const TextStyle(color: Colors.white, fontSize: 14)),
+      ),
+    ),
+  ),
+]
+```
+
+Y las 4 llamadas de error/validación se cambian:
+
+```dart
+// ❌ Antes
+ScaffoldMessenger.of(context).showSnackBar(
+  SnackBar(content: Text('No puedes reservar una hora que ya ha pasado.')),
+);
+
+// ✅ Después
+_mostrarAviso('No puedes reservar una hora que ya ha pasado.');
+```
+
+El SnackBar de **éxito** se deja como estaba: como el sheet hace `pop(true)` inmediatamente después, no hay modal que lo tape y se renderiza correctamente en la pantalla padre (admin o empleado).
+
+**Archivo modificado**: `frontend_victorino/lib/features/administrador/agenda/presentation/widgets/agenda_grid/bottom_sheet_crear_cita_rapida.dart`.
+
+Como el widget es compartido entre admin y empleado, el arreglo se aplica a los dos roles sin tocar nada más.
+
+---
+
+### Consejo para evitar este patrón
+
+- **`ScaffoldMessenger.of(context)` dentro de un `showModalBottomSheet` siempre sube al messenger raíz**, no al del sheet. Resultado: el SnackBar queda renderizado detrás del modal. Aplicable también a `showDialog` y a cualquier overlay que tape la parte inferior de la pantalla.
+- Posibles soluciones (de menos a más invasiva):
+  1. **Asumir el comportamiento** y cerrar el modal antes de mostrar el SnackBar (sirve para mensajes de éxito, no para errores que dejan el modal abierto para corregir).
+  2. **Aviso in-sheet custom con `Stack` + `Positioned`** (el patrón usado aquí). Ventaja: no rompe el auto-sizing del bottom sheet.
+  3. Envolver el body en `Scaffold` + `ScaffoldMessenger` locales. Solo viable si el bottom sheet ocupa pantalla completa fija — rompe el auto-sizing si el sheet se quiere ajustar al contenido.
+- **Regla práctica**: cuando un widget vive dentro de un `showModalBottomSheet` con `isScrollControlled: true` y necesita mostrar avisos al usuario sin cerrar el modal, no uses `ScaffoldMessenger`. Implementa un aviso propio con `Stack`.
+
+---
+
 ## 2026-05-17 · Frontend Cliente — "No se pudieron cargar las notificaciones" al volver a la pestaña (segundo error)
 
 **Síntoma**: incluso después de aplicar el fix del `.select()`, al cambiar de pestaña y volver a la bandeja de notificaciones aparecía el mensaje 
