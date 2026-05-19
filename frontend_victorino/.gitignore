@@ -43,4 +43,9 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
-/prototipo_de_interfaces/
+
+# La carpeta prototipo_de_interfaces/ contiene las capturas reales de la app
+# que se muestran en el README.md (admin/, cliente/, empleado/, fotos_compartidas/
+# con Arquitectura.jpeg). DEBE estar trackeada para que las imágenes se vean en GitHub.
+# Si quieres ignorar borradores temporales, usa patrones específicos en su lugar.
+# /prototipo_de_interfaces/
