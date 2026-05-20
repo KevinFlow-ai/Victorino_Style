@@ -159,14 +159,6 @@ class ObtenerCierreAnual {
 // ============================================================================
 // CASO DE USO: ActualizarCierreAnual
 // ============================================================================
-//
-// Este caso de uso valida que:
-//
-//   - Si ambas fechas existen,
-//   - La fecha de fin no sea anterior a la fecha de inicio.
-//
-// Si la validación falla, lanza ApiException con FailureValidacion.
-//
 class ActualizarCierreAnual {
   ActualizarCierreAnual(this._r);
   final NegocioAdminRepositorio _r;
@@ -184,3 +176,39 @@ class ActualizarCierreAnual {
     return _r.actualizarCierreAnual(fechaInicio, fechaFin);
   }
 }
+
+// ============================================================================
+// CASO DE USO: ObtenerConfigCorreo
+// ============================================================================
+class ObtenerConfigCorreo {
+  ObtenerConfigCorreo(this._r);
+  final NegocioAdminRepositorio _r;
+
+  Future<ConfiguracionCorreo> ejecutar() => _r.obtenerConfigCorreo();
+}
+
+// ============================================================================
+// CASO DE USO: ActualizarConfigCorreo
+// ============================================================================
+class ActualizarConfigCorreo {
+  ActualizarConfigCorreo(this._r);
+  final NegocioAdminRepositorio _r;
+
+  Future<ConfiguracionCorreo> ejecutar(
+      String host, int port, String user, String password, bool ssl) {
+    if (host.trim().isEmpty) {
+      throw ApiException(
+          const FailureValidacion('El host SMTP es obligatorio', {}));
+    }
+    if (user.trim().isEmpty) {
+      throw ApiException(
+          const FailureValidacion('El correo remitente es obligatorio', {}));
+    }
+    if (password.isEmpty) {
+      throw ApiException(
+          const FailureValidacion('La contraseña es obligatoria', {}));
+    }
+    return _r.actualizarConfigCorreo(host.trim(), port, user.trim(), password, ssl);
+  }
+}
+

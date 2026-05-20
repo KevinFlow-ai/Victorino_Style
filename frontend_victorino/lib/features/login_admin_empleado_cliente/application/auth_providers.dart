@@ -9,16 +9,16 @@ import '../domain/casos_uso/iniciar_sesion.dart';
 import '../domain/repositorios/auth_repositorio.dart';
 
 final authRepositorioProvider = Provider<AuthRepositorio>((ref) {
-  final dio = ref.read(dioProvider);
-  // Lee el cliente Dio previamente configurado (baseUrl, headers, timeouts, etc.).
+  // ref.watch (no ref.read) para que se recree cuando apiBaseUrlProvider cambia.
+  // Así, si el usuario cambia la URL en Ajustes, el repositorio usa el Dio actualizado.
+  final dio = ref.watch(dioProvider);
 
   return AuthRepositorioImpl(dio: dio);
-  // Devuelve la implementación concreta del repositorio de autenticación,
-  // inyectándole el cliente HTTP.
 });
 
 final iniciarSesionProvider = Provider<IniciarSesion>((ref) {
-  return IniciarSesion(ref.read(authRepositorioProvider));
+  // ref.watch para reaccionar cuando authRepositorioProvider se recrea.
+  return IniciarSesion(ref.watch(authRepositorioProvider));
 });
 
 

@@ -87,5 +87,16 @@ abstract class NegocioAdminRepositorio {
   Future<CierreAnual> obtenerCierreAnual();
   Future<CierreAnual> actualizarCierreAnual(
       String? fechaInicio, String? fechaFin);
+
+  // --------------------------------------------------------------------------
+  // CONFIGURACIÓN DE CORREO (SMTP DINÁMICO)
+  // --------------------------------------------------------------------------
+  //
+  // Obtener los datos SMTP guardados en BD.
+  // Actualizar host, puerto, usuario, contraseña y tipo de cifrado.
+  //
+  Future<ConfiguracionCorreo> obtenerConfigCorreo();
+  Future<ConfiguracionCorreo> actualizarConfigCorreo(
+      String host, int port, String user, String password, bool ssl);
 }
 

@@ -77,128 +77,153 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: 20),
-                // Logo superior (mismo que la maqueta original).
-                Center(
-                  child: Image.asset(
-                    'assets/logos_app/logo_login.png',
-                    height: 120,
-                    fit: BoxFit.contain,
-                  ),
-                ),
-                const SizedBox(height: 30),
-
-                // Tarjeta con efecto glow (idéntica a la versión inicial).
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(32),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        blurRadius: 30,
-                        spreadRadius: 5,
-                        offset: const Offset(0, 10),
+      body: Stack(
+        children: [
+          // ── Contenido principal (sin cambios) ──────────────────────────────
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 20.0),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    const SizedBox(height: 20),
+                    // Logo superior (mismo que la maqueta original).
+                    Center(
+                      child: Image.asset(
+                        'assets/logos_app/logo_login.png',
+                        height: 120,
+                        fit: BoxFit.contain,
                       ),
-                    ],
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Bienvenido de nuevo',
-                        style: GoogleFonts.poppins(
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textMain,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Tu mejor versión empieza aquí.',
-                        style: GoogleFonts.roboto(
-                          fontSize: 14,
-                          color: AppColors.textMuted,
-                          fontWeight: FontWeight.w400,
-                        ),
-                      ),
-                      const SizedBox(height: 32),
+                    ),
+                    const SizedBox(height: 30),
 
-                      // Correo electrónico.
-                      _buildInputLabel('CORREO ELECTRÓNICO'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _correoCtrl,
-                        hintText: 'nombre@ejemplo.com',
-                        prefixIcon: Icons.email_outlined,
-                        keyboardType: TextInputType.emailAddress,
-                        validator: _validarCorreo,
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      // Contraseña con toggle de visibilidad.
-                      _buildInputLabel('CONTRASEÑA'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _passwordCtrl,
-                        hintText: '********',
-                        prefixIcon: Icons.lock_outline,
-                        obscureText: !_passwordVisible,
-                        validator: _validarPassword,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _passwordVisible
-                                ? Icons.visibility_off_outlined
-                                : Icons.visibility_outlined,
-                            color: AppColors.textMuted.withValues(alpha: 0.6),
-                            size: 22,
+                    // Tarjeta con efecto glow (idéntica a la versión inicial).
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(32),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.15),
+                            blurRadius: 30,
+                            spreadRadius: 5,
+                            offset: const Offset(0, 10),
                           ),
-                          onPressed: () => setState(() => _passwordVisible = !_passwordVisible),
-                        ),
+                        ],
                       ),
-
-                      const SizedBox(height: 32),
-
-                      // Botón principal con loader integrado.
-                      _buildLoginButton(cargando: cargando),
-
-                      const SizedBox(height: 24),
-
-                      // Link a recuperación (lógica fuera de alcance ahora mismo).
-                      GestureDetector(
-                        onTap: () => context.push('/forgot-password'), // Navegación limpia con GoRouter
-                        child: Text(
-                          '¿Olvidaste tu contraseña?',
-                          style: GoogleFonts.roboto(
-                            fontSize: 14,
-                            color: AppColors.textMuted,
-                            fontWeight: FontWeight.w500,
+                      child: Column(
+                        children: [
+                          Text(
+                            'Bienvenido de nuevo',
+                            style: GoogleFonts.poppins(
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textMain,
+                            ),
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Tu mejor versión empieza aquí.',
+                            style: GoogleFonts.roboto(
+                              fontSize: 14,
+                              color: AppColors.textMuted,
+                              fontWeight: FontWeight.w400,
+                            ),
+                          ),
+                          const SizedBox(height: 32),
+
+                          // Correo electrónico.
+                          _buildInputLabel('CORREO ELECTRÓNICO'),
+                          const SizedBox(height: 8),
+                          _buildTextField(
+                            controller: _correoCtrl,
+                            hintText: 'nombre@ejemplo.com',
+                            prefixIcon: Icons.email_outlined,
+                            keyboardType: TextInputType.emailAddress,
+                            validator: _validarCorreo,
+                          ),
+
+                          const SizedBox(height: 20),
+
+                          // Contraseña con toggle de visibilidad.
+                          _buildInputLabel('CONTRASEÑA'),
+                          const SizedBox(height: 8),
+                          _buildTextField(
+                            controller: _passwordCtrl,
+                            hintText: '********',
+                            prefixIcon: Icons.lock_outline,
+                            obscureText: !_passwordVisible,
+                            validator: _validarPassword,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _passwordVisible
+                                    ? Icons.visibility_off_outlined
+                                    : Icons.visibility_outlined,
+                                color: AppColors.textMuted.withValues(alpha: 0.6),
+                                size: 22,
+                              ),
+                              onPressed: () =>
+                                  setState(() => _passwordVisible = !_passwordVisible),
+                            ),
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // Botón principal con loader integrado.
+                          _buildLoginButton(cargando: cargando),
+
+                          const SizedBox(height: 24),
+
+                          // Link a recuperación (lógica fuera de alcance ahora mismo).
+                          GestureDetector(
+                            onTap: () => context.push('/forgot-password'),
+                            child: Text(
+                              '¿Olvidaste tu contraseña?',
+                              style: GoogleFonts.roboto(
+                                fontSize: 14,
+                                color: AppColors.textMuted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+                          const Divider(color: Color(0xFFEEEEEE)),
+                          const SizedBox(height: 24),
+
+                          _buildRegisterLink(),
+                        ],
                       ),
-
-                      const SizedBox(height: 24),
-                      const Divider(color: Color(0xFFEEEEEE)),
-                      const SizedBox(height: 24),
-
-                      _buildRegisterLink(),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 20),
+                  ],
                 ),
-                const SizedBox(height: 20),
-              ],
+              ),
             ),
           ),
-        ),
+
+          // ── Icono de ajustes del servidor (esquina superior derecha) ────────
+          Positioned(
+            top: 0,
+            right: 4,
+            child: SafeArea(
+              child: Tooltip(
+                message: 'Configurar servidor',
+                child: IconButton(
+                  icon: Icon(
+                    Icons.settings_outlined,
+                    color: AppColors.textMuted.withValues(alpha: 0.5),
+                    size: 24,
+                  ),
+                  onPressed: () => context.push('/ajustes/servidor'),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

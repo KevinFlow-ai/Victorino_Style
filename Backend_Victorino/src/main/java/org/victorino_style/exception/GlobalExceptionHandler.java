@@ -235,7 +235,73 @@ public class GlobalExceptionHandler {
     }
 
     // ------------------------------------------------------------------------
-    // 500: la peluquería no está configurada (problema de inicialización del proyecto).
+    // 503: fallo al enviar correo (SMTP caído, credenciales inválidas, etc.).
+    // Se captura antes del handler genérico para que el cliente reciba un mensaje
+    // útil en lugar del genérico "Ha ocurrido un error inesperado".
+    // ------------------------------------------------------------------------
+    @ExceptionHandler(org.springframework.mail.MailException.class)
+    public ResponseEntity<ApiError> manejarMail(org.springframework.mail.MailException ex,
+                                                HttpServletRequest req) {
+        // Recorrer toda la cadena de causas para encontrar el mensaje más específico
+        String causaMensaje = extraerMensajeRaiz(ex);
+
+        // Detectar errores comunes (comparación case-insensitive) y mostrar motivo real al admin
+        String mensajeUsuario;
+        String causaLower = causaMensaje != null ? causaMensaje.toLowerCase() : "";
+
+        if (causaMensaje != null && (causaMensaje.contains("535")
+                || causaLower.contains("authentication")
+                || causaLower.contains("username and password")
+                || causaLower.contains("credentials")
+                || causaLower.contains("contraseña")
+                || causaMensaje.contains("534")
+                || causaMensaje.contains("530"))) {
+            mensajeUsuario = "Credenciales SMTP incorrectas: " + causaMensaje +
+                    " — Para Gmail/educaMadrid usa una Contraseña de Aplicación, no la contraseña normal.";
+        } else if (causaMensaje != null && (causaLower.contains("ssl")
+                || causaMensaje.contains("PKIX")
+                || causaLower.contains("handshake")
+                || causaLower.contains("certificate"))) {
+            mensajeUsuario = "Error de SSL con el servidor SMTP: " + causaMensaje +
+                    " — Prueba a cambiar el puerto o el tipo de cifrado en la configuración.";
+        } else if (causaMensaje != null && (causaLower.contains("connect")
+                || causaLower.contains("timeout")
+                || causaLower.contains("unknown host")
+                || causaLower.contains("nodename")
+                || causaLower.contains("unreachable"))) {
+            mensajeUsuario = "No se puede conectar al servidor SMTP: " + causaMensaje +
+                    " — Verifica el host y el puerto configurados.";
+        } else {
+            // Incluir el mensaje real para que el administrador pueda diagnosticar
+            mensajeUsuario = "Error al enviar el correo: " +
+                    (causaMensaje != null ? causaMensaje : ex.getMessage()) +
+                    " — Comprueba la configuración SMTP en 'Configuración del negocio > Configuración de correo'.";
+        }
+
+        log.error("Error SMTP en {}: {} | causaRaíz: {}", req.getRequestURI(), ex.getMessage(), causaMensaje, ex);
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(ApiError.sinCampos(503, "Service Unavailable", mensajeUsuario, req.getRequestURI()));
+    }
+
+    /**
+     * Recorre la cadena de causas (hasta 10 niveles) y devuelve el mensaje
+     * del nivel más profundo, que suele ser el más específico.
+     */
+    private String extraerMensajeRaiz(Throwable t) {
+        Throwable causa = t;
+        String ultimoMensaje = t.getMessage();
+        int max = 10;
+        while (causa.getCause() != null && max-- > 0) {
+            causa = causa.getCause();
+            if (causa.getMessage() != null && !causa.getMessage().isBlank()) {
+                ultimoMensaje = causa.getMessage();
+            }
+        }
+        return ultimoMensaje;
+    }
+
+    // ------------------------------------------------------------------------
+    // 500: la peluquera no est configurada (problema de inicializacin del proyecto).
     // ------------------------------------------------------------------------
     @ExceptionHandler(PeluqueriaNoConfiguradaException.class)
     public ResponseEntity<ApiError> manejarPeluqueriaNoConfigurada(PeluqueriaNoConfiguradaException ex,
@@ -246,6 +312,18 @@ public class GlobalExceptionHandler {
     }
 
 
+
+    // ------------------------------------------------------------------------
+    // 400: correo no registrado en recuperación de contraseña, o código inválido
+    //      en verify-otp / reset-password (IllegalArgumentException).
+    // ------------------------------------------------------------------------
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiError> manejarIllegalArgument(IllegalArgumentException ex,
+                                                           HttpServletRequest req) {
+        log.info("Argumento inválido en {}: {}", req.getRequestURI(), ex.getMessage());
+        return ResponseEntity.badRequest()
+                .body(ApiError.sinCampos(400, "Bad Request", ex.getMessage(), req.getRequestURI()));
+    }
 
     // ------------------------------------------------------------------------
     // 500: cualquier excepción no contemplada cae aquí.

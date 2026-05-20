@@ -212,10 +212,6 @@ class NegocioAdminRepositorioImpl implements NegocioAdminRepositorio {
   // ==========================================================================
   //  OBTENER CIERRE ANUAL (GET)
   // ==========================================================================
-  //
-  // 1. GET /admin/cierre-anual
-  // 2. JSON → DTO → Entidad
-  //
   @override
   Future<CierreAnual> obtenerCierreAnual() async {
     try {
@@ -229,10 +225,6 @@ class NegocioAdminRepositorioImpl implements NegocioAdminRepositorio {
   // ==========================================================================
   //  ACTUALIZAR CIERRE ANUAL (PUT)
   // ==========================================================================
-  //
-  // 1. Envía PUT con fechaInicio y fechaFin
-  // 2. JSON → DTO → Entidad
-  //
   @override
   Future<CierreAnual> actualizarCierreAnual(
       String? fechaInicio, String? fechaFin) async {
@@ -243,6 +235,42 @@ class NegocioAdminRepositorioImpl implements NegocioAdminRepositorio {
       );
 
       return CierreAnualDto.fromJson(r.data!).aEntidad();
+    } catch (e) {
+      throw ApiException(_errorMapper.mapear(e));
+    }
+  }
+
+  // ==========================================================================
+  //  OBTENER CONFIGURACIÓN DE CORREO (GET)
+  // ==========================================================================
+  @override
+  Future<ConfiguracionCorreo> obtenerConfigCorreo() async {
+    try {
+      final r = await _dio.get<Map<String, dynamic>>(ApiEndpoints.adminCorreo);
+      return ConfiguracionCorreoDto.fromJson(r.data!).aEntidad();
+    } catch (e) {
+      throw ApiException(_errorMapper.mapear(e));
+    }
+  }
+
+  // ==========================================================================
+  //  ACTUALIZAR CONFIGURACIÓN DE CORREO (PUT)
+  // ==========================================================================
+  @override
+  Future<ConfiguracionCorreo> actualizarConfigCorreo(
+      String host, int port, String user, String password, bool ssl) async {
+    try {
+      final r = await _dio.put<Map<String, dynamic>>(
+        ApiEndpoints.adminCorreo,
+        data: {
+          'host': host,
+          'port': port,
+          'user': user,
+          'password': password,
+          'ssl': ssl,
+        },
+      );
+      return ConfiguracionCorreoDto.fromJson(r.data!).aEntidad();
     } catch (e) {
       throw ApiException(_errorMapper.mapear(e));
     }

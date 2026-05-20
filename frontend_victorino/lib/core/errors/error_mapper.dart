@@ -42,6 +42,8 @@ class ErrorMapper {
       // en CITA_MISMO_DIA / CITA_MISMA_SEMANA / CITA_MISMO_SERVICIO). El frontend lo usa para
       // mostrar mensajes contextuales y abrir el wizard precargado con la cita existente.
       409 => FailureConflicto(mensaje ?? 'Conflicto al guardar', _extraerDetalles(data)),
+      // 503: el servicio (p.ej. SMTP) no estaba disponible temporalmente.
+      503 => FailureRed(mensaje ?? 'Servicio no disponible temporalmente. Inténtalo de nuevo.'),
       _ => FailureServidor(mensaje ?? 'Error del servidor'),
     };
   }

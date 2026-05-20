@@ -95,4 +95,16 @@ public class PasswordRecoveryService {
     private String normalizarCorreo(String correo) {
         return correo.trim().toLowerCase(Locale.ROOT);
     }
+
+    /**
+     * Marca como usados todos los tokens activos del usuario identificado por correo.
+     * Se llama desde el controlador cuando el envío de correo falla, para evitar
+     * dejar tokens huérfanos en la base de datos.
+     */
+    @Transactional
+    public void invalidarTokensActivos(String correoRecibido) {
+        String correo = normalizarCorreo(correoRecibido);
+        usuarioRepository.findByCorreoUsuarioAndFechaEliminacionUsuarioIsNull(correo)
+                .ifPresent(tokenRecuperacionRepository::marcarTokensActivosComoUsados);
+    }
 }

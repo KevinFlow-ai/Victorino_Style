@@ -10,22 +10,28 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api/api_url_provider.dart';
 import '../../core/api/dio_cliente.dart';
 import '../../core/api/jwt_interceptor.dart';
 import '../../core/api/refresh_interceptor.dart';
 import 'secure_storage_provider.dart';
 import 'sesion_provider.dart';
 
-// Dio "limpio" sin interceptores. Se usa para reintentar peticiones desde dentro
-// del RefreshInterceptor sin volver a entrar en él (si lo hiciéramos, recursión infinita).
-final dioBaseProvider = Provider<Dio>((ref) => DioCliente.crear());
+// Dio "limpio" sin interceptores.
+// Observa apiBaseUrlProvider: se recrea automáticamente si la URL cambia.
+final dioBaseProvider = Provider<Dio>((ref) {
+  final url = ref.watch(apiBaseUrlProvider);
+  return DioCliente.crearConUrl(url);
+});
 
 // Dio principal con los interceptores aplicados. Lo usan los repositorios.
+// También observa apiBaseUrlProvider para reaccionar a cambios de URL.
 final dioProvider = Provider<Dio>((ref) {
-  final dio = DioCliente.crear();
+  final url = ref.watch(apiBaseUrlProvider);
+  final dio = DioCliente.crearConUrl(url);
   // Cliente Dio principal, base para todas las peticiones HTTP.
 
-  final dioBase = ref.read(dioBaseProvider);
+  final dioBase = ref.watch(dioBaseProvider);
   // Dio auxiliar sin interceptores, usado para reintentos de refresh.
 
   final secureStorage = ref.read(secureStorageProvider);

@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/theme/app_colores.dart';
 import 'secciones/seccion_cancelacion_masiva_widget.dart';
 import 'secciones/seccion_cierre_anual_widget.dart';
+import 'secciones/seccion_correo_widget.dart';
 import 'secciones/seccion_descansos_widget.dart';
 import 'secciones/seccion_festivos_widget.dart';
 import 'secciones/seccion_horario_widget.dart';
@@ -38,6 +39,7 @@ class NegocioScreen extends ConsumerWidget {
           SeccionCancelacionMasivaWidget(),
           SeccionFestivosWidget(),
           SeccionCierreAnualWidget(),
+          SeccionCorreoWidget(),
           SizedBox(height: 80),
         ],
       ),

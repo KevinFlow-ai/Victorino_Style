@@ -24,12 +24,27 @@ public class PasswordRecoveryController {
     private final MailService mailService;
 
     @PostMapping("/forgot-password")
-    @Operation(summary = "Genera y envía un código de recuperación al correo del usuario")
+    @Operation(summary = "Genera y enva un cdigo de recuperacin al correo del usuario")
     public ResponseEntity<Map<String, String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
         String codigo = passwordRecoveryService.crearCodigoRecuperacion(request.correo());
-        mailService.enviarCodigoRecuperacion(request.correo(), codigo);
-
-        return ResponseEntity.ok(Map.of("message", "Código enviado correctamente"));
+        try {
+            mailService.enviarCodigoRecuperacion(request.correo(), codigo);
+        } catch (Exception e) {
+            // Invalidar el token para no dejar tokens huérfanos.
+            // Usamos try-catch para que un fallo al invalidar no enmascare el error de correo.
+            try {
+                passwordRecoveryService.invalidarTokensActivos(request.correo());
+            } catch (Exception ex) {
+                // Ignorar errores secundarios al invalidar; lo importante es re-lanzar el error de correo.
+            }
+            // Re-lanzar como MailException para que GlobalExceptionHandler devuelva 503.
+            if (e instanceof org.springframework.mail.MailException mailEx) {
+                throw mailEx;
+            }
+            // Si no es MailException (p.ej. RuntimeException inesperada), envolverlo.
+            throw new org.springframework.mail.MailSendException("Error inesperado al enviar correo: " + e.getMessage(), e);
+        }
+        return ResponseEntity.ok(Map.of("message", "Cdigo enviado correctamente"));
     }
 
     @PostMapping("/verify-otp")

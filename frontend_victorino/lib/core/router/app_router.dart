@@ -30,6 +30,7 @@ import '../../features/cliente/reservar/presentation/wizard_reserva_screen.dart'
 import '../../features/cliente/shell/presentation/shell_cliente_screen.dart';
 import '../../features/forgot_password/forgot_password_screen.dart';
 import '../../features/login_admin_empleado_cliente/presentation/login_screen.dart';
+import '../ajustes/ajustes_servidor_screen.dart';
 import '../../features/notificaciones/presentation/bandeja_notificaciones_screen.dart';
 import '../../features/splash/presentation/splash_screen.dart';
 import '../../shared/providers/sesion_provider.dart';
@@ -47,6 +48,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, _) => const LoginScreen()),
       GoRoute(path: '/registro', builder: (_, _) => const RegistroScreen()),
       GoRoute(path: '/forgot-password', builder: (_, __) => const ForgotPasswordEmailScreen()),
+      // Pantalla de ajustes del servidor: accesible sin sesión (antes del login).
+      GoRoute(path: '/ajustes/servidor', builder: (_, _) => const AjustesServidorScreen()),
 
       // Panel CLIENTE con bottom nav y 4 ramas independientes.
       StatefulShellRoute.indexedStack(
@@ -232,7 +235,8 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       final estaEnSplash = ubicacion == '/';
       final estaEnAuth = ubicacion == '/login' ||
           ubicacion == '/registro' ||
-          ubicacion == '/forgot-password';
+          ubicacion == '/forgot-password' ||
+          ubicacion == '/ajustes/servidor';
       final hayLogin = sesion != null;
 
       // El splash nunca redirige: él mismo decide a dónde ir tras intentar refresh.

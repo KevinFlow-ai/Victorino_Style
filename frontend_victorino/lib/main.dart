@@ -5,42 +5,51 @@
 // 4. Inicializar datos de localización (intl) para español de España.
 // 5. Envolver la app en ProviderScope para Riverpod y lanzar VictorinoApp.
 
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 
 // *********  FIREBASE
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'firebase_messaging_handler.dart';
 import 'firebase_options.dart';
 import 'core/notifications/fcm_service.dart';
 import 'core/notifications/local_notifications.dart';
 
 import 'app.dart';
+import 'core/api/api_url_provider.dart';
 
+/// Firebase y FCM solo están soportados en Android e iOS.
+/// En Windows/Linux/macOS/Web se omiten para evitar UnsupportedError al arrancar.
+bool get _soportaFirebase =>
+    !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Asegura que Flutter está completamente inicializado.
-  // Necesario si usas plugins o inicializaciones antes de runApp().
 
-  // Carga los datos de DateFormat para los locales que usamos. Sin esto,
-  // DateFormat.yMMMd('es') lanza LocaleDataException en runtime.
   await initializeDateFormatting('es_ES');
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  // Lee la URL guardada en disco ANTES de runApp para inyectarla
+  // sincrónicamente en ProviderScope. Así dioProvider arranca con la URL
+  // correcta desde el primer frame, sin flashes ni estados de carga.
+  const storage = FlutterSecureStorage();
+  final urlGuardada = await storage.read(key: kClaveApiUrl);
 
-  // Handler para mensajes FCM cuando la app está cerrada o en background.
-  // Debe registrarse antes de runApp y en el top-level (no dentro de un widget).
-  // Inicializa las notificaciones locales (para foreground).
-  await LocalNotificationsService.inicializar();
+  // Si hay URL guardada en disco, la inyectamos antes de crear el ProviderScope.
+  // ApiUrlNotifier.build() leerá _urlInicial, que ya tendrá el valor correcto.
+  if (urlGuardada != null) setUrlInicial(urlGuardada);
 
-  // Inicializa FCM: registra el handler de background y escucha mensajes.
-  await FcmService.inicializar();
+  if (_soportaFirebase) {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    await LocalNotificationsService.inicializar();
+    await FcmService.inicializar();
+  }
 
   runApp(const ProviderScope(child: VictorinoApp()));
 

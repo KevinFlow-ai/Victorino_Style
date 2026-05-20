@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/errors/failure.dart';
 import '../../../core/theme/app_colores.dart';
 import 'new_password_screen.dart';
 import 'application/forgot_password_notifier.dart';
@@ -66,7 +67,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
       state.status.whenOrNull(
         error: (error, _) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(error.toString()), backgroundColor: Colors.red),
+            SnackBar(content: Text(error is Failure ? error.mensaje : 'Error inesperado'), backgroundColor: Colors.red),
           );
         },
       );

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/errors/failure.dart';
 import '../../../core/theme/app_colores.dart';
 import 'otp_screen.dart';
 import 'application/forgot_password_notifier.dart';
@@ -39,8 +40,9 @@ class _ForgotPasswordEmailScreenState extends ConsumerState<ForgotPasswordEmailS
         final state = ref.read(forgotPasswordNotifierProvider);
         state.status.whenOrNull(
           error: (error, _) {
+            final mensaje = error is Failure ? error.mensaje : 'Error inesperado';
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(error.toString()), backgroundColor: Colors.red),
+              SnackBar(content: Text(mensaje), backgroundColor: Colors.red),
             );
           },
         );

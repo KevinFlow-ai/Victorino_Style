@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.victorino_style.dto.admin.CierreAnualRequest;
 import org.victorino_style.dto.admin.CierreAnualResponse;
+import org.victorino_style.dto.admin.ConfiguracionCorreoRequest;
+import org.victorino_style.dto.admin.ConfiguracionCorreoResponse;
 import org.victorino_style.dto.admin.DescansoRequest;
 import org.victorino_style.dto.admin.DescansoResponse;
 import org.victorino_style.dto.admin.FestivoRequest;
@@ -170,6 +172,50 @@ public class ConfiguracionService {
         auditoriaService.registrar("EDITAR_CIERRE_ANUAL", "PELUQUERIA", p.getId(),
                 "Cierre anual: " + dto.fechaInicio() + " a " + dto.fechaFin());
         return horarioMapper.aRespuestaCierreAnual(p);
+    }
+
+    // ============================================================
+    //  CONFIGURACIÓN DE CORREO (SMTP DINÁMICO)
+    // ============================================================
+
+    /**
+     * Devuelve la configuración SMTP guardada en BD.
+     * Si no hay configuración guardada, devuelve {@code configurado=false}.
+     * La contraseña nunca se expone.
+     */
+    @Transactional(readOnly = true)
+    public ConfiguracionCorreoResponse obtenerConfigCorreo() {
+        Peluqueria p = obtenerPeluqueria();
+        boolean tiene = p.getSmtpHost() != null && !p.getSmtpHost().isBlank();
+        return new ConfiguracionCorreoResponse(
+                tiene ? p.getSmtpHost() : null,
+                tiene ? p.getSmtpPort() : null,
+                tiene ? p.getSmtpUser() : null,
+                p.isSmtpSsl(),
+                tiene
+        );
+    }
+
+    /**
+     * Guarda o actualiza la configuración SMTP en la BD.
+     * A partir de ese momento {@code MailService} usará estos datos
+     * en lugar de los de {@code application.properties}.
+     */
+    @Transactional
+    public ConfiguracionCorreoResponse actualizarConfigCorreo(ConfiguracionCorreoRequest dto) {
+        Peluqueria p = obtenerPeluqueria();
+        p.setSmtpHost(dto.host().trim());
+        p.setSmtpPort(dto.port());
+        p.setSmtpUser(dto.user().trim());
+        p.setSmtpPassword(dto.password());
+        p.setSmtpSsl(dto.ssl());
+        p = peluqueriaRepository.save(p);
+
+        auditoriaService.registrar("EDITAR_CONFIG_CORREO", "PELUQUERIA", p.getId(),
+                "SMTP → " + dto.host() + ":" + dto.port() + " user=" + dto.user());
+
+        return new ConfiguracionCorreoResponse(
+                p.getSmtpHost(), p.getSmtpPort(), p.getSmtpUser(), p.isSmtpSsl(), true);
     }
 
     // ============================================================

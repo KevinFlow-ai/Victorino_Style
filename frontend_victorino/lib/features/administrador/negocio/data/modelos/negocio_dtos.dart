@@ -1,5 +1,5 @@
 // DTOs espejo de los records del backend del paquete configuración:
-// HorarioPeluqueriaResponse, DescansoResponse, FestivoResponse, CierreAnualResponse.
+// HorarioPeluqueriaResponse, DescansoResponse, FestivoResponse, CierreAnualResponse, ConfiguracionCorreoResponse.
 import '../../domain/entidades/horario_peluqueria.dart';
 
 
@@ -258,3 +258,44 @@ class CierreAnualDto {
 
   CierreAnual aEntidad() => CierreAnual(fechaInicio: fechaInicio, fechaFin: fechaFin);
 }
+
+// ============================================================================
+//  DTO: ConfiguracionCorreoDto
+// ============================================================================
+//
+// Espejo del record ConfiguracionCorreoResponse del backend.
+// La contraseña NO viene en la respuesta por seguridad.
+//
+class ConfiguracionCorreoDto {
+  const ConfiguracionCorreoDto({
+    this.host,
+    this.port,
+    this.user,
+    required this.ssl,
+    required this.configurado,
+  });
+
+  final String? host;
+  final int? port;
+  final String? user;
+  final bool ssl;
+  final bool configurado;
+
+  factory ConfiguracionCorreoDto.fromJson(Map<String, dynamic> j) =>
+      ConfiguracionCorreoDto(
+        host: j['host'] as String?,
+        port: j['port'] == null ? null : (j['port'] as num).toInt(),
+        user: j['user'] as String?,
+        ssl: (j['ssl'] as bool?) ?? false,
+        configurado: (j['configurado'] as bool?) ?? false,
+      );
+
+  ConfiguracionCorreo aEntidad() => ConfiguracionCorreo(
+    host: host,
+    port: port,
+    user: user,
+    ssl: ssl,
+    configurado: configurado,
+  );
+}
+

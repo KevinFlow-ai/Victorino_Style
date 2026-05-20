@@ -17,6 +17,15 @@ class ApiEndpoints {
     defaultValue: 'http://10.0.2.2:8080/api/v1',
   );
 
+  // URL efectiva en tiempo de ejecución. Se inicializa con baseUrl pero puede
+  // cambiar si el usuario configura una dirección distinta en Ajustes.
+  // Actualizar siempre que cambie apiBaseUrlProvider (ver api_url_provider.dart).
+  static String _baseUrlEfectiva = baseUrl;
+
+  /// Actualiza la URL base que usa urlImagen() para construir rutas absolutas.
+  /// Llamar desde setUrlInicial() y ApiUrlNotifier.cambiarUrl().
+  static void actualizarBaseUrl(String url) => _baseUrlEfectiva = url;
+
   // Rutas de autenticación.
   static const authRegistro = '/auth/registro';
   static const authLogin = '/auth/login';
@@ -55,11 +64,13 @@ class ApiEndpoints {
   static String adminServicioPorId(int id) => '/admin/servicios/$id';
   static String adminServicioFoto(int id) => '/admin/servicios/$id/foto';
 
-  // Configuración: horario, festivos, cierre anual.
+  // Configuración: horario, festivos, cierre anual, correo SMTP.
   static const adminHorario = '/admin/horario';
   static const adminFestivos = '/admin/festivos';
   static String adminFestivoPorId(int id) => '/admin/festivos/$id';
   static const adminCierreAnual = '/admin/cierre-anual';
+  static const adminCorreo = '/admin/correo';
+  static const adminCorreoProbar = '/admin/correo/probar';
 
   // Agenda y walk-in.
   static const adminAgenda = '/admin/agenda';
@@ -132,6 +143,9 @@ class ApiEndpoints {
       // Algunas migraciones futuras pueden devolver URLs absolutas (ej. CDN).
       return rutaRelativa;
     }
-    return '$baseUrl$rutaRelativa';
+    // Usa _baseUrlEfectiva (actualizada en tiempo de ejecución) en lugar de
+    // baseUrl (constante de compilación) para que las imágenes funcionen
+    // cuando el usuario ha configurado una IP distinta en Ajustes.
+    return '$_baseUrlEfectiva$rutaRelativa';
   }
 }

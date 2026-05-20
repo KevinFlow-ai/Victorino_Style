@@ -36,7 +36,24 @@ class DioCliente {
   // Constructor privado: evita que alguien instancie esta clase.
   // Solo se usa como contenedor estático.
 
-  // Construye un Dio listo para usarse.
+  // Construye un Dio con la URL base dinámica (runtime).
+  // Lo usan dioBaseProvider y dioProvider para reaccionar a cambios de URL.
+  static Dio crearConUrl(String url) {
+    return Dio(
+      BaseOptions(
+        baseUrl: url,
+        connectTimeout: const Duration(seconds: 10),
+        receiveTimeout: const Duration(seconds: 15),
+        sendTimeout: const Duration(seconds: 10),
+        responseType: ResponseType.json,
+        contentType: 'application/json',
+        headers: const {'Accept': 'application/json'},
+        validateStatus: (s) => s != null && s >= 200 && s < 300,
+      ),
+    );
+  }
+
+  // Construye un Dio listo para usarse (URL de compilación — se mantiene por compatibilidad).
   static Dio crear() {
     return Dio(
       BaseOptions(

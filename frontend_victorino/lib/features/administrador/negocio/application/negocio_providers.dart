@@ -1,4 +1,4 @@
-// Providers del submódulo "negocio": horario, descansos, festivos, cierre anual.
+// Providers del submódulo "negocio": horario, descansos, festivos, cierre anual, correo.
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/providers/dio_provider.dart';
@@ -127,6 +127,12 @@ Provider((ref) => ObtenerCierreAnual(ref.read(negocioRepositorioProvider)));
 final actualizarCierreAnualProvider =
 Provider((ref) => ActualizarCierreAnual(ref.read(negocioRepositorioProvider)));
 
+final obtenerConfigCorreoProvider =
+Provider((ref) => ObtenerConfigCorreo(ref.read(negocioRepositorioProvider)));
+
+final actualizarConfigCorreoProvider =
+Provider((ref) => ActualizarConfigCorreo(ref.read(negocioRepositorioProvider)));
+
 // ============================================================================
 // NOTIFIER PARA HORARIO
 // ============================================================================
@@ -193,4 +199,26 @@ class CierreAnualNotifier extends AsyncNotifier<CierreAnual> {
 final cierreAnualNotifierProvider =
 AsyncNotifierProvider<CierreAnualNotifier, CierreAnual>(
     CierreAnualNotifier.new);
+
+// ============================================================================
+// NOTIFIER PARA CONFIGURACIÓN DE CORREO
+// ============================================================================
+class ConfigCorreoNotifier extends AsyncNotifier<ConfiguracionCorreo> {
+  @override
+  Future<ConfiguracionCorreo> build() =>
+      ref.read(obtenerConfigCorreoProvider).ejecutar();
+
+  Future<void> guardar(
+      String host, int port, String user, String password, bool ssl) async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(
+          () => ref.read(actualizarConfigCorreoProvider)
+              .ejecutar(host, port, user, password, ssl),
+    );
+  }
+}
+
+final configCorreoNotifierProvider =
+AsyncNotifierProvider<ConfigCorreoNotifier, ConfiguracionCorreo>(
+    ConfigCorreoNotifier.new);
 

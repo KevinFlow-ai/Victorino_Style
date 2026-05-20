@@ -147,3 +147,28 @@ class CierreAnual {
   final String? fechaInicio; // YYYY-MM-DD o null
   final String? fechaFin;
 }
+
+// ============================================================================
+// ENTIDAD: ConfiguracionCorreo
+// ============================================================================
+//
+// Configuración SMTP dinámica del servidor de correo.
+// Permite usar cualquier proveedor (Gmail, Outlook, educaMadrid…).
+//
+// Si configurado=false significa que el backend usa su application.properties.
+//
+class ConfiguracionCorreo {
+  const ConfiguracionCorreo({
+    this.host,
+    this.port,
+    this.user,
+    this.ssl = false,
+    required this.configurado,
+  });
+
+  final String? host;   // ej. smtp.gmail.com
+  final int? port;      // ej. 587
+  final String? user;   // ej. correo@gmail.com
+  final bool ssl;       // false=STARTTLS(587), true=SSL directo(465)
+  final bool configurado; // true si hay config en BD
+}

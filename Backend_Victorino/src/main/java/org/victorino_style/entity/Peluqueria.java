@@ -72,5 +72,24 @@ public class Peluqueria {
     @Column(name = "cierre_anual_fin")
     private LocalDate cierreAnualFin;
 
+    // ---- Configuración SMTP dinámica (opcional; si null → usa application.properties) ----
 
+    @Size(max = 255)
+    @Column(name = "smtp_host")
+    private String smtpHost;
+
+    @Column(name = "smtp_port")
+    private Integer smtpPort;
+
+    @Size(max = 255)
+    @Column(name = "smtp_user")
+    private String smtpUser;
+
+    @Size(max = 255)
+    @Column(name = "smtp_password")
+    private String smtpPassword;
+
+    /** false = STARTTLS (puerto 587); true = SSL directo (puerto 465) */
+    @Column(name = "smtp_ssl", nullable = false, columnDefinition = "boolean default false")
+    private boolean smtpSsl = false;
 }

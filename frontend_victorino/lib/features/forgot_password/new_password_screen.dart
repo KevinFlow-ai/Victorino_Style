@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/errors/failure.dart';
 import '../../../core/theme/app_colores.dart';
 import 'application/forgot_password_notifier.dart';
 
@@ -92,7 +93,7 @@ class _NewPasswordScreenState
         error: (error, _) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(error.toString()),
+              content: Text(error is Failure ? error.mensaje : 'Error inesperado'),
               backgroundColor: Colors.red,
             ),
           );
