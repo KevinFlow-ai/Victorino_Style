@@ -3,6 +3,13 @@ title VictorinoStyle - Ver IPs del servidor
 chcp 65001 >nul
 cd /d "%~dp0"
 
+:: Si se ejecuta haciendo doble clic (no desde terminal), reabrir con /k para que no se cierre
+if "%REOPEN%"=="" (
+    set REOPEN=1
+    start "VictorinoStyle - Ver IPs del servidor" cmd /k ""%~f0""
+    exit /b
+)
+
 echo.
 echo =====================================================
 echo   VICTORINO STYLE - IPs del servidor backend
@@ -53,20 +60,55 @@ echo.
 
 :: Comprobar si ngrok está disponible
 where ngrok >nul 2>&1
-if %errorlevel%==0 (
-    echo   [OK] ngrok instalado. Iniciando tunel en puerto 8080...
-    echo        (se abrira una nueva ventana con la URL publica)
-    echo.
-    echo   Una vez aparezca la URL en la ventana de ngrok,
-    echo   pon en la app:  https://XXXX.ngrok-free.app/api/v1
-    echo.
-    echo   Pulsa cualquier tecla para lanzar ngrok...
-    pause >nul
-    start "ngrok - VictorinoStyle" cmd /k "ngrok http 8080"
-) else (
+if %errorlevel% neq 0 (
     echo   [INFO] ngrok no encontrado.
     echo          Instala con: winget install ngrok.ngrok
+    goto :fin_ngrok
 )
+
+echo   [OK] ngrok instalado. Comprobando authtoken...
+
+:: Comprobar si el authtoken está configurado
+:: El config suele estar en %USERPROFILE%\AppData\Local\ngrok\ngrok.yml o ngrok2
+set "NGROK_CFG_1=%USERPROFILE%\AppData\Local\ngrok\ngrok.yml"
+set "NGROK_CFG_2=%HOMEPATH%\.ngrok2\ngrok.yml"
+set "TOKEN_OK=0"
+
+if exist "%NGROK_CFG_1%" (
+    findstr /i "authtoken" "%NGROK_CFG_1%" >nul 2>&1
+    if not errorlevel 1 set "TOKEN_OK=1"
+)
+if exist "%NGROK_CFG_2%" (
+    findstr /i "authtoken" "%NGROK_CFG_2%" >nul 2>&1
+    if not errorlevel 1 set "TOKEN_OK=1"
+)
+
+if "%TOKEN_OK%"=="0" (
+    echo.
+    echo   [AVISO] ngrok NO tiene authtoken configurado.
+    echo          Sin el token ngrok no funcionara.
+    echo.
+    echo   Pasos para configurarlo GRATIS:
+    echo   1. Crea cuenta en: https://dashboard.ngrok.com/signup
+    echo   2. Copia tu token en: https://dashboard.ngrok.com/get-started/your-authtoken
+    echo   3. Abre PowerShell y ejecuta:
+    echo.
+    echo      ngrok config add-authtoken TU_TOKEN_AQUI
+    echo.
+    echo   4. Vuelve a ejecutar este archivo.
+    goto :fin_ngrok
+)
+
+echo   [OK] Authtoken encontrado. Iniciando tunel en puerto 8080...
+echo.
+echo   Una vez aparezca la URL en la ventana de ngrok,
+echo   pon en la app:  https://XXXX.ngrok-free.app/api/v1
+echo.
+echo   Pulsa cualquier tecla para lanzar ngrok...
+pause >nul
+start "ngrok - VictorinoStyle" cmd /k "ngrok http 8080"
+
+:fin_ngrok
 
 echo.
 echo ══════════════════════════════════════════════════
@@ -90,5 +132,8 @@ echo.
 echo   netsh advfirewall firewall add rule name="VictorinoStyle" dir=in action=allow protocol=TCP localport=8080
 echo.
 
-pause
-
+echo.
+echo =====================================================
+echo   Escribe EXIT y pulsa Enter para cerrar.
+echo =====================================================
+echo.
