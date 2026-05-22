@@ -179,6 +179,52 @@ dev_dependencies:
   # Generador de splash nativo (antes de que Flutter cargue).
   flutter_native_splash: ^2.4.7
 
+# =====================================================================
+# Configuración de flutter_launcher_icons
+# =====================================================================
+# Genera los iconos de la app para todas las plataformas a partir del PNG
+# de logo. Tras editar este bloque, regenerar con:
+#   flutter pub get
+#   dart run flutter_launcher_icons
+#
+# El PNG fuente debe ser cuadrado y de al menos 1024×1024 px. Las
+# plataformas se encargan de redimensionarlo a las medidas que cada una
+# necesita (mipmap-mdpi/hdpi/xhdpi/..., Assets.xcassets, favicon, etc.).
+# =====================================================================
+flutter_launcher_icons:
+  image_path: "assets/logos_app/logo_app1.3.png"
+
+  # Android: icono normal + adaptive icon (foreground sobre un fondo de color).
+  # El logo tiene transparencia, asi que el sistema Android lo recorta y
+  # lo coloca sobre adaptive_icon_background. Asi sale bonito tanto en
+  # iconos circulares como en cuadrados.
+  android: "ic_launcher"
+  adaptive_icon_background: "#0A0A0F"
+  adaptive_icon_foreground: "assets/logos_app/logo_app1.3.png"
+  min_sdk_android: 23
+
+  # iOS: regenera AppIcon.appiconset. remove_alpha_ios=true aplana la
+  # transparencia (App Store rechaza PNGs con alpha en iconos).
+  ios: true
+  remove_alpha_ios: true
+  background_color_ios: "#0A0A0F"
+
+  # Web: regenera favicon.png y los iconos PWA (icons/Icon-192/512 y maskable).
+  web:
+    generate: true
+    image_path: "assets/logos_app/logo_app1.3.png"
+    background_color: "#0A0A0F"
+    theme_color: "#0A0A0F"
+
+  # Escritorio: Windows y macOS. Util si distribuyes la app como ejecutable.
+  windows:
+    generate: true
+    image_path: "assets/logos_app/logo_app1.3.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/logos_app/logo_app1.3.png"
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 

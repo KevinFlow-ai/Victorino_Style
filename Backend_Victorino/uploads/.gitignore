@@ -1,0 +1,12 @@
+# Carpeta destino de archivos subidos en runtime. NO versionar contenido.
+#
+# Las imagenes "seed" (admin.png, fotos de servicios iniciales) viven en
+# src/main/resources/uploads-seed/ y UploadsSeederRunner las copia aqui al
+# arrancar el backend, tanto en local como en el volumen de Railway.
+
+# Ignorar todo el contenido dinamico...
+*
+# ...pero mantener este .gitignore, los .gitkeep y la estructura de subcarpetas.
+!.gitignore
+!*/
+!*/.gitkeep
