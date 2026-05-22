@@ -1,0 +1,45 @@
+# Excluye del contexto de Docker todo lo que no necesita el build de Flutter Web.
+# Esto acelera mucho el "docker build" y evita copiar binarios pesados.
+
+# Outputs de Flutter (se regeneran en el build)
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Plataformas nativas que NO usa Flutter Web
+android/
+ios/
+linux/
+macos/
+windows/
+
+# IDEs y editores
+.idea/
+.vscode/
+*.iml
+.kiro/
+.agents/
+
+# Git y CI
+.git/
+.gitignore
+.github/
+
+# Logs y temporales
+*.log
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Docker propio (no recursivo)
+Dockerfile
+.dockerignore
+
+# Tests (no se necesitan en imagen de produccion)
+test/
+integration_test/

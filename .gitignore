@@ -7,3 +7,21 @@
 Backend_Victorino/src/main/resources/firebase/*.json
 !Backend_Victorino/src/main/resources/firebase/.gitkeep
 Backend_Victorino/src/main/resources/firebase-service-account.json
+
+# Cualquier service account de Firebase que se cuele en otra ruta
+**/firebase-adminsdk*.json
+**/victorino-firebase-key.json
+
+# Variables de entorno locales (nunca subir secretos a Git)
+.env
+.env.*
+!.env.example
+*.env.local
+
+# Backups y volcados de base de datos
+*.sql.bak
+*.dump
+*.mysqldump
+
+# Archivos de configuracion obsoletos que no deberian volver
+**/BORRAR*

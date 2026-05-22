@@ -1,25 +1,33 @@
 package org.victorino_style.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
-// Configuración de CORS para desarrollo: permite cualquier origen localhost (Flutter web,
-// Android emulador, iOS simulador) con credenciales.
-// IMPORTANTE: en producción se debe restringir a los dominios reales.
+// Configuracion de CORS. En desarrollo permite los origenes habituales (localhost,
+// emulador Android, ngrok, red WiFi local). En produccion se anaden los dominios
+// reales mediante la propiedad victorino.cors.origenes-extra (lista separada por coma).
 @Configuration
 public class CorsConfig {
 
-    // Bean expuesto a SecurityConfig.cors(). Define qué orígenes/headers/métodos se aceptan.
+    // Origenes adicionales inyectados por configuracion. En Railway se pone aqui
+    // la URL del frontend (ej. https://victorino-frontend.up.railway.app).
+    @Value("${victorino.cors.origenes-extra:}")
+    private String origenesExtra;
+
+    // Bean expuesto a SecurityConfig.cors(). Define que origenes/headers/metodos se aceptan.
     @Bean
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        // Patrones (no orígenes literales) para permitir cualquier puerto de localhost/127.0.0.1.
-        // También se permiten túneles de desarrollo (localhost.run y ngrok) y red local WiFi.
-        config.setAllowedOriginPatterns(List.of(
+        // Patrones de desarrollo: cualquier puerto de localhost/127.0.0.1, emulador
+        // Android, tuneles ngrok/localhost.run y red local WiFi.
+        List<String> origenes = new ArrayList<>(List.of(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
                 "http://10.0.2.2:*",
@@ -29,6 +37,16 @@ public class CorsConfig {
                 "http://192.168.*.*",          // red local WiFi
                 "http://192.168.*.*:*"         // red local WiFi con puerto
         ));
+
+        // Anade los origenes extra de produccion (separados por coma en la propiedad).
+        if (origenesExtra != null && !origenesExtra.isBlank()) {
+            Arrays.stream(origenesExtra.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .forEach(origenes::add);
+        }
+
+        config.setAllowedOriginPatterns(origenes);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         // Necesario para que el navegador exponga el header Authorization en respuestas.
