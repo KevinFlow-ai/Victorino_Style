@@ -326,8 +326,12 @@ class _SeccionCorreoWidgetState extends ConsumerState<SeccionCorreoWidget> {
                 const SizedBox(height: 14),
 
                 // ---- Botón guardar + botón probar ----
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+                // Wrap (en lugar de Row) para que en pantallas estrechas
+                // los botones pasen a la siguiente línea sin desbordarse.
+                Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 10,
+                  runSpacing: 8,
                   children: [
                     // Botón "Probar envío" — solo habilitado si ya hay config guardada
                     if (config.configurado)
@@ -340,7 +344,6 @@ class _SeccionCorreoWidgetState extends ConsumerState<SeccionCorreoWidget> {
                           side: const BorderSide(color: AppColors.primary),
                         ),
                       ),
-                    if (config.configurado) const SizedBox(width: 10),
                     FilledButton.icon(
                       onPressed: _guardando ? null : _guardar,
                       icon: const Icon(Icons.save_outlined, size: 18),
