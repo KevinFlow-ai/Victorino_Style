@@ -15,6 +15,35 @@ class ApiEndpoints {
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
     defaultValue: 'http://10.0.2.2:8080/api/v1',
+
+    /*
+    Comandos para generar la APK
+    flutter build apk --release --dart-define=
+
+    'API_BASE_URL',
+    defaultValue: 'https://victorinostyle-production.up.railway.app/api/v1'
+
+
+
+    Esta clase sirve para centralizar y gestionar la URL base del backend en tu
+    app Flutter de forma flexible, segura y adaptable al entorno donde se
+    ejecuta (emulador, web, móvil físico o producción).
+
+    ¿Para qué sirve ApiEndpoints?
+    1. Evita tener URLs “hardcodeadas” en el código
+    En vez de escribir la URL del backend en cada servicio, la defines una sola vez:
+     static const baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://10.0.2.2:8080/api/v1',
+      );
+      Así, si mañana cambias de servidor, solo cambias una variable, no todoO el proyecto.
+
+
+      2. Permite cambiar la URL según el entorno (dev, prod, web, móvil físico…)
+    Flutter permite pasar valores en tiempo de compilación con --dart-define.
+
+
+     */
   );
 
   // URL efectiva en tiempo de ejecución. Se inicializa con baseUrl pero puede
