@@ -44,11 +44,27 @@ Future<void> main() async {
   if (urlGuardada != null) setUrlInicial(urlGuardada);
 
   if (_soportaFirebase) {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-    await LocalNotificationsService.inicializar();
-    await FcmService.inicializar();
+    try {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+      // Las notificaciones push son opcionales: si fallan, la app sigue funcionando.
+      try {
+        await LocalNotificationsService.inicializar();
+      } catch (e) {
+        debugPrint('[Victorino] LocalNotifications NO inicializado: $e');
+      }
+      try {
+        await FcmService.inicializar();
+      } catch (e) {
+        debugPrint('[Victorino] FCM NO inicializado: $e');
+      }
+    } catch (e) {
+      // Firebase puede fallar si el dispositivo no tiene Google Play Services
+      // actualizado, no hay internet al arrancar, o el google-services.json
+      // no coincide con el paquete. La app arranca de todas formas sin push.
+      debugPrint('[Victorino] Firebase NO inicializado (la app sigue funcionando sin push): $e');
+    }
   }
 
   runApp(const ProviderScope(child: VictorinoApp()));

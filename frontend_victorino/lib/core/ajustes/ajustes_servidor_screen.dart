@@ -91,6 +91,18 @@ class _AjustesServidorScreenState extends ConsumerState<AjustesServidorScreen> {
     );
   }
 
+  // ─── Guardar URL silenciosamente (usado por _probarConexion cuando tiene éxito) ─
+
+  Future<void> _guardarUrlSilencioso(String url) async {
+    const storage = FlutterSecureStorage();
+    await storage.write(key: kClaveApiUrl, value: url);
+    ref.read(apiBaseUrlProvider.notifier).cambiarUrl(url);
+    // Sincronizamos el controlador por si no coincidía exactamente.
+    if (_urlCtrl.text.trim() != url) {
+      _urlCtrl.text = url;
+    }
+  }
+
   // ─── Probar conexión ────────────────────────────────────────────────────────
 
   Future<void> _probarConexion() async {
@@ -115,15 +127,29 @@ class _AjustesServidorScreenState extends ConsumerState<AjustesServidorScreen> {
     );
 
     try {
-      // Llamamos a /auth/login con body vacío:
-      // si el servidor responde (aunque sea 400/401/422) → está vivo.
+      // Llamamos a /auth/login con body vacío.
+      // Respuestas válidas del backend real: 400 (validación) o 401 (vacío→inválido).
+      // Si recibimos 404 → la URL es incorrecta (falta /api/v1 al final).
       final response = await dio.post('/auth/login', data: {});
       final codigo = response.statusCode ?? 0;
 
+      if (codigo == 404) {
+        // El servidor respondió pero no encontró el endpoint → URL incorrecta.
+        setState(() {
+          _estadoConexion = _EstadoConexion.error;
+          _mensajeConexion =
+              'URL incorrecta (error 404). ¿Falta /api/v1 al final?\n'
+              'Ejemplo: https://abc123.lhr.life/api/v1';
+        });
+        return;
+      }
+
+      // Códigos esperados cuando el endpoint SÍ existe: 400, 401, 200, 422…
+      await _guardarUrlSilencioso(url);
       setState(() {
         _estadoConexion = _EstadoConexion.ok;
         _mensajeConexion =
-            'Servidor alcanzable (HTTP $codigo). ¡Conexión correcta!';
+            'Servidor alcanzable (HTTP $codigo). ✅ URL guardada automáticamente.';
       });
     } on DioException catch (e) {
       final String msg;
@@ -133,11 +159,23 @@ class _AjustesServidorScreenState extends ConsumerState<AjustesServidorScreen> {
       } else if (e.type == DioExceptionType.connectionError) {
         msg = 'No se puede conectar. Verifica la IP, el puerto y el firewall del servidor.';
       } else if (e.response != null) {
-        // Aunque Dio lance error, si hay respuesta → servidor vivo.
+        final codigo = e.response!.statusCode ?? 0;
+        if (codigo == 404) {
+          setState(() {
+            _estadoConexion = _EstadoConexion.error;
+            _mensajeConexion =
+                'URL incorrecta (error 404). ¿Falta /api/v1 al final?\n'
+                'Ejemplo: https://abc123.lhr.life/api/v1';
+            _probando = false;
+          });
+          return;
+        }
+        // Aunque Dio lance error, si hay respuesta con código válido → servidor vivo.
+        await _guardarUrlSilencioso(url);
         setState(() {
           _estadoConexion = _EstadoConexion.ok;
           _mensajeConexion =
-              'Servidor alcanzable (HTTP ${e.response!.statusCode}). ¡Conexión correcta!';
+              'Servidor alcanzable (HTTP $codigo). ✅ URL guardada automáticamente.';
           _probando = false;
         });
         return;

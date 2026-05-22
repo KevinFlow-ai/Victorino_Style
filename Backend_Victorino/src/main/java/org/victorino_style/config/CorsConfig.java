@@ -18,10 +18,16 @@ public class CorsConfig {
     public UrlBasedCorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
         // Patrones (no orígenes literales) para permitir cualquier puerto de localhost/127.0.0.1.
+        // También se permiten túneles de desarrollo (localhost.run y ngrok) y red local WiFi.
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:*",
                 "http://127.0.0.1:*",
-                "http://10.0.2.2:*"
+                "http://10.0.2.2:*",
+                "https://*.lhr.life",          // localhost.run tunnel
+                "https://*.ngrok-free.app",    // ngrok tunnel (gratuito)
+                "https://*.ngrok.io",          // ngrok tunnel (legacy)
+                "http://192.168.*.*",          // red local WiFi
+                "http://192.168.*.*:*"         // red local WiFi con puerto
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
