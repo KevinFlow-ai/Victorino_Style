@@ -143,6 +143,88 @@ Eso significa: "la contraseña de la base de datos es el valor de la variable de
 2. **Portabilidad**: en local uso `1234`, en Railway uso una contraseña aleatoria fuerte. El mismo código sirve para ambos entornos sin tocar nada.
 3. **Rotación**: si mañana se compromete la contraseña, la cambio en Railway sin tener que hacer un nuevo commit del código.
 
+#### 2.8.1. Variables del backend Spring Boot
+
+Estas son las variables que el backend lee al arrancar. Algunas tienen valor por defecto para que la app siga funcionando en local sin tener que configurar nada; otras son obligatorias en Railway. La sintaxis `${VAR:default}` en `application.properties` significa exactamente eso: usa `VAR` si existe, si no, usa `default`.
+
+**Cómo se generaron / de dónde salen sus valores:**
+
+| Variable | Cómo se obtuvo el valor | Qué hace |
+|---|---|---|
+| `PORT` | **Lo inyecta Railway automáticamente** al arrancar el contenedor (suele ser 8080 pero puede cambiar). El backend lo lee con `server.port=${PORT:8080}` | Puerto donde escucha Spring Boot. Crítico que el código respete `PORT` o Railway no podrá enrutar tráfico al servicio. |
+| `SPRING_DATASOURCE_URL` | **Se construyó manualmente con una referencia**: `jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=false&serverTimezone=Europe/Madrid&allowPublicKeyRetrieval=true`. Railway resuelve las referencias automáticamente en tiempo de arranque. | Cadena de conexión JDBC. Una sola string que contiene host, puerto, base de datos y parámetros de conexión. |
+| `SPRING_DATASOURCE_USERNAME` | Referencia: `${{MySQL.MYSQLUSER}}` → resuelve al usuario MySQL (por defecto `root` en el plugin de Railway). | Usuario con el que el backend se autentica contra la BD. |
+| `SPRING_DATASOURCE_PASSWORD` | Referencia: `${{MySQL.MYSQLPASSWORD}}` → resuelve a la contraseña aleatoria que Railway genera al provisionar el MySQL. **Nunca la veo a ojo**, solo Railway la conoce. | Contraseña MySQL del backend. |
+| `VICTORINO_JWT_SECRET` | Se generó **una sola vez con `openssl rand -base64 64`** en mi máquina local. Es una cadena base64 de 88 caracteres. Se pegó tal cual en Railway. | Clave HMAC con la que el backend firma los JWT. Si esta clave se compromete, cualquiera podría falsificar tokens; por eso debe ser larga, aleatoria y única por entorno. |
+| `SPRING_MAIL_USERNAME` | Dirección de la cuenta Gmail creada para el proyecto: `peluqueria.victorinostyle@gmail.com`. | Remitente de los correos de recuperación de contraseña. |
+| `SPRING_MAIL_PASSWORD` | **No es la contraseña normal de Gmail**, es una *App Password* que Google genera específicamente para aplicaciones. Se obtuvo en *Cuenta de Google → Seguridad → 2FA activado → Contraseñas de aplicación → Crear*. Devuelve una cadena de 16 caracteres tipo `abcd efgh ijkl mnop`. | Permite a Spring Mail autenticarse contra el SMTP de Gmail sin usar la contraseña real (mejor práctica). |
+| `VICTORINO_ADMIN_PRUEBA_ACTIVO` | `true`. Valor fijo para que el `AdminInitializer` (un `CommandLineRunner`) cree el admin al arrancar si no existe. | Conmutador para activar/desactivar la creación automática del admin demo. |
+| `VICTORINO_ADMIN_PRUEBA_PASSWORD` | `Admin1234!`. Contraseña pactada para el TFG, conocida por el tribunal. | Contraseña en texto plano del admin demo. Internamente se hashea con BCrypt al crearlo. |
+| `VICTORINO_UPLOADS_DIRECTORIO` | `/app/uploads`. Coincide con el *Mount Path* del volumen persistente. | Indica al backend dónde escribir/leer las fotos. En local apunta a `./uploads` (relativo), en Railway al volumen. |
+| `VICTORINO_FIREBASE_PROJECT_ID` | `victorino-style`. Salió del propio Firebase Console al crear el proyecto. | Identificador del proyecto Firebase, usado por el SDK para enrutar correctamente las notificaciones. |
+| `VICTORINO_FIREBASE_CREDENTIALS_JSON` | **El contenido entero del JSON del service account** generado en *Firebase Console → Configuración del proyecto → Cuentas de servicio → Generar nueva clave privada*. Es un JSON con `type`, `project_id`, `private_key_id`, `private_key`, `client_email`, etc. Se pegó tal cual en una variable multilínea de Railway. | Permite al backend autenticarse contra Firebase Cloud Messaging para enviar notificaciones push. |
+| `VICTORINO_CORS_ORIGENES_EXTRA` | **Inicialmente vacío**, se rellenará con la URL pública del frontend una vez se despliegue. | Lista separada por coma de dominios permitidos por CORS (además de los locales de desarrollo). |
+| `NIXPACKS_JDK_VERSION` | `21`. Valor fijo para forzar a Nixpacks a instalar JDK 21 en lugar del 17 que pone por defecto. | Variable interpretada por **el builder Nixpacks**, no por la aplicación. Le indica qué JDK instalar al construir el contenedor. |
+| `JAVA_TOOL_OPTIONS` | `-Xmx400m -Xms256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m`. Valor calculado a mano según los 512 MB de RAM del plan Hobby. | Flags que el JVM lee al arrancar. Limitan la memoria que reserva el proceso para evitar OOM en el contenedor. |
+
+#### 2.8.2. Variables del frontend Flutter
+
+Flutter compila el código a JavaScript (Web) o a un APK/AAB (Android). En ambos casos, **las variables se inyectan en tiempo de compilación**, no de ejecución. Es decir, cuando Flutter compila, el valor de la variable queda hardcodeado dentro del bundle final.
+
+La sintaxis se llama `--dart-define`. El código Dart lee la variable con `String.fromEnvironment(...)`.
+
+**Cómo se generaron / de dónde salen sus valores:**
+
+| Variable | Cómo se obtuvo el valor | Qué hace |
+|---|---|---|
+| `API_BASE_URL` | Para el despliegue web/APK: `https://victorinostyle-production.up.railway.app/api/v1` (la URL pública del backend desplegado en Railway). En local: `http://10.0.2.2:8080/api/v1` (el `10.0.2.2` es la IP especial del emulador Android para acceder al `localhost` de la máquina host). | URL base a la que el cliente Flutter manda todas sus peticiones HTTP. Si se compila apuntando a producción, la app habla con el backend real; si se compila apuntando a local, habla con el backend en mi máquina. |
+
+**Mecanismo de paso en cada plataforma:**
+
+- **Build local**: `flutter build apk --release --dart-define=API_BASE_URL=https://...` o `flutter build web --release --dart-define=API_BASE_URL=https://...`.
+- **Build en Railway (frontend web, próximamente)**: la variable se define en *Settings → Variables* del servicio frontend, y el `Dockerfile` la recibe como `ARG API_BASE_URL` y la pasa al `flutter build web` interno. Esto se llama un **Build Arg** de Docker, y es diferente a una variable de runtime.
+
+Adicionalmente, hay una **vía de configuración en runtime** que permite al usuario cambiar la URL del backend desde una pantalla interna de "Ajustes del servidor" en el frontend, sin tener que recompilar. Es útil para que el tribunal pueda apuntar la misma app a entornos distintos (producción Railway, mi local, una demo, etc.) sin distribuir varios APK.
+
+#### 2.8.3. Variables del servicio MySQL (cómo se autogeneran)
+
+Al añadir el plugin **MySQL** en Railway, **se crean automáticamente** un conjunto de variables en el servicio. No las pongo yo, las pone Railway al provisionar la base. Esto es importante porque mi backend las referencia con `${{MySQL.X}}`.
+
+| Variable autogenerada | Ejemplo de valor | Para qué la usa el backend |
+|---|---|---|
+| `MYSQLHOST` | `mysql.railway.internal` (dentro de la red privada) | Parte del `SPRING_DATASOURCE_URL` |
+| `MYSQLPORT` | `3306` | Parte del `SPRING_DATASOURCE_URL` |
+| `MYSQLUSER` | `root` | `SPRING_DATASOURCE_USERNAME` |
+| `MYSQLPASSWORD` | aleatoria, ej. `xY7p9...` (32+ caracteres) | `SPRING_DATASOURCE_PASSWORD` |
+| `MYSQLDATABASE` | `railway` (nombre por defecto que da Railway) | Parte del `SPRING_DATASOURCE_URL` |
+| `MYSQL_URL` | URL completa: `mysql://root:xY7p9...@mysql.railway.internal:3306/railway` | Alternativa "todo en uno" si no quiero descomponerlo |
+| `MYSQL_PUBLIC_URL` | URL externa con host:puerto público (solo si activo el *TCP Proxy*): `mysql://root:xY7p9...@monorail.proxy.rlwy.net:32400/railway` | Solo se usó **temporalmente** desde MySQL Workbench para cargar `schema_railway.sql` y `seed_railway.sql`. |
+
+**Punto clave**: el backend **nunca usa la URL pública** del MySQL, siempre la interna. La pública solo se activó puntualmente para la carga inicial de datos y se puede desactivar después para reducir la superficie de ataque.
+
+#### 2.8.4. Cómo se referencian variables entre servicios en Railway
+
+Railway permite que un servicio lea variables de otro mediante una sintaxis especial: `${{NombreDelServicio.NombreVariable}}`. Cuando el backend arranca, Railway sustituye estas referencias por los valores reales del servicio referenciado.
+
+Ejemplo concreto en mi proyecto:
+```
+SPRING_DATASOURCE_URL = jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=false&serverTimezone=Europe/Madrid&allowPublicKeyRetrieval=true
+```
+
+En tiempo de arranque, Railway resuelve esto a:
+```
+jdbc:mysql://mysql.railway.internal:3306/railway?useSSL=false&serverTimezone=Europe/Madrid&allowPublicKeyRetrieval=true
+```
+
+**Ventaja**: si mañana Railway cambia el host interno del MySQL (porque mueve el servicio a otro nodo), el backend se entera solo. Yo no tengo que tocar nada.
+
+#### 2.8.5. Cómo se añaden las variables en Railway (UI)
+
+Hay dos formas:
+
+- **Una a una**: Variables → **+ New Variable** → introducir nombre y valor → Add. Útil para variables sueltas o multilínea (como el JSON de Firebase).
+- **Raw Editor**: Variables → **Raw Editor** → pegar varias en formato `CLAVE=valor` separadas por saltos de línea → Update Variables. Útil cuando son muchas a la vez. Es lo que usé para añadir todas las del backend de golpe.
+
 ### 2.9. ¿Qué es JWT?
 
 **JWT (JSON Web Token)** es un estándar para emitir tokens de autenticación. Cuando el usuario hace login, el backend le devuelve un *access token* (JWT) y un *refresh token*. El cliente envía el access token en cada petición posterior (`Authorization: Bearer <token>`) y el backend lo valida para saber qué usuario es.
@@ -337,49 +419,431 @@ Esto garantiza que, sea cual sea el dispositivo donde se instale la app (incluye
 
 ## 6. Paso a paso del despliegue en Railway
 
+Esta sección reconstruye, con todo el detalle, el orden real en que se hicieron las cosas. Está pensada para que cualquier persona pueda **reproducir el despliegue** sin tener que adivinar nada.
+
 ### 6.1. Cuenta y proyecto
 
-1. Registro en `https://railway.app` con cuenta de Google.
-2. Creación de un proyecto vacío llamado `Victorino-Style`.
-3. Instalación de la CLI de Railway con `iwr -useb https://railway.com/install.ps1 | iex` (PowerShell como administrador).
-4. Login en la CLI con `railway login`.
+#### 6.1.1. Crear cuenta en Railway
+
+1. Acceder a `https://railway.app`.
+2. Pulsar **Login** o **Start a New Project**.
+3. Elegir "Login with GitHub" (la forma más natural, porque Railway luego necesitará acceso al repositorio para desplegar).
+4. Autorizar a Railway en GitHub. Por seguridad, **NO darle acceso a todos los repositorios**: usar la opción "Only select repositories" y elegir únicamente `Victorino_Style`.
+5. Tras el registro, Railway pide un correo de contacto y ofrece **5 € de crédito gratuito** (el primer mes corre por cuenta de la casa, suficiente para todo el período de desarrollo del TFG).
+
+#### 6.1.2. Crear el proyecto
+
+En el dashboard, pulsar **New Project**. Aparecen varias opciones:
+
+- **Deploy from GitHub repo** ← usar esta.
+- Deploy a template.
+- Empty Project.
+
+Elegir el repositorio `Victorino_Style`. Railway crea el proyecto y **arranca un primer despliegue automático que va a fallar** (porque toma la rama `main` y la raíz del repositorio en lugar de la rama `Produccion-Railway` y la carpeta `Backend_Victorino`). Esto es esperado y se corrige en el siguiente paso.
+
+#### 6.1.3. Renombrar el proyecto
+
+Por defecto Railway pone un nombre aleatorio tipo `serene-tree`. Ir a la esquina superior izquierda, pulsar el nombre del proyecto y cambiarlo a **`Victorino-Style`** para que quede claro. Save.
+
+#### 6.1.4. Instalar la CLI de Railway
+
+Aunque casi todo se hace por la web, la CLI es útil para vincular carpetas locales al proyecto y para abrir conexiones a la base de datos sin pasar por la UI.
+
+Desde **PowerShell como administrador** en Windows:
+
+```powershell
+iwr -useb https://railway.com/install.ps1 | iex
+```
+
+```
+Opción 2 — Con npm (si tienes Node.js instalado por Flutter Web o por otra cosa):
+```
+
+npm i -g @railway/cli
+
+Si PowerShell se queja por política de ejecución:
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+iwr -useb https://railway.com/install.ps1 | iex
+```
+
+Tras la instalación, **cerrar y reabrir la terminal** (para que recargue el PATH) y comprobar:
+```powershell
+railway --version
+```
+Debe devolver algo tipo `railway 3.x.y`.
+
+#### 6.1.5. Login en la CLI
+
+```powershell
+railway login
+```
+Abre el navegador, pide confirmación, y la terminal queda autenticada:
+```
+Logged in as cosoyeray@gmail.com
+```
+railway link
+> Select a workspace kevinflow-ai's Projects
+
+> Select a project Victorino-Style
+
+> Select an environment production
+
+> Select a service <esc to skip> MySQL
+
+Project Victorino-Style linked successfully! 🎉
+
+PS C:\Users\El Jefe\IdeaProjects\Victorino_Style\Backend_Victorino\src\main\resources\db> railway connect MySQL
+
+mysql must be installed to continue
+---
 
 ### 6.2. Servicio MySQL
 
-1. En el canvas del proyecto, **+ Create → Database → Add MySQL**.
-2. Railway provisiona automáticamente:
-   - Un MySQL 8.x.
-   - Un volumen `mysql-volume` con los datos.
-   - Variables `MYSQLHOST`, `MYSQLPORT`, `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE`.
+#### 6.2.1. Añadir el plugin MySQL al proyecto
+
+1. En el canvas del proyecto, pulsar **+ Create-add** (botón violeta arriba a la derecha) o **+ New**.
+2. Elegir **Database** → **Add MySQL**.
+3. Railway provisiona automáticamente en ~30 segundos:
+   - Un contenedor con **MySQL 8.x**.
+   - Un **volumen** llamado `mysql-volume` montado donde MySQL guarda sus datos. Es decir, **los datos persisten** aunque el contenedor se reinicie.
+   - Una **base de datos vacía** llamada `railway` (es el nombre por defecto).
+   - Un usuario `root` con una contraseña aleatoria de seguridad (32+ caracteres) que **solo Railway conoce**.
+
+Aparece una cajita azul `MySQL` en el canvas con el icono del delfín y un punto verde "Online" cuando termina de levantar.
+
+#### 6.2.2. Inspeccionar las variables autogeneradas
+
+Pulsando la cajita `MySQL` → pestaña **Variables**, se ven:
+
+| Variable | Visibilidad | Para qué sirve |
+|---|---|---|
+| `MYSQLHOST` | visible | Host interno: `mysql.railway.internal` |
+| `MYSQLPORT` | visible | Puerto interno: `3306` |
+| `MYSQLUSER` | visible | Usuario: `root` |
+| `MYSQLPASSWORD` | **enmascarada** (hay un icono 👁 para revelarla puntualmente) | Contraseña aleatoria |
+| `MYSQLDATABASE` | visible | Nombre de la BD: `railway` |
+| `MYSQL_URL` | enmascarada | URL completa con credenciales: `mysql://root:...@mysql.railway.internal:3306/railway` |
+
+> ⚠️ Estas variables **NO las pongo yo**: las pone Railway al provisionar el plugin. Mi trabajo es solo **referenciarlas desde el backend** mediante la sintaxis `${{MySQL.MYSQLHOST}}`, `${{MySQL.MYSQLUSER}}`, etc.
+
+#### 6.2.3. Inspeccionar el volumen de datos
+
+En **Settings** del servicio MySQL → **Volumes**, aparece automáticamente un volumen `mysql-volume` montado en `/var/lib/mysql` (la ruta estándar donde MySQL guarda los archivos de las bases de datos). **Esto es lo que garantiza que mis 1000 citas sobreviven a redespliegues**: aunque Railway tire el contenedor y monte uno nuevo, este volumen se vuelve a montar con los datos intactos.
+
+#### 6.2.4. Punto importante: por defecto el MySQL **NO es accesible desde Internet**
+
+Por seguridad, el MySQL solo es accesible **desde dentro de la red privada del proyecto Railway**: solo el backend (cuando esté desplegado en el mismo proyecto) podrá conectarse. Esto significa que **no se puede conectar Workbench todavía**. Para eso hace falta activar un *TCP Proxy* puntual, cosa que haremos en el sub-paso 6.4 cuando toque cargar los datos.
+
+---
 
 ### 6.3. Servicio backend (Spring Boot)
 
-1. **+ Create → GitHub Repo → Victorino_Style**. Autorización de Railway en GitHub (solo el repositorio Victorino_Style, política de mínimo privilegio).
-2. **Settings del servicio**:
-   - **Root Directory**: `Backend_Victorino`.
-   - **Branch**: `Produccion-Railway`.
-   - **Builder**: Nixpacks (autodetecta Maven y Java).
-   - **Custom Start Command**: `java -jar target/Backend_Victorino-0.0.1-SNAPSHOT.jar`.
-3. **Variables de entorno** (ver detalle en Anexo A). Las claves:
-   - Referencias a MySQL: `${{MySQL.MYSQLHOST}}`, etc.
-   - Secret JWT, contraseña Gmail, contraseña admin.
-   - `VICTORINO_UPLOADS_DIRECTORIO=/app/uploads`.
-   - `VICTORINO_FIREBASE_CREDENTIALS_JSON=<JSON completo>`.
-   - `NIXPACKS_JDK_VERSION=21` (crítico, ver sección de errores).
-   - `JAVA_TOOL_OPTIONS=-Xmx400m -Xms256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m` (límite de RAM).
-4. **Volumen**: crear `victorino_style-volume` montado en `/app/uploads`.
-5. **Networking**: *Generate Domain* → `victorinostyle-production.up.railway.app`.
+#### 6.3.1. Conectar el repositorio
 
-### 6.4. Carga inicial de datos
+El primer despliegue automático ya creó una cajita de servicio (la que estaba fallando). Pulsar sobre ella y configurarla.
 
-Aprovechando que Railway permite exponer el MySQL públicamente con un TCP Proxy:
+#### 6.3.2. Renombrar el servicio (opcional)
 
-1. En el servicio MySQL → Settings → Networking → **Generate Domain** (TCP Proxy).
-2. Apertura de **MySQL Workbench** en el portátil con los datos de conexión pública.
-3. Ejecución de `schema_railway.sql` (crea las 15 tablas con todas las constraints).
-4. Ejecución de `seed_railway.sql` (carga 1 admin + 2 empleados + 50 clientes + 4 servicios + 15 festivos + ~1000 citas generadas por una stored procedure).
-5. Verificación con `SELECT COUNT(*) FROM ...;` que todo cuadra.
-6. Reinicio del backend para refrescar el pool de conexiones.
+Por defecto el servicio toma el nombre del repositorio (`Victorino_Style`). Si se quiere, en *Settings → Service Name → `backend`*. En mi caso, lo dejé como `Victorino_Style` y para diferenciar visualmente sirve el dominio público generado: `victorinostyle-production.up.railway.app`.
+
+#### 6.3.3. Configurar la **Source** (rama y carpeta)
+
+Settings → sección **Source**:
+
+| Campo | Valor | Por qué |
+|---|---|---|
+| **Source Repo** | `KevinFlow-ai/Victorino_Style` | Detectado automáticamente al conectar GitHub. |
+| **Root Directory** | `Backend_Victorino` | **Sin barra inicial**. Railway interpreta esto como ruta relativa a la raíz del repo. Si pongo `/Backend_Victorino`, en algunas configuraciones lo interpreta como ruta absoluta del sistema → falla. |
+| **Branch** | `Produccion-Railway` | La rama donde está todo el trabajo de producción. Railway hace **auto-deploy** cada vez que pusheo algo a esta rama. |
+| **Wait for CI** | **Desactivado** | No tengo GitHub Actions configurado, así que no hay nada que esperar. En el futuro se activaría para que Railway solo despliegue si los tests pasan. |
+
+#### 6.3.4. Configurar el **Build**
+
+Settings → sección **Build**:
+
+| Campo | Valor | Por qué |
+|---|---|---|
+| **Builder** | `Nixpacks` | Detecta automáticamente `pom.xml`, instala Maven y JDK, compila. |
+| **Custom Build Command** | (vacío) | Nixpacks ya sabe ejecutar `./mvnw -DskipTests clean install`. No hace falta override. |
+| **Watch Paths** | (vacío) | Por defecto cualquier cambio en la rama dispara redeploy. Si tuviera tests pesados aquí limitaría a `Backend_Victorino/**`. |
+
+#### 6.3.5. Configurar el **Deploy**
+
+Settings → sección **Deploy**:
+
+| Campo | Valor | Por qué |
+|---|---|---|
+| **Custom Start Command** | `java -jar target/Backend_Victorino-0.0.1-SNAPSHOT.jar` | Le digo a Railway exactamente cómo arrancar el JAR generado por Maven. El nombre sale del `<artifactId>` y `<version>` del `pom.xml`. |
+| **Healthcheck Path** | (vacío) | Por defecto Railway considera que el servicio está sano si responde a HTTP. Se podría apuntar a un endpoint `/actuator/health` si lo añadiera. |
+| **Restart Policy** | `On Failure` (default) | Si el proceso muere, Railway lo reinicia automáticamente. |
+
+#### 6.3.6. Crear el **Volume** para uploads
+
+Settings → sección **Volumes** → **+ New Volume**:
+
+| Campo | Valor |
+|---|---|
+| **Mount Path** | `/app/uploads` |
+| **Name** | `victorino_style-volume` |
+| **Size** | (por defecto, 5 GB del plan Hobby) |
+
+Este volumen es el que persistirá las fotos. **Crítico**: el `Mount Path` debe coincidir EXACTAMENTE con la variable `VICTORINO_UPLOADS_DIRECTORIO` que se configura más abajo, porque es ahí donde el `UploadsSeederRunner` y `FileStorageService` escriben.
+
+#### 6.3.7. Configurar las variables de entorno
+
+Pestaña **Variables** del servicio backend.
+
+**Forma rápida con Raw Editor**: pulsar **Raw Editor** (icono `< >` arriba a la derecha) y pegar:
+
+```env
+SPRING_DATASOURCE_URL=jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=false&serverTimezone=Europe/Madrid&allowPublicKeyRetrieval=true
+SPRING_DATASOURCE_USERNAME=${{MySQL.MYSQLUSER}}
+SPRING_DATASOURCE_PASSWORD=${{MySQL.MYSQLPASSWORD}}
+VICTORINO_JWT_SECRET=Y2FtYmlhbWVlbnByb2R1Y2Npb25fY2xhdmVfc2VjcmV0YV92aWN0b3Jpbm9fc3R5bGVfMjAyNg==
+SPRING_MAIL_USERNAME=peluqueria.victorinostyle@gmail.com
+SPRING_MAIL_PASSWORD=ysknifmendkfrwig
+VICTORINO_ADMIN_PRUEBA_ACTIVO=true
+VICTORINO_ADMIN_PRUEBA_PASSWORD=Admin1234!
+VICTORINO_UPLOADS_DIRECTORIO=/app/uploads
+VICTORINO_CORS_ORIGENES_EXTRA=
+VICTORINO_FIREBASE_PROJECT_ID=victorino-style
+NIXPACKS_JDK_VERSION=21
+JAVA_TOOL_OPTIONS=-Xmx400m -Xms256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m
+```
+
+**Update Variables**.
+
+> Las `${{MySQL.XXX}}` son **referencias entre servicios** que Railway resuelve solo. No hay que sustituirlas a mano.
+
+**La variable más delicada: `VICTORINO_FIREBASE_CREDENTIALS_JSON`** (multilínea, no encaja bien en el Raw Editor):
+
+1. Abrir el archivo `Backend_Victorino/src/main/resources/firebase/victorino-firebase-key.json` con Notepad o IntelliJ.
+2. Seleccionar TODO el contenido con `Ctrl+A` y copiar con `Ctrl+C`.
+3. En Railway → Variables → **+ New Variable**:
+   - **Name**: `VICTORINO_FIREBASE_CREDENTIALS_JSON`
+   - **Value**: pegar el JSON entero (puede ser multilínea, Railway lo acepta).
+4. **Add**.
+
+#### 6.3.8. Generar el dominio público
+
+Settings → sección **Networking** → **Generate Domain**. Railway asigna automáticamente:
+
+```
+victorinostyle-production.up.railway.app
+```
+
+(El nombre exacto depende del nombre del servicio. Si renombro el servicio, el dominio cambia.)
+
+A partir de este momento, esa URL **expone públicamente el backend con HTTPS** (certificado Let's Encrypt automático).
+
+Si Railway pregunta por **Public Port**, poner `8080` (es el que Spring Boot expone internamente; Railway lo redirige al 443/80 público).
+
+#### 6.3.9. Lanzar el deploy
+
+Tras configurar todo lo anterior, Railway encadena automáticamente un nuevo deploy. Si no lo hace solo, pulsar **Deploy** en la cajita del servicio.
+
+Mirar el progreso en **Deployments → (el deploy en curso) → Build Logs**. Pasos esperados:
+
+```
+[1/6] Detectando proyecto... → Maven detectado
+[2/6] Instalando JDK 21 (NIXPACKS_JDK_VERSION)
+[3/6] Instalando Maven
+[4/6] Ejecutando ./mvnw -DskipTests clean install
+   ... (descarga dependencias, compila, empaqueta JAR)
+   [INFO] BUILD SUCCESS
+[5/6] Construyendo imagen Docker final
+[6/6] Push de la imagen → ready
+```
+
+Y en **Deploy Logs**:
+
+```
+Starting Container
+2026-05-22T18:19:37.604Z  INFO  [Backend_Victorino]: [FCM] Cargando credenciales desde variable inline (JSON).
+2026-05-22T18:19:37.869Z  INFO  [Backend_Victorino]: [FCM] FirebaseApp inicializado correctamente.
+2026-05-22T18:19:39....Z  INFO  Hibernate: create table administrador (...)
+2026-05-22T18:19:39....Z  INFO  Hibernate: create table auditoria (...)
+... (resto de tablas, porque Hibernate ddl-auto=update inicializa el esquema)
+2026-05-22T18:19:40.694Z  INFO  Started BackendVictorinoApplication in 13.303 seconds
+2026-05-22T18:19:40.700Z  INFO  [SEED uploads] Listo. Copiados: 7, ya existian: 0, base: /app/uploads
+```
+
+A partir de ese momento, **el backend está vivo**, escuchando en su dominio público, conectado a MySQL, con las fotos seed copiadas al volumen y Firebase listo para mandar push. **Pero la base de datos todavía no tiene los ~1000 datos del seed** (solo las tablas vacías que ha creado Hibernate inferencias de las @Entity).
+
+---
+
+### 6.4. Carga inicial de datos (schema + seed)
+
+Esta es la parte más manual del despliegue. Lo más sencillo era usar MySQL Workbench (que ya tenía instalado) en lugar del cliente CLI `mysql`.
+
+#### 6.4.1. Activar el *TCP Proxy* del MySQL
+
+Por defecto, el MySQL solo es accesible desde dentro de Railway. Para conectarse desde Workbench (que corre en mi portátil) hay que abrir un proxy público:
+
+1. En el canvas, pulsar la cajita **MySQL**.
+2. Settings → **Networking** → **Public Networking**.
+3. Pulsar **Generate Domain** (a veces aparece como **+ TCP Proxy** dependiendo de la UI). Railway crea un dominio público con un puerto aleatorio alto:
+   ```
+   monorail.proxy.rlwy.net:32400
+   ```
+   (El número del puerto cambia en cada proyecto).
+
+Tras esto, Railway añade dos variables nuevas al servicio MySQL:
+- `RAILWAY_TCP_PROXY_DOMAIN=monorail.proxy.rlwy.net`
+- `RAILWAY_TCP_PROXY_PORT=32400`
+- Y actualiza la variable `MYSQL_PUBLIC_URL` con la URL completa.
+
+#### 6.4.2. Obtener credenciales para Workbench
+
+Sigo en el servicio MySQL → **Variables**. Necesito:
+
+| Campo de Workbench | Variable de Railway | Cómo obtenerlo |
+|---|---|---|
+| Hostname | `RAILWAY_TCP_PROXY_DOMAIN` (o lo que muestre Networking) | `monorail.proxy.rlwy.net` |
+| Port | `RAILWAY_TCP_PROXY_PORT` | el número que mostró Networking, ej. `32400` |
+| Username | `MYSQLUSER` | `root` |
+| Password | `MYSQLPASSWORD` (pulsar el ojo 👁 para revelar) | la contraseña aleatoria de 32+ chars |
+| Default Schema | `MYSQLDATABASE` | `railway` |
+
+Apuntar todo en un bloc de notas temporal.
+
+#### 6.4.3. Crear la conexión en MySQL Workbench
+
+1. Abrir **MySQL Workbench**.
+2. En la pantalla principal, junto a "MySQL Connections", pulsar el **`+`** (Setup New Connection).
+3. Rellenar:
+   - **Connection Name**: `Railway - Victorino Style`
+   - **Hostname**: `monorail.proxy.rlwy.net` (sin el puerto)
+   - **Port**: `32400` (el que dio Railway)
+   - **Username**: `root`
+   - **Default Schema**: `railway`
+4. Pulsar **`Store in Vault...`** junto a Password y pegar la contraseña.
+5. **`Test Connection`** → debe salir ✅ verde "Successfully made the MySQL connection".
+6. **OK** para guardar.
+
+> Si "Test Connection" falla, esperar 30 segundos tras crear el TCP Proxy a que Railway lo propague, y reintentar.
+
+#### 6.4.4. Inspección inicial: ¿qué hay ya en la BD?
+
+Doble clic en la conexión recién creada → se abre una pestaña de query. Ejecutar:
+
+```sql
+USE railway;
+SHOW TABLES;
+```
+
+Resultado esperado: **15 tablas ya creadas** por Hibernate (`usuario`, `cliente`, `empleado`, `administrador`, `cliente_invitado`, `servicio`, `cita`, `peluqueria`, `horario_empleado`, `festivo`, `notificacion`, `auditoria`, `refresh_token`, `token_recuperacion`, `device_token_fcm`). Todas vacías.
+
+> ⚠️ **Problema sutil**: las tablas que ha creado Hibernate son "buenas" pero **no idénticas** al `schema_railway.sql`. Por ejemplo:
+> - La columna `plataforma_fcm` de `device_token_fcm` queda como `tinytext` en lugar del `ENUM('ANDROID','IOS','WEB')` correcto.
+> - Faltan las constraints `CHECK` (como el XOR cliente/invitado en `cita`).
+> - Faltan algunos índices personalizados.
+>
+> Por eso vamos a **borrarlas y recrearlas con la versión correcta** ejecutando `schema_railway.sql`, que empieza con `DROP TABLE IF EXISTS` antes de cada `CREATE TABLE`.
+
+#### 6.4.5. Ejecutar `schema_railway.sql`
+
+1. En Workbench: **File → Open SQL Script...**
+2. Navegar a `C:\Users\El Jefe\IdeaProjects\Victorino_Style\Backend_Victorino\src\main\resources\db\schema_railway.sql` y abrir.
+3. Workbench abre una pestaña nueva con el contenido del script.
+4. **Importante**: asegurarse de que el "default schema" seleccionado en el panel izquierdo es `railway` (clic derecho → "Set as Default Schema").
+5. Pulsar el botón ⚡ **"Execute (All or Selection)"** (atajo: `Ctrl+Shift+Enter`).
+
+Workbench ejecuta las 15 sentencias `DROP TABLE IF EXISTS` seguidas de los 15 `CREATE TABLE` con todas las constraints, ENUM y CHECK. Aparecen 30+ líneas en el panel **Output** abajo, todas con tick verde:
+
+```
+DROP TABLE IF EXISTS usuario      0 row(s) affected
+CREATE TABLE usuario              0 row(s) affected
+DROP TABLE IF EXISTS cliente      0 row(s) affected
+CREATE TABLE cliente              0 row(s) affected
+...
+```
+
+Duración: ~5-10 segundos.
+
+#### 6.4.6. Ejecutar `seed_railway.sql`
+
+1. **File → Open SQL Script...** → abrir `seed_railway.sql` (misma carpeta).
+2. ⚡ **Execute (All or Selection)**.
+
+Este es **mucho más largo**: 1-3 minutos. Pasos que ejecuta:
+
+- Define variables de sesión `@pwd`, `@pwd_emp`, `@pwd_cli_demo`, `@pwd_cli_20..@pwd_cli_59` con los hashes BCrypt.
+- INSERT en `peluqueria` (1 fila).
+- INSERT en `festivo` (15 filas con los festivos de Madrid 2026).
+- INSERT en `usuario` + `empleado` + `administrador` (el admin Victorino + 2 empleados).
+- INSERT en `horario_empleado` (3 filas, una por empleado).
+- INSERT en `servicio` (4 filas).
+- INSERT en `usuario` + `cliente` (50 clientes).
+- **`DELIMITER //` + crea la stored procedure `generar_citas_demo` + `CALL generar_citas_demo()`**. Esta SP recorre día a día del 01/03/2026 al 20/06/2026 y genera ~1000 citas aleatorias respetando horarios, descansos y festivos. Además, por cada cita genera 2-4 notificaciones (confirmación al cliente, aviso al empleado, etc.).
+- `DROP PROCEDURE generar_citas_demo` (limpieza).
+
+Output esperado en Workbench:
+```
+INSERT INTO peluqueria                  1 row(s) affected
+INSERT INTO festivo                    15 row(s) affected
+INSERT INTO usuario                     1 row(s) affected   ← admin
+INSERT INTO empleado                    1 row(s) affected
+INSERT INTO administrador               1 row(s) affected
+INSERT INTO horario_empleado            1 row(s) affected
+... (los otros dos empleados)
+INSERT INTO servicio                    4 row(s) affected
+INSERT INTO usuario                    10 row(s) affected   ← clientes demo
+INSERT INTO cliente                    10 row(s) affected
+INSERT INTO usuario                    40 row(s) affected   ← clientes rasos
+INSERT INTO cliente                    40 row(s) affected
+CALL generar_citas_demo()               0 row(s) affected   ← lanza la SP
+   (durante 1-3 minutos, ~1000 INSERT INTO cita + ~3000 INSERT INTO notificacion)
+DROP PROCEDURE generar_citas_demo       0 row(s) affected
+```
+
+> ⚠️ **No cancelar mientras corre**. Si Workbench parece "colgado", está bien: la SP está iterando. Verás el contador de filas afectadas subir poco a poco.
+
+#### 6.4.7. Verificar la carga
+
+En una pestaña nueva (`Ctrl+T`):
+
+```sql
+USE railway;
+SELECT COUNT(*) AS usuarios FROM usuario;
+SELECT COUNT(*) AS citas FROM cita;
+SELECT COUNT(*) AS servicios FROM servicio;
+SELECT COUNT(*) AS notificaciones FROM notificacion;
+SELECT correo_usuario, rol_usuario FROM usuario WHERE rol_usuario IN ('ADMINISTRADOR','EMPLEADO');
+```
+
+Valores esperados:
+
+| Resultado | Esperado |
+|---|---|
+| usuarios | 53 (1 admin + 2 empleados + 10 clientes demo + 40 clientes rasos) |
+| citas | ~1000-1300 (la cantidad exacta varía por el `RAND()` interno del procedimiento) |
+| servicios | 4 |
+| notificaciones | ~2000-4000 (cada cita genera 2-4 notificaciones) |
+| Última query | 3 filas: `victorino@admin.com (ADMINISTRADOR)`, `maradona@victorinostyle.com (EMPLEADO)`, `jerson@victorinostyle.com (EMPLEADO)` |
+
+Si los números cuadran, la BD está correctamente poblada.
+
+#### 6.4.8. Reiniciar el backend
+
+Aunque `ddl-auto=update` es no-destructivo, el pool de conexiones de Spring Boot puede tener referencias a las tablas viejas (las que Hibernate creó al principio y que el `DROP TABLE IF EXISTS` del schema reemplazó). Para un estado limpio, **reiniciar el backend**:
+
+1. Railway → backend → pestaña **Deployments**.
+2. En el deploy actual, pulsar el menú **`⋮`** (tres puntos) → **`Restart`**.
+
+El backend se reinicia en ~10 segundos. En los logs aparecerá:
+```
+Started BackendVictorinoApplication in X seconds
+[SEED uploads] Listo. Copiados: 0, ya existian: 7, base: /app/uploads
+```
+(Esta vez "Copiados: 0" porque las fotos ya estaban del primer arranque.)
+
+#### 6.4.9. (Opcional) Cerrar el TCP Proxy
+
+Una vez cargados los datos, **se puede cerrar el TCP Proxy** del MySQL para reducir la superficie de ataque. En el servicio MySQL → Settings → Networking → quitar el dominio público.
+
+Yo lo dejé activo de momento por comodidad (para poder añadir o modificar datos manualmente desde Workbench durante la demo del TFG), pero en una producción real lo cerraría tras la carga inicial y solo lo abriría puntualmente para mantenimiento.
 
 ### 6.5. Resultado
 
@@ -422,6 +886,8 @@ Esta sección es honesta sobre los problemas reales que aparecieron durante el d
 
 ### Error 1: El primer build fallaba sin saber por qué
 
+![alt text](image-1.png)
+
 **Síntoma**: justo después de conectar el repositorio, Railway intentó desplegar automáticamente y falló con un mensaje genérico.
 
 **Causa**: Railway tomaba la rama por defecto del repo (`main`) y la carpeta raíz, pero el trabajo estaba en la rama `Produccion-Railway` y dentro de `Backend_Victorino/`.
@@ -429,7 +895,7 @@ Esta sección es honesta sobre los problemas reales que aparecieron durante el d
 **Solución**: en Settings → Source, cambiar Branch a `Produccion-Railway` y Root Directory a `Backend_Victorino`.
 
 ### Error 2: `error: release version 21 not supported`
-
+![alt text](image-4.png)
 **Síntoma**: tras configurar la rama y la carpeta, el build empezaba pero al compilar Maven fallaba con:
 
 ```
@@ -465,7 +931,7 @@ server.forward-headers-strategy=framework
 Con esto, Spring Boot **respeta el header `X-Forwarded-Proto: https`** que Railway pone, y reconstruye correctamente las URLs como `https://`.
 
 ### Error 4: Inconsistencia entre `password` y `contrasena`
-
+![alt text](image-3.png)
 **Síntoma**: al hacer login desde Swagger con `{"correo": "...", "contrasena": "..."}`, el backend devolvía 400 con `"field": "password", "message": "La contraseña es obligatoria"`.
 
 **Causa**: el DTO `LoginRequest` tiene el campo `password` (en inglés) en lugar de `contrasena` (en español). Es una inconsistencia en el código original.
@@ -478,14 +944,15 @@ Con esto, Spring Boot **respeta el header `X-Forwarded-Proto: https`** que Railw
 
 **Síntoma**: tras arrancar el backend por primera vez, en la base de datos aparecieron las tablas, pero **versión simplificada**. Por ejemplo, la columna `plataforma_fcm` aparecía como `tinytext` en lugar del `ENUM('ANDROID','IOS','WEB')` correcto. Las constraints CHECK no estaban.
 
-**Causa**: el `application.properties` tiene `spring.jpa.hibernate.ddl-auto=update`, que hace que Hibernate cree las tablas inferidas de las clases `@Entity` cada vez que arranca. Como el `schema_railway.sql` no se había cargado todavía, Hibernate lo hizo en su lugar y se "adelantó".
+**Causa**: el `application.properties` tiene `spring.jpa.hibernate.ddl-auto=update`, que hace que Hibernate cree las tablas inferidas de las clases 
+`@Entity` cada vez que arranca. Como el `schema_railway.sql` no se había cargado todavía, Hibernate lo hizo en su lugar y se "adelantó".
 
 **Solución**: cargar `schema_railway.sql` desde MySQL Workbench (que tiene `DROP TABLE IF EXISTS` al principio de cada tabla, así que tira las creadas por Hibernate y las recrea con la definición correcta). Después, reiniciar el backend para que el pool de conexiones use el schema nuevo.
 
 > **Alternativa más limpia (para futuro)**: cambiar `ddl-auto=update` a `ddl-auto=validate` (solo verifica el esquema, no lo modifica). Así se garantiza que el esquema oficial es siempre el del `.sql` y nunca uno generado por Hibernate.
 
 ### Error 6: Out of Memory esporádico
-
+![alt text](image-2.png)
 **Síntoma**: Railway mostraba un aviso con `Out of memory` y algunas peticiones a `/auth/login` devolvían 500 sin razón aparente.
 
 **Causa**: el plan Hobby de Railway da **512 MB de RAM por servicio**. Spring Boot 4 con todas las dependencias (JPA, Hibernate, Firebase Admin, Springdoc, Spring Security) está al límite. El JVM, sin configurar, intenta usar más RAM de la disponible y el sistema lo mata.
