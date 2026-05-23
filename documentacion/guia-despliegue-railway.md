@@ -5,7 +5,8 @@
 > **Fecha del despliegue**: mayo de 2026
 > **Plataforma**: Railway
 > **Backend público**: `https://victorinostyle-production.up.railway.app/api/v1`
-> **Frontend público**: *(pendiente, se completará en la siguiente fase)*
+> **Frontend público**: `https://frontendvictorino-style-production.up.railway.app`
+> **APK Android**: `app-release.apk` (60 MB) distribuido vía Google Drive
 
 ---
 
@@ -19,15 +20,16 @@
 6. [Paso a paso del despliegue en Railway](#6-paso-a-paso-del-despliegue-en-railway)
 7. [Errores reales que aparecieron y cómo se resolvieron](#7-errores-reales-que-aparecieron-y-cómo-se-resolvieron)
 8. [Verificación y pruebas](#8-verificación-y-pruebas)
-9. [Frontend Flutter Web (pendiente)](#9-frontend-flutter-web-pendiente)
+9. [Frontend Flutter Web](#9-frontend-flutter-web)
 10. [APK Android](#10-apk-android)
 11. [iOS (iPhone / iPad)](#11-ios-iphone--ipad)
 12. [Windows (escritorio)](#12-windows-escritorio)
 13. [Linux (escritorio)](#13-linux-escritorio)
-14. [Preguntas frecuentes (FAQ para el tribunal)](#14-preguntas-frecuentes-faq-para-el-tribunal)
-15. [Anexo A — Variables de entorno completas](#15-anexo-a--variables-de-entorno-completas)
-16. [Anexo B — Comandos útiles](#16-anexo-b--comandos-útiles)
-17. [Anexo C — Glosario de términos](#17-anexo-c--glosario-de-términos)
+14. [Operaciones post-despliegue](#14-operaciones-post-despliegue)
+15. [Preguntas frecuentes (FAQ para el tribunal)](#15-preguntas-frecuentes-faq-para-el-tribunal)
+16. [Anexo A — Variables de entorno completas](#16-anexo-a--variables-de-entorno-completas)
+17. [Anexo B — Comandos útiles](#17-anexo-b--comandos-útiles)
+18. [Anexo C — Glosario de términos](#18-anexo-c--glosario-de-términos)
 
 ---
 
@@ -45,7 +47,8 @@ Para conseguir esto se ha utilizado **Railway**, una plataforma en la nube (PaaS
 1. El **backend** Spring Boot compilado y arrancado automáticamente desde mi repositorio de GitHub.
 2. Una **base de datos MySQL** gestionada que sustituye al MySQL local de mi máquina.
 3. Un **volumen persistente** donde se guardan las fotos subidas por los usuarios (sin perderse al redesplegar).
-4. *(Pendiente)* Un segundo servicio para el **frontend Flutter Web** que servirá la aplicación a través de una URL pública.
+4. *(Pendiente)* Un segundo servicio para el **frontend Flutter Web** que servirá la aplicación a través de una URL pública. 
+Se completo Un segundo servicio para el **frontend Flutter Web** que sirve la aplicación a través de una URL pública mediante un contenedor Docker con nginx.
 
 Además, dos servicios externos se siguen utilizando tal cual estaban en local:
 
@@ -106,6 +109,44 @@ En este proyecto, el **frontend** sí usa un `Dockerfile` propio (porque Flutter
 ### 2.5. ¿Qué es Nixpacks?
 
 Es el sistema "mágico" que usa Railway por defecto. Tú le subes tu proyecto, Nixpacks mira los ficheros (`pom.xml` para Java, `package.json` para Node, etc.) y deduce cómo compilarlo y arrancarlo. Para el backend Spring Boot detecta el `pom.xml`, instala Maven y un JDK, lanza `./mvnw install` y luego ejecuta el JAR resultante.
+
+### 2.5.1 ¿Qué es NGINX?
+es un servidor web de alto rendimiento, de código abierto, que también funciona como proxy inverso, balanceador de carga y proxy de correo electrónico. 
+Su arquitectura asíncrona basada en eventos le permite manejar miles de conexiones simultáneas con muy bajo consumo de recursos, lo que lo hace ideal para sitios con mucho tráfico
+
+Qué es exactamente NGINX
+Es un servidor web capaz de servir contenido estático (HTML, CSS, JS, imágenes) de forma muy rápida. 
+
+Actúa como proxy inverso, recibiendo peticiones y repartiéndolas a servidores backend (Node.js, Python, PHP, etc.). 
+
+Puede funcionar como balanceador de carga, distribuyendo tráfico entre varios servidores para evitar saturaciones. 
+
+También soporta protocolos de correo como IMAP, POP3 y SMTP. 
+
+Cómo funciona
+A diferencia de servidores tradicionales que crean un hilo por cada petición, NGINX usa un modelo asíncrono y orientado a eventos, donde un solo proceso puede manejar muchas conexiones simultáneas (hasta miles). Esto lo hace extremadamente eficiente y escalable
+
+Un poco de historia
+Fue creado por Igor Sysoev en 2002 para resolver el problema C10K (manejar 10.000 conexiones simultáneas). Su primera versión pública salió en 2004. 
+
+Ejemplo 1. Para entenderlo en pocas palabras
+NGINX es como un portero súper rápido de un edificio.  
+Cuando muchas personas quieren entrar a una web al mismo tiempo, él abre la puerta, organiza la fila y manda a cada persona al sitio correcto sin que nadie se choque.
+
+En pocas líneas:
+Es un programa que ayuda a que las páginas web carguen rápido.
+Puede repartir el trabajo entre varios ordenadores para que ninguno se sature.
+Funciona como un portero inteligente que decide a dónde enviar cada visita.
+
+Ejemplo 2. Para entenderlo en pocas palabras
+
+NGINX es como un camarero muy rápido en un restaurante.  
+Cuando llegan muchos clientes a la vez, él toma los pedidos, los reparte a la cocina correcta y entrega la comida sin que nadie espere demasiado.
+
+En pocas líneas:
+Muchas personas piden “comida” (páginas web) al mismo tiempo.
+NGINX es el camarero que organiza todo para que nadie se quede sin servir.
+Si la cocina está llena, él manda pedidos a otra cocina para que todo vaya más rápido.
 
 ### 2.6. ¿Qué es un volumen persistente y por qué importa?
 
@@ -261,7 +302,7 @@ flowchart TB
 
         subgraph Project["Proyecto: Victorino-Style"]
             Backend["🍃 Backend<br/>Spring Boot 4 + JDK 21<br/>victorinostyle-production.up.railway.app"]
-            Frontend["🌐 Frontend (pendiente)<br/>Flutter Web + nginx"]
+            Frontend["🌐 Frontend Flutter Web + nginx<br/>frontendvictorino-style-production.up.railway.app"]
             MySQL[("🛢️ MySQL 8<br/>~53 usuarios<br/>~1000 citas")]
             Volume[("💾 Volumen<br/>/app/uploads")]
         end
@@ -974,36 +1015,363 @@ Esto le dice al JVM:
 
 Tras esto, el proceso se mantiene estable.
 
+### Error 7: CORS bloqueaba el login desde el frontend web
+
+**Síntoma**: tras desplegar el frontend, al hacer login desde el navegador la consola (F12) mostraba:
+
+```
+Access to XMLHttpRequest at 'https://victorinostyle-production.up.railway.app/api/v1/auth/login'
+from origin 'https://frontendvictorino-style-production.up.railway.app'
+has been blocked by CORS policy: Response to preflight request doesn't pass access
+control check: No 'Access-Control-Allow-Origin' header is present on the requested
+resource.
+```
+
+**Causa**: la variable de entorno `VICTORINO_CORS_ORIGENES_EXTRA` del backend se configuró inicialmente con el valor:
+```
+frontendvictorino-style-production.up.railway.app
+```
+**Sin el protocolo `https://`**. Spring Security `setAllowedOriginPatterns()` necesita el origen completo (esquema + host) para comparar contra el 
+header `Origin` que envía el navegador. Sin el `https://` el patrón es inválido, no hace match, y el backend responde a la petición 
+preflight `OPTIONS` sin el header `Access-Control-Allow-Origin`. El navegador bloquea la petición.
+
+**Solución**: editar la variable en Railway y poner el valor completo:
+```
+https://frontendvictorino-style-production.up.railway.app
+```
+Sin `/` al final. Tras el redeploy del backend, el login funciona inmediatamente.
+
+> **Lección**: cuando una librería pide un "origen", se refiere al estándar Web (`scheme://host[:port]`), no solo al dominio. Confundirlos es un error frecuente.
+
+### Error 8: Caché agresivo de nginx impedía que los cambios llegaran al usuario tras un redeploy
+
+**Síntoma**: tras hacer push del cambio para deshabilitar la subida de fotos en web (sub-apartado 9.6.1), el redeploy del frontend 
+en Railway terminó con éxito, pero al recargar la página en el navegador el `SnackBar` no aparecía. En **ventana de incógnito sí aparecía**, 
+y al hacer `Ctrl+Shift+R` también.
+
+**Causa**: la regla del Dockerfile decía:
+```nginx
+location ~* \.(?:js|css|woff2?|png|jpg|jpeg|gif|svg|webp|ico)$ {
+    expires 30d;
+    add_header Cache-Control "public, immutable";
+}
+```
+
+El header `Cache-Control: immutable` indica al navegador: *"este archivo NUNCA cambiará bajo esta misma URL durante 30 días, NO me preguntes siquiera"*. 
+Como Flutter Web compila siempre con el mismo nombre fijo `main.dart.js`, **el navegador estaba sirviendo el bundle viejo de antes del redeploy**, 
+sin pedir el nuevo. Solo el `index.html` (con `no-store`) se actualizaba, pero referenciaba el `main.dart.js` viejo cacheado.
+
+**Solución**: refinar las reglas de caché para diferenciar dos casos:
+
+- **Archivos de nombre FIJO entre deploys** (`main.dart.js`, `flutter_bootstrap.js`, `flutter.js`, `flutter_service_worker.js`, `manifest.json`, `version.json`): 
+pasar a `Cache-Control: public, no-cache, must-revalidate` con `etag on` activado en nginx. El navegador **conserva** el caché 
+pero envía un `If-None-Match: <ETag>` al servidor antes de usarlo. Si el archivo no cambió, nginx responde **304 Not Modified (~100 bytes)** 
+y el navegador reutiliza el caché. Si cambió, se descarga la nueva versión. Velocidad casi idéntica a `immutable`, pero los cambios llegan al instante.
+- **Assets bajo `/assets/` y `/icons/`** (fuentes, imágenes embebidas, iconos PWA): siguen con `immutable 30d`. Estos archivos solo cambian cuando se modifican los assets fuente y siguen un patrón estable.
+
+Tras este cambio, los redeploys futuros ya no necesitan que el usuario haga recarga forzada: el navegador se actualiza automáticamente.
+
+> **Lección**: `immutable` es muy potente pero solo es correcto para archivos cuya URL única garantiza un contenido único. Los archivos de Flutter con nombre fijo NO son inmutables. La política `must-revalidate + ETag` es el equilibrio correcto.
+
 ---
 
 ## 8. Verificación y pruebas
 
-Tras todo el despliegue, las pruebas end-to-end realizadas:
+Tras todo el despliegue, se realizó una batería de pruebas end-to-end en **tres entornos distintos** 
+para confirmar que el sistema funciona realmente, no solo "técnicamente". Se documentan en tres bloques: 
+backend en aislado, frontend web, y APK Android.
+
+### 8.1. Backend (vía Swagger UI y SQL directo)
 
 | Prueba | Resultado |
 |---|---|
-| `GET /api/v1/swagger-ui.html` | 200, página de Swagger carga |
-| `POST /api/v1/auth/login` con admin | 200 + JWT |
-| `SELECT COUNT(*) FROM usuario` | 53 usuarios |
+| `GET /api/v1/swagger-ui.html` | 200, página de Swagger carga correctamente |
+| `POST /api/v1/auth/login` con `victorino@admin.com` / `Admin1234!` | 200 + `accessToken`, `refreshToken`, `rol: ADMINISTRADOR`, `idUsuario: 1`, `nombreCompleto: "Victorino Admin"`, `foto: "/uploads/empleados/admin.png"` |
+| `SELECT COUNT(*) FROM usuario` en MySQL Workbench | 53 (1 admin + 2 empleados + 50 clientes) |
 | `SELECT COUNT(*) FROM cita` | ~1000 citas |
-| Foto `/uploads/empleados/admin.png` | Servida correctamente desde volumen |
-| Log `[SEED uploads] Listo. Copiados: 7` | Confirmado en deploy logs |
+| `SELECT COUNT(*) FROM servicio` | 4 |
+| `SELECT COUNT(*) FROM notificacion` | ~2500 |
+| Foto `/uploads/empleados/admin.png` accesible vía URL pública | Servida correctamente desde el volumen Railway |
+| Log `[SEED uploads] Listo. Copiados: 7, ya existian: 0` | Confirmado en deploy logs del primer arranque |
 | Log `[FCM] FirebaseApp inicializado correctamente` | Confirmado |
+| Log `Started BackendVictorinoApplication in 13.303 seconds` | Confirmado |
 
-Resultado: **backend 100 % operativo en producción**.
+### 8.2. Frontend Web
+
+| Prueba | Resultado |
+|---|---|
+| Cargar `https://frontendvictorino-style-production.up.railway.app` | Pantalla de login en ~10 segundos (primera carga) |
+| Login como admin (`victorino@admin.com` / `Admin1234!`) | Entrada correcta al panel admin |
+| Login como empleado (`maradona@victorinostyle.com` / `Empleado1234!`) | Entrada correcta al panel empleado |
+| Login como cliente (varios, ej. `andres.lozano@gmail.com` / `Cliente1234!`) | Entrada correcta al panel cliente |
+| Listar servicios (panel admin) | 4 servicios con sus fotos correctas |
+| Listar empleados (panel admin) | 3 empleados con sus fotos correctas |
+| Listar citas (panel admin) | ~1000 citas correctamente distribuidas entre 01/03/2026 y 20/06/2026 |
+| Crear una cita nueva como cliente | Cita creada y visible al refrescar |
+| Ver foto del admin en su perfil | Imagen carga desde el volumen Railway sin problemas |
+| Cambiar/subir foto desde navegador | **SnackBar avisando que solo está disponible en móvil** (limitación conocida, ver 9.6.1) |
+| Notificaciones push en navegador | **No funcionan** (limitación conocida, ver 9.6.2) — la app móvil sigue siendo el canal principal |
+
+### 8.3. APK Android
+
+| Prueba | Resultado |
+|---|---|
+| Compilar APK con `flutter build apk --release --dart-define=API_BASE_URL=...` | `app-release.apk` generado, 80-90 MB |
+| Instalar en Xiaomi (Android 14) | Instalación correcta, icono "Victorino Style" en cajón de apps |
+| Login con cualquier rol | Funciona igual que en web |
+| Cambiar foto perfil desde galería | Funciona ✅ |
+| Cambiar foto perfil desde cámara | Funciona ✅ |
+| Recortar foto antes de subir | Funciona ✅ |
+| Notificaciones push (pendiente de verificar end-to-end con scheduler) | Token FCM se registra correctamente; pendiente de probar la entrega real desde el scheduler 24h |
+
+### 8.4. Métricas del backend tras varias horas de uso
+
+- **RAM**: estable entre **500 y 700 MB** (dentro del límite del plan Hobby, con margen).
+- **CPU**: < 5% en idle, picos al 30% durante login (BCrypt hace trabajo intencionalmente costoso).
+- **No volvió a aparecer el aviso "Out of Memory"** tras la configuración de `JAVA_TOOL_OPTIONS`.
+
+**Resultado global**: **sistema 100 % operativo en producción**, con dos limitaciones conocidas documentadas (subida fotos web + push web) que NO afectan a los flujos críticos del TFG.
 
 ---
 
-## 9. Frontend Flutter Web (pendiente)
+## 9. Frontend Flutter Web
 
-*Esta sección se completará cuando se despliegue el frontend. Resumen del plan:*
+Esta sección describe el despliegue del **frontend Flutter compilado a Web** como un segundo servicio en Railway, 
+en el mismo proyecto que el backend. El frontend queda servido por **nginx** dentro de un contenedor Docker, 
+accesible públicamente en una URL HTTPS. Es la versión que cualquier persona puede abrir en su navegador (Chrome, Edge, Safari, Firefox) 
+sin instalar absolutamente nada.
 
-1. Crear segundo servicio en Railway desde el mismo repo, con Root Directory `frontend_victorino`.
-2. Builder: Dockerfile (autodetecta el `Dockerfile` que ya está en el repo).
-3. Build Arg: `API_BASE_URL=https://victorinostyle-production.up.railway.app/api/v1`.
-4. Generar dominio público del frontend.
-5. Actualizar `VICTORINO_CORS_ORIGENES_EXTRA` del backend con el dominio del frontend.
-6. Verificar login end-to-end desde el navegador.
+**URL final desplegada**: `https://frontendvictorino-style-production.up.railway.app`
+
+### 9.1. Diferencia clave respecto al despliegue del backend
+
+| Aspecto | Backend Spring Boot | Frontend Flutter Web |
+|---|---|---|
+| **Builder Railway** | Nixpacks (detecta `pom.xml` solo) | Dockerfile (escrito a mano por mí) |
+| **Tipo de servicio** | App de larga ejecución (JVM) | Archivos estáticos (HTML+JS+CSS) servidos por nginx |
+| **Variables de runtime** | Muchas (BD, JWT, SMTP, Firebase...) | Una sola: `API_BASE_URL` |
+| **Inyección de la URL del backend** | Variables de entorno en runtime | **Build Arg** (se "hornea" en el bundle JS) |
+| **Volumen persistente** | Sí (`/app/uploads`) | No, es completamente stateless |
+| **Memoria RAM** | ~500-700 MB | <50 MB (nginx es ligerísimo) |
+
+### 9.2. Dockerfile multi-etapa
+
+El archivo `frontend_victorino/Dockerfile` (versionado en el repositorio) tiene **dos etapas**:
+
+**Etapa 1 (build)**: parte de la imagen oficial `ghcr.io/cirruslabs/flutter:3.41.2`, copia el código fuente del frontend, ejecuta `flutter pub get` 
+para descargar dependencias y luego `flutter build web --release --dart-define=API_BASE_URL=$API_BASE_URL`. La URL del 
+backend se inyecta como **build argument**, lo que significa que queda **embebida en el JavaScript final**, sin necesidad de variables de runtime.
+
+**Etapa 2 (runtime)**: parte de `nginx:alpine` (una imagen Linux mínima de ~10 MB), copia los assets compilados de la etapa anterior 
+a `/usr/share/nginx/html`, y configura nginx con un `default.conf.template` que define:
+
+- Puerto dinámico vía `$PORT` (Railway inyecta el puerto en runtime).
+- `try_files $uri $uri/ /index.html` para que las rutas internas de GoRouter funcionen al recargar la página (fallback SPA).
+- **Reglas de caché** (refinadas tras el primer despliegue, ver Error 8 en la sección 7).
+
+### 9.3. Crear el servicio frontend en Railway
+
+#### 9.3.1. Añadir nuevo servicio desde GitHub
+
+Desde el canvas del proyecto Victorino-Style en Railway:
+
+1. Pulsar **`+ Create`** (botón violeta arriba a la derecha) → **`GitHub Repo`** → seleccionar **`Victorino_Style`** 
+(el MISMO repositorio que el backend; ambos servicios viven en el mismo monorepo).
+2. Railway crea una tercera cajita en el canvas. Como con el backend, el **primer deploy automático va a fallar** 
+porque Railway toma la rama y carpeta por defecto. Esperado, lo arreglaremos en los siguientes pasos.
+
+#### 9.3.2. Configurar Settings del servicio
+
+Pulsar la cajita nueva → pestaña **Settings**:
+
+**Service Name** (Service section):
+- Quedó como `frontend_Victorino-Style` por defecto. Lo dejé así. Si quieres uno más corto y limpio (ej. `frontend`), se puede renombrar en cualquier momento (ver sección 14.1 sobre cómo hacerlo).
+
+**Source** (sección Source):
+| Campo | Valor |
+|---|---|
+| Source Repo | `KevinFlow-ai/Victorino_Style` |
+| Root Directory | `frontend_victorino` (sin barra inicial) |
+| Branch | `Produccion-Railway` |
+| Wait for CI | Desactivado |
+
+**Build** (sección Build):
+| Campo | Valor |
+|---|---|
+| Builder | **`Dockerfile`** (autodetectado porque hay un `Dockerfile` en `frontend_victorino/`) |
+| Dockerfile Path | vacío (autodetecta `Dockerfile` en la raíz del Root Directory) |
+| Custom Build Command | vacío (el Dockerfile ya tiene los `RUN` necesarios) |
+
+**Deploy** (sección Deploy):
+| Campo | Valor |
+|---|---|
+| Custom Start Command | **vacío** (el Dockerfile ya define `CMD` con el comando de nginx) |
+
+#### 9.3.3. Variables de entorno
+
+Solo hace falta UNA. En pestaña **Variables** → **+ New Variable**:
+
+| Variable | Value |
+|---|---|
+| `API_BASE_URL` | `https://victorinostyle-production.up.railway.app/api/v1` |
+
+> 🔑 Railway pasa automáticamente esta variable como **Build Arg** al Dockerfile porque tenemos `ARG API_BASE_URL` declarado en él. El comando `flutter build 
+web --release --dart-define=API_BASE_URL=$API_BASE_URL` "hornea" la URL en el JavaScript final. 
+El bundle resultante ya sabe contra qué backend hablar y no necesita ninguna otra configuración.
+
+#### 9.3.4. Generar el dominio público
+
+Settings → **Networking** → **Generate Domain**.
+
+Railway asigna:
+```
+frontendvictorino-style-production.up.railway.app
+```
+(El nombre se forma a partir del nombre del servicio, sustituyendo guiones bajos por guiones y añadiendo `-production`).
+
+**Public Port**: `8080` (el Dockerfile lo configura con `ENV PORT=8080` aunque Railway le pasará el real).
+
+#### 9.3.5. Lanzar el deploy
+
+Tras configurar todo lo anterior, Railway dispara automáticamente un nuevo deploy. Si no lo hace, pulsar **Deploy**.
+
+**Tiempo del build la primera vez: 8-15 minutos**, porque:
+- Descarga la imagen `ghcr.io/cirruslabs/flutter:3.41.2` (~3 GB).
+- Ejecuta `flutter pub get` (~10 s).
+- Compila el código Dart a JavaScript (~40 s).
+- Construye la imagen nginx final (~30 s).
+- Sube la imagen final (~50 MB) al registry interno de Railway.
+
+Los siguientes deploys son **mucho más rápidos** (~3-5 minutos) gracias al cache de capas de Docker.
+
+#### 9.3.6. Logs esperados
+
+**Build Logs** (resumen de lo que aparece):
+```
+scheduling build on Metal builder
+unpacking archive
+load build definition from frontend_victorino/Dockerfile
+load metadata for docker.io/library/nginx:alpine
+load metadata for ghcr.io/cirruslabs/flutter:3.41.2
+FROM ghcr.io/cirruslabs/flutter:3.41.2@sha256:c69039...
+preparing inline document
+FROM docker.io/library/nginx:alpine@sha256:7e8ff0...
+WORKDIR /app
+COPY pubspec.yaml pubspec.lock ./
+RUN flutter pub get                                              10s
+COPY . .                                                         693ms
+RUN flutter build web --release --dart-define=API_BASE_URL=...   41s
+   ✓ Built build/web
+COPY --from=build /app/build/web /usr/share/nginx/html           28s
+RUN rm -f /etc/nginx/conf.d/default.conf
+COPY <<EOF /etc/nginx/templates/default.conf.template
+exporting to docker image format
+image push                                                       54 MB
+```
+
+**Deploy Logs** (nginx arrancando):
+```
+2026/05/23 16:21:16 [notice] 1#1: using the "epoll" event method
+2026/05/23 16:21:16 [notice] 1#1: nginx/1.31.1
+2026/05/23 16:21:16 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0)
+2026/05/23 16:21:16 [notice] 1#1: OS: Linux 6.18.15+deb13-cloud-amd64
+2026/05/23 16:21:16 [notice] 1#1: start worker processes
+... (~50 workers, uno por vCPU)
+Starting Container
+```
+
+Y a partir de ahí, cada visita al frontend genera líneas tipo:
+```
+100.64.0.2 - - [23/May/2026:16:27:43 +0000] "GET / HTTP/1.1" 200 1547 ...
+100.64.0.2 - - [23/May/2026:16:27:43 +0000] "GET /flutter_bootstrap.js HTTP/1.1" 200 9974 ...
+100.64.0.2 - - [23/May/2026:16:27:44 +0000] "GET /main.dart.js HTTP/1.1" 200 4438123 ...
+```
+
+### 9.4. Abrir el CORS del backend para que acepte el dominio del frontend
+
+Sin este paso, el navegador bloquea las peticiones del frontend al backend con un error **CORS policy**. Hay que añadir 
+el dominio del frontend a la lista de orígenes permitidos del backend:
+
+1. Railway → servicio **backend** → pestaña **Variables**.
+2. Buscar `VICTORINO_CORS_ORIGENES_EXTRA` (estaba creada vacía durante el sub-paso 6.3.7).
+3. Editar y poner:
+   ```
+   https://frontendvictorino-style-production.up.railway.app
+   ```
+   ⚠️ **Atención**:
+   - Con `https://` al principio (sin esto, Spring no reconoce el patrón como válido y el preflight CORS falla, ver Error 7 en la sección 7).
+   - **Sin `/` al final**.
+   - Sin espacios.
+4. Save. Railway redesplegará el backend automáticamente (~1 minuto). Durante ese tiempo el backend está unos segundos inalcanzable; es normal.
+
+### 9.5. Verificación end-to-end
+
+Tras el redeploy del backend, abrir en el navegador:
+```
+https://frontendvictorino-style-production.up.railway.app
+```
+
+Comportamiento esperado:
+1. **Pantalla de splash de Flutter** durante 5-15 segundos la primera vez (el navegador descarga el bundle JS de ~4.4 MB).
+2. **Pantalla de login** con el logo "Victorino Style" y el favicon en la pestaña del navegador.
+3. **Login** con `victorino@admin.com` / `Admin1234!` → entrada al panel de administrador con todos los datos del seed (53 usuarios, ~1000 citas, 4 servicios, etc.).
+
+### 9.6. Limitaciones conocidas de Flutter Web en este proyecto
+
+Tras desplegar y probar el frontend, se identificaron **dos limitaciones funcionales en la versión web** que no afectan al APK Android. 
+Se documentan honestamente porque pueden surgir preguntas del tribunal y porque tienen workaround documentado para la v1.1.
+
+#### 9.6.1. Subida y cambio de fotos NO disponible en Web
+
+- **Síntoma**: pulsar el botón "Cambiar foto" en cualquiera de los tres lugares (perfil cliente, panel admin de empleados, panel admin de servicios) 
+muestra un `SnackBar` con el mensaje **"La subida de fotos solo está disponible desde la app móvil. Descarga el APK Android para cambiar tu foto."**.
+
+- **Causa técnica**: el flujo de subida usa el paquete `image_cropper` que **no soporta Flutter Web** (oficialmente solo Android, iOS, macOS, Windows, Linux). 
+Además, el `SelectorImagen.elegirYRecortar()` devuelve un `File` de `dart:io`, clase que en Web es solo un *stub* sin funcionalidad real. Si no se controla 
+el caso, el código crashea con un `Uncaught Error` en `main.dart.js` al pulsar el botón.
+
+- **Workaround implementado**: en `lib/core/widgets_compartidos/selector_imagen.dart` se añadió al principio del método `elegirYRecortar` un `if (kIsWeb) 
+{ mostrar SnackBar; return null; }`. Así los tres lugares quedan cubiertos con un único punto de control.
+
+- **Visualización**: las fotos previamente subidas desde el APK Android **se ven perfectamente** en la versión web (es solo la **escritura** la que está deshabilitada en navegador, no la lectura).
+- **Pendiente para v1.1**: reemplazar `image_cropper` por `crop_your_image` (que sí soporta Web), cambiar la firma del selector a `XFile`, y 
+en los repositorios usar `MultipartFile.fromBytes(await xFile.readAsBytes())` en lugar de `fromFile(file.path)`.
+
+#### 9.6.2. Notificaciones push FCM no disponibles en Web
+
+- **Síntoma**: en la consola del navegador (F12) aparece el error `[FCM] No se pudo registrar token: TypeError: Instance 
+of 'minified:Mb' is not a subtype of type 'minified:ee'` al iniciar sesión.
+
+- **Causa técnica**: Firebase Cloud Messaging en navegador **requiere dos configuraciones adicionales que no están actualmente en el proyecto**:
+  1. Una **VAPID Key** generada en Firebase Console → Cloud Messaging → Web Push certificates, que identifica al servidor web autorizado a enviar push.
+
+  2. Un **Service Worker** (`firebase-messaging-sw.js`) registrado en `web/`, que recibe los push mientras la pestaña no está activa.
+- **Impacto real**: las notificaciones push **funcionan perfectamente en el APK Android** (canal principal del proyecto, con FCM directamente sobre 
+el `google-services.json`). El TFG usa la web como complemento de demostración (login, agenda, ver citas), no como canal principal de push.
+- **Pendiente para v1.1**: generar VAPID key + crear `firebase-messaging-sw.js` + ajustar `lib/main.dart` para no intentar registrar token en web sin las credenciales correctas.
+
+### 9.7. FAQ específico Frontend Web
+
+**P: ¿Por qué tanto Dockerfile y no Nixpacks como con el backend?**
+R: Nixpacks no detecta proyectos Flutter Web automáticamente porque el pipeline `flutter build web` no es estándar de los frameworks que Nixpacks conoce. 
+Un Dockerfile multi-etapa es la solución limpia: compilamos con la imagen oficial de Flutter y servimos con nginx, sin que Railway tenga que adivinar nada.
+
+**P: ¿Por qué nginx y no servir directamente con Flutter desde Dart?**
+R: Flutter Web genera archivos estáticos (HTML, JS, CSS, fuentes, imágenes). nginx está optimizado para servir estáticos con 
+la máxima eficiencia (procesos asíncronos, sendfile, compresión gzip, caché HTTP). Una "app Dart sirviendo estáticos" sería mucho más pesada y lenta.
+
+**P: ¿Cuánto consume el frontend en Railway?**
+R: Muy poco. nginx en alpine ocupa unos **20-50 MB de RAM** y casi nada de CPU en idle. El cuello de botella es siempre el backend.
+
+**P: ¿El frontend funciona sin el backend?**
+R: La página de login carga (es estático), pero al intentar autenticar, la petición POST a `/auth/login` falla con error de red porque 
+el backend está caído. La app no funciona "sin backend"; ambos servicios viven juntos.
+
+**P: ¿Puedo abrir el frontend en el navegador del móvil?**
+R: Sí. La web es responsive y funciona en cualquier navegador móvil. Es una alternativa al APK Android para usuarios que prefieren no instalar nada.
+
+**P: ¿Y si quiero un dominio propio (`victorinostyle.com`) en lugar de `.up.railway.app`?**
+R: Se puede, ver sección 14.2 sobre dominios personalizados.
 
 ---
 
@@ -1879,7 +2247,196 @@ R: Flutter Linux **solo se compila a x86_64 oficialmente**. Para ARM (Raspberry 
 
 ---
 
-## 14. Preguntas frecuentes (FAQ para el tribunal)
+## 14. Operaciones post-despliegue
+
+Esta sección recopila las operaciones de **mantenimiento y mejoras opcionales** que se pueden hacer una vez que el despliegue inicial 
+funciona. Sirve para responder en la defensa "¿y si mañana quiero X?" sin tener que improvisar, y como referencia futura si el proyecto evoluciona.
+
+### 14.1. Renombrar un servicio en Railway
+
+Mi servicio frontend se llamó por defecto `frontend_Victorino-Style` y produjo el dominio `frontendvictorino-style-production.up.railway.app`. 
+Si quisiera un dominio más corto (ej. `frontend-production-xxxx.up.railway.app`) habría que renombrar el servicio. 
+**No es algo que rompa nada, pero implica un paso extra crítico que no se debe olvidar**.
+
+**Pasos**:
+
+1. Railway → pulsar la cajita del servicio a renombrar → pestaña **Settings**.
+2. Sección **Service** → **Service Name** → cambiar a `frontend` (o lo que se quiera). **Save**.
+3. Railway **regenera automáticamente el dominio público** asociado. La URL antigua deja de funcionar al cabo de unos segundos. La nueva URL aparece en Settings → Networking.
+4. ⚠️ **Paso crítico que es fácil de olvidar**: si el servicio renombrado tenía un dominio público referenciado en otra parte 
+(en mi caso, en la variable `VICTORINO_CORS_ORIGENES_EXTRA` del backend), **hay que actualizarla con el nuevo dominio**. 
+De lo contrario, el navegador empezará a recibir errores CORS de nuevo.
+5. También hay que regenerar el APK Android con la nueva `API_BASE_URL` si el servicio renombrado es el backend (no era mi caso).
+
+**Recomendación**: si tienes claro un nombre desde el principio, ponlo. Renombrar después tiene esa cascada de actualizaciones que es fácil de pasar por alto.
+
+### 14.2. Dominio propio (custom domain)
+
+El dominio `*.up.railway.app` es funcional pero **no es la imagen profesional** que un cliente real esperaría. Para una versión 
+"de producción de verdad" se contrataría un dominio propio (ej. `victorinostyle.com`) y se conectaría a Railway.
+
+#### 14.2.1. ¿Railway lo soporta? ¿Cuesta?
+
+**Sí, lo soporta desde el plan Hobby (5 €/mes)**. Railway no cobra extra por dominio personalizado. Lo único que se paga es:
+- **El dominio en sí** en un registrador externo: 8-15 €/año típicamente (`.com`, `.es`, `.app`...).
+
+Railway **genera y renueva automáticamente el certificado SSL/TLS de Let's Encrypt** para el dominio. No hay que gestionar certificados manualmente.
+
+#### 14.2.2. Proveedores recomendados para comprar el dominio
+
+| Proveedor | Coste aprox. `.com` | Notas |
+|---|---|---|
+| **Cloudflare Registrar** ✅✅ | ~10 €/año (precio "at cost", sin markup) | El más barato. Incluye DNS, protección DDoS, caché global. Mi recomendación. |
+| **Namecheap** ✅ | ~11 €/año el primer año, ~14 € renovación | Famoso, fiable, soporte humano. |
+| **IONOS** | ~10-12 €/año | Español, factura en euros, atención telefónica. |
+| **GoDaddy** | ~15 €/año el primero, sube en renovaciones | Famoso pero caro a largo plazo, lleno de upsells. |
+| **Google Domains** | descontinuado en 2024 | Ya no existe. Squarespace compró el negocio. |
+
+#### 14.2.3. Configuración paso a paso (asumiendo Cloudflare como ejemplo)
+
+1. **Comprar el dominio**: en Cloudflare Registrar buscar `victorinostyle.com` (o `.es`). Pagar. Cloudflare automáticamente configura sus servidores DNS.
+
+2. **En Railway → servicio backend → Settings → Networking → Custom Domain → Add domain**:
+   - Escribir `api.victorinostyle.com` (subdominio para el backend).
+   - Railway te muestra:
+     ```
+     Set a CNAME record:
+       Name: api
+       Value: backend-production-XXXX.up.railway.app
+     ```
+
+3. **En Cloudflare → DNS → Add Record**:
+   - Type: `CNAME`
+   - Name: `api`
+   - Target: `backend-production-XXXX.up.railway.app`
+   - Proxy status: **DNS only** (sin nube naranja). Si lo dejas con nube naranja (Cloudflare proxy), funciona también pero a veces da problemas con WebSocket o uploads grandes.
+   - Save.
+
+4. **Esperar la propagación DNS** (5-30 minutos). Railway muestra el dominio como "verified" cuando detecta el CNAME.
+
+5. **Railway genera el certificado SSL** automáticamente (~5 minutos más).
+
+6. Repetir el proceso para el frontend con `app.victorinostyle.com` o el dominio raíz `victorinostyle.com`. Si quieres usar el dominio raíz (sin subdominio) 
+hace falta un registro tipo `A` o `ALIAS` en lugar de `CNAME`, porque los registros CNAME no se permiten en la raíz por estándar DNS. Cloudflare 
+lo resuelve transparentemente con su feature "CNAME flattening".
+
+7. **Actualizar las variables de entorno y rebuild**:
+   - Backend: `VICTORINO_CORS_ORIGENES_EXTRA` debe incluir `https://victorinostyle.com` o `https://app.victorinostyle.com`.
+   - Frontend: `API_BASE_URL` debe ser `https://api.victorinostyle.com/api/v1` (rebuild necesario para que se hornee en el bundle).
+   - APK: regenerar con `flutter build apk --dart-define=API_BASE_URL=https://api.victorinostyle.com/api/v1`.
+
+#### 14.2.4. ¿Quito el dominio `.up.railway.app` antiguo?
+
+No es obligatorio. Pueden coexistir. Pero si quieres "limpieza", en Railway → Networking puedes borrar el dominio antiguo. Recuerda actualizar todos los CORS antes para evitar romper accesos.
+
+#### 14.2.5. Coste total y mantenimiento del dominio
+
+- **Año 1**: ~10 € (Cloudflare) + 60 € de Railway (5 €/mes × 12 meses) = **~70 €**.
+- **Mantenimiento**: cero. Cloudflare renueva DNS automáticamente. Railway renueva SSL automáticamente cada 90 días.
+
+### 14.3. Limitaciones conocidas por plataforma
+
+Esta tabla es importante para responder al tribunal "¿qué NO funciona y por qué?". Honesto y documentado.
+
+| Plataforma | Funcionalidad | Estado | Razón |
+|---|---|---|---|
+| **Android (APK)** | Login, citas, fotos, push, todo | ✅ Funciona 100% | Plataforma principal del TFG |
+| **iOS (iPhone/iPad)** | Todo | 🔵 No generado | Requiere Mac + Apple Developer Program (99 USD/año). Ver sección 11. El código está preparado. |
+| **Web (navegador)** | Login, listar, ver citas | ✅ Funciona | — |
+| **Web (navegador)** | Subir/cambiar foto | ❌ Deshabilitada con SnackBar | `image_cropper` no soporta Web. Workaround documentado, ver 9.6.1. |
+| **Web (navegador)** | Notificaciones push | ❌ No funcionan | FCM en Web requiere VAPID Key + Service Worker, no configurados. Ver 9.6.2. |
+| **Windows (escritorio)** | Todo | 🔵 No generado | Requiere Visual Studio Community 2022 con carga C++. Ver sección 12. El código está preparado. |
+| **Linux (escritorio)** | Todo | 🔵 No generado | No se puede compilar desde Windows. Requiere máquina Linux. Ver sección 13. El código está preparado. |
+| **macOS (escritorio)** | Todo | 🔵 No generado | Carpeta `macos/` no existe en el proyecto. Habría que ejecutar `flutter create --platforms=macos .` para crearla, luego compilar en un Mac. |
+
+**Leyenda**: ✅ funciona · ❌ no funciona / deshabilitado · 🔵 no generado (preparado pero no compilado)
+
+#### 14.3.1. Por qué se priorizó Android + Web
+
+| Plataforma | Coste de generar | Coste de distribuir | Cobertura usuarios España |
+|---|---|---|---|
+| Android (APK) | Gratis | Gratis (Drive/Telegram) | ~75 % del mercado |
+| Web | Gratis | Gratis (Railway) | 100 % cualquier dispositivo con navegador |
+| iOS | 800€ Mac + 91 €/año | Gratis (TestFlight con cuenta paga) | ~25 % |
+| Desktop | Gratis (con VS) | Trivial (ZIP) | Casi nadie usa apps de peluquería en escritorio |
+
+La combinación Android + Web cubre **prácticamente al 100% del público objetivo** con coste cero. iOS y desktop quedan como evoluciones documentadas para una v1.1 con presupuesto.
+
+### 14.4. Cerrar el TCP Proxy del MySQL cuando ya no se necesita
+
+Durante la carga inicial de datos (sub-paso 6.4) se activó un *TCP Proxy* público en el servicio MySQL para poder conectar MySQL Workbench 
+desde la máquina local. Para una operación normal del sistema (frontend ↔ backend ↔ MySQL), **ese proxy NO es necesario**: backend y MySQL 
+viven en la misma red privada de Railway y se comunican por el host interno `mysql.railway.internal`.
+
+**Recomendación de seguridad**: cerrar el proxy una vez cargados los datos.
+
+**Pasos**:
+1. Servicio MySQL → Settings → Networking → Public Networking.
+2. Pulsar la X o "Remove" del dominio TCP Proxy.
+3. Confirmar.
+
+Si más adelante se necesita administración remota (modificar datos, hacer backup manual), se vuelve a activar puntualmente con un clic.
+
+**Por qué importa**: aunque el MySQL está protegido por contraseña, cualquier bot que escanee Internet podría intentar ataques 
+de fuerza bruta contra el puerto público. Cerrarlo elimina por completo esa superficie de ataque.
+
+### 14.5. Backups manuales de la base de datos
+
+Railway hace snapshots automáticos del volumen MySQL cada día (retenidos 7 días en el plan Hobby). Aun así, **conviene hacer un backup manual** 
+antes de cambios grandes (migración de schema, borrado masivo, etc.).
+
+**Procedimiento con `mysqldump` desde local** (requiere el cliente mysql instalado o accesible vía Workbench):
+
+```powershell
+# 1. Activar temporalmente el TCP Proxy del MySQL en Railway (sub-apartado 6.4.1)
+# 2. Desde PowerShell, lanzar el dump:
+mysqldump -h monorail.proxy.rlwy.net -P 32400 -u root -p railway > backup_2026_05_23.sql
+
+# 3. Pedirá la contraseña (la copio del Variables del MySQL en Railway).
+# 4. Guardar el archivo en sitio seguro (Drive, disco externo, etc.).
+# 5. Cerrar el TCP Proxy.
+```
+
+**Para restaurar** desde un dump:
+```powershell
+mysql -h monorail.proxy.rlwy.net -P 32400 -u root -p railway < backup_2026_05_23.sql
+```
+
+**Frecuencia recomendada**:
+- **Antes de cualquier cambio sensible** en producción.
+- **Mensualmente** como hábito (aunque Railway tenga sus snapshots, tener uno propio en local es la defensa final).
+
+### 14.6. Actualizar la app sin downtime
+
+Railway hace **rolling deploys** por defecto: cuando empujas un nuevo commit, el servicio antiguo sigue sirviendo peticiones 
+hasta que el nuevo está sano. Solo entonces se corta el antiguo. El usuario nunca ve una interrupción.
+
+Cosas a tener en cuenta para minimizar problemas en updates:
+
+- **Migraciones de BD**: si añades columnas o tablas, hacer la migración **antes** de empujar el código que las usa (con MySQL Workbench).
+- **Variables nuevas**: añadirlas en Railway antes de pushear el código que las lee, o el primer arranque fallará.
+- **Cambios en el frontend**: el `index.html` siempre se sirve fresco gracias al `Cache-Control: no-store`, y los 
+archivos JS de Flutter revalidan con ETag (ver Error 8). Los cambios llegan al usuario en su próxima visita.
+
+### 14.7. Monitorizar y diagnosticar problemas
+
+Railway provee de serie:
+
+- **Pestaña Metrics** de cada servicio: gráficas de CPU, RAM, Network in/out, Disk usage.
+- **Pestaña Logs** (Deploy Logs + HTTP Logs): logs en vivo de stdout/stderr del proceso.
+- **Pestaña Deployments**: historial completo de deploys con sus logs guardados.
+
+Si quisieras llevar la monitorización a nivel profesional (alertas, dashboards históricos, agregación de logs), las opciones gratuitas son:
+- **Sentry** para errores (gratis hasta 5.000 errores/mes).
+- **Better Stack (Logtail)** para agregación de logs (gratis hasta 1 GB/mes).
+- **Grafana Cloud** para métricas (gratis hasta 14 días retención).
+- **Healthchecks.io** para uptime monitoring (gratis 20 checks).
+
+Para un TFG, las pestañas integradas de Railway son más que suficientes.
+
+---
+
+## 15. Preguntas frecuentes (FAQ para el tribunal)
 
 Esta es la parte más importante para la defensa del TFG. Anticipa preguntas que se pueden hacer y prepara una respuesta sólida.
 
@@ -2028,14 +2585,16 @@ R: A nivel de diseño se siguieron prácticas RGPD:
 
 ---
 
-## 15. Anexo A — Variables de entorno completas
+## 16. Anexo A — Variables de entorno completas
 
-Estas son las variables configuradas en Railway en el servicio backend. **Los valores se enmascaran con `***` por seguridad**.
+Estas son las variables configuradas en Railway. **Los valores sensibles se enmascaran con `***` por seguridad**.
+
+### 15.1. Servicio backend (Spring Boot)
 
 | Variable | Valor (enmascarado) | Origen | Propósito |
 |---|---|---|---|
 | `PORT` | (lo inyecta Railway, normalmente 8080) | Railway | Puerto donde escucha Spring Boot |
-| `SPRING_DATASOURCE_URL` | `jdbc:mysql://${{MySQL.MYSQLHOST}}:...` | Referencia a MySQL | Conexión JDBC |
+| `SPRING_DATASOURCE_URL` | `jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=false&serverTimezone=Europe/Madrid&allowPublicKeyRetrieval=true` | Referencia a MySQL | Conexión JDBC |
 | `SPRING_DATASOURCE_USERNAME` | `${{MySQL.MYSQLUSER}}` | Referencia | Usuario MySQL |
 | `SPRING_DATASOURCE_PASSWORD` | `${{MySQL.MYSQLPASSWORD}}` | Referencia | Contraseña MySQL |
 | `VICTORINO_JWT_SECRET` | `Y2FtYmlh***` | Manual | Firma de JWT (HS256, mínimo 256 bits Base64) |
@@ -2044,15 +2603,38 @@ Estas son las variables configuradas en Railway en el servicio backend. **Los va
 | `VICTORINO_ADMIN_PRUEBA_ACTIVO` | `true` | Manual | Crea admin al arrancar |
 | `VICTORINO_ADMIN_PRUEBA_PASSWORD` | `Admin1234!` | Manual | Contraseña del admin demo |
 | `VICTORINO_UPLOADS_DIRECTORIO` | `/app/uploads` | Manual | Ruta del volumen montado |
-| `VICTORINO_CORS_ORIGENES_EXTRA` | (pendiente, URL frontend) | Manual | Orígenes CORS de producción |
+| `VICTORINO_CORS_ORIGENES_EXTRA` | `https://frontendvictorino-style-production.up.railway.app` | Manual | Orígenes CORS de producción. **Atención**: debe incluir el `https://`, ver Error 7. |
 | `VICTORINO_FIREBASE_PROJECT_ID` | `victorino-style` | Manual | Project ID de Firebase |
 | `VICTORINO_FIREBASE_CREDENTIALS_JSON` | `{"type":"service_account",...}` | Manual | JSON entero del service account |
 | `NIXPACKS_JDK_VERSION` | `21` | Manual | Forzar JDK 21 en lugar del 17 por defecto |
 | `JAVA_TOOL_OPTIONS` | `-Xmx400m -Xms256m -XX:+UseSerialGC -XX:MaxMetaspaceSize=128m` | Manual | Límite de RAM del JVM |
 
+### 15.2. Servicio frontend (Flutter Web + nginx)
+
+| Variable | Valor | Origen | Propósito |
+|---|---|---|---|
+| `PORT` | (lo inyecta Railway) | Railway | Puerto donde escucha nginx |
+| `API_BASE_URL` | `https://victorinostyle-production.up.railway.app/api/v1` | Manual | URL del backend. **Se pasa como Build Arg** al Dockerfile (`ARG API_BASE_URL`) y queda horneada en el `main.dart.js` final via `--dart-define`. |
+
+### 15.3. Servicio MySQL (autogeneradas por Railway)
+
+Estas las pone Railway automáticamente al provisionar el plugin MySQL. **No las pongo yo manualmente**, las referencio desde el backend con `${{MySQL.X}}`.
+
+| Variable | Visible | Para qué |
+|---|---|---|
+| `MYSQLHOST` | sí | Host interno: `mysql.railway.internal` |
+| `MYSQLPORT` | sí | Puerto interno: `3306` |
+| `MYSQLUSER` | sí | `root` |
+| `MYSQLPASSWORD` | enmascarada | Contraseña aleatoria de 32+ chars |
+| `MYSQLDATABASE` | sí | `railway` (nombre por defecto) |
+| `MYSQL_URL` | enmascarada | URL completa con credenciales |
+| `MYSQL_PUBLIC_URL` | enmascarada (solo si activé TCP Proxy) | URL externa, usada temporalmente para cargar `schema_railway.sql` y `seed_railway.sql` desde MySQL Workbench |
+| `RAILWAY_TCP_PROXY_DOMAIN` | sí (solo con TCP Proxy) | Dominio público para Workbench |
+| `RAILWAY_TCP_PROXY_PORT` | sí (solo con TCP Proxy) | Puerto público para Workbench |
+
 ---
 
-## 16. Anexo B — Comandos útiles
+## 17. Anexo B — Comandos útiles
 
 ### Local
 
@@ -2108,7 +2690,7 @@ SELECT COUNT(*) AS servicios FROM servicio;   -- esperado: 4
 
 ---
 
-## 17. Anexo C — Glosario de términos
+## 18. Anexo C — Glosario de términos
 
 - **PaaS (Platform as a Service)**: servicio cloud que te abstrae la infraestructura (sistema operativo, runtime, servidor web). Solo entregas el código.
 - **IaaS (Infrastructure as a Service)**: servicio cloud que te da máquinas virtuales en bruto (ej. AWS EC2). Tú instalas todo.
