@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Victorino Style — Tu peluquería abierta 24/7. Reserva, modifica o cancela tu cita desde el sofá. Sin llamadas, sin esperas." />
+  <meta name="theme-color" content="#7C4DFF" />
+  <title>Victorino Style — Tu peluquería, abierta 24/7</title>
+
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Victorino Style — Reserva tu cita en 30 segundos" />
+  <meta property="og:description" content="Aplicación multiplataforma de gestión de citas para peluquería. Android, Windows, Linux y Web." />
+  <meta property="og:image" content="assets/logo.png" />
+  <meta property="og:type" content="website" />
+
+  <!-- Tailwind CSS via Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            primary:   '#7C4DFF',
+            secondary: '#00BCD4',
+            ink:       '#1A1A1D',
+            muted:     '#787885',
+            salmon:    '#E8A898',
+            lila:      '#C4A8C8',
+            naranja:   '#D4906A'
+          },
+          fontFamily: {
+            display: ['Poppins', 'system-ui', 'sans-serif'],
+            body:    ['Roboto', 'system-ui', 'sans-serif']
+          },
+          boxShadow: {
+            glow: '0 10px 40px -10px rgba(124, 77, 255, 0.45)'
+          }
+        }
+      }
+    };
+  </script>
+
+  <!-- Fuentes Google -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="font-body text-ink bg-white antialiased">
+
+  <!-- ═══════════════════════════ Header sticky ═══════════════════════════ -->
+  <header class="sticky top-0 z-50 bg-white/85 backdrop-blur-md border-b border-gray-100">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <a href="#inicio" class="flex items-center gap-2 font-display font-bold text-lg">
+        <img src="assets/logo.png" alt="Logo" class="h-9 w-9 object-contain" />
+        <span>Victorino Style</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-muted">
+        <a href="#problema" class="hover:text-primary transition">El problema</a>
+        <a href="#capturas" class="hover:text-primary transition">Capturas</a>
+        <a href="#roles" class="hover:text-primary transition">Roles</a>
+        <a href="#funcionalidades" class="hover:text-primary transition">Funcionalidades</a>
+        <a href="#descargas" class="hover:text-primary transition">Descargas</a>
+        <a href="#tfg" class="hover:text-primary transition">TFG</a>
+      </nav>
+      <a href="https://frontendvictorino-style-production.up.railway.app" target="_blank" rel="noopener"
+         class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white text-sm font-semibold px-4 py-2 rounded-xl shadow-glow transition">
+        <span>Probar en web</span>
+        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════ Hero ═══════════════════════════ -->
+  <section id="inicio" class="relative overflow-hidden">
+    <div class="absolute inset-0 -z-10">
+      <img src="assets/hero-bg.png" alt="" class="w-full h-full object-cover opacity-15" />
+      <div class="absolute inset-0 bg-gradient-to-br from-primary/10 via-white to-secondary/10"></div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-28 grid md:grid-cols-2 gap-10 items-center">
+      <div class="reveal">
+        <span class="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-semibold px-3 py-1 rounded-full">
+          <span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+          App multiplataforma · Android · Windows · Linux · Web
+        </span>
+        <h1 class="mt-5 font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl leading-tight">
+          Tu peluquería,<br />
+          <span class="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">abierta 24/7.</span>
+        </h1>
+        <p class="mt-5 text-lg text-muted max-w-xl">
+          Reserva, modifica o cancela tu cita desde el sofá. Sin llamadas. Sin esperas. Sin esfuerzo.
+          <strong class="text-ink">Menos tiempo del que tardas en pedir un café.</strong>
+        </p>
+        <div class="mt-8 flex flex-wrap gap-3">
+          <a href="#descargas" class="inline-flex items-center gap-2 bg-primary hover:bg-primary/90 text-white font-semibold px-6 py-3 rounded-xl shadow-glow transition">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+            Descargar para mi dispositivo
+          </a>
+          <a href="https://frontendvictorino-style-production.up.railway.app" target="_blank" rel="noopener"
+             class="inline-flex items-center gap-2 bg-white hover:bg-gray-50 text-ink font-semibold px-6 py-3 rounded-xl border border-gray-200 transition">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"/></svg>
+            Probar en el navegador
+          </a>
+        </div>
+        <div class="mt-8 flex items-center gap-6 text-sm text-muted">
+          <div><strong class="text-ink text-xl font-display">3</strong><br/>roles distintos</div>
+          <div><strong class="text-ink text-xl font-display">4</strong><br/>pasos para reservar</div>
+          <div><strong class="text-ink text-xl font-display">24/7</strong><br/>disponibilidad</div>
+        </div>
+      </div>
+
+      <div class="reveal flex justify-center">
+          <div class="absolute -inset-8 bg-gradient-to-br from-primary/30 to-secondary/30 rounded-full blur-3xl"></div>
+          <img src="assets/screenshots/cliente/05-home.png" alt="Captura de la app — Home del cliente"
+               class="relative w-64 sm:w-72 rounded-[2rem] shadow-2xl border-8 border-ink/90" />
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Problema ═══════════════════════════ -->
+  <section id="problema" class="py-20 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto reveal">
+        <span class="text-xs font-semibold text-primary uppercase tracking-wider">El problema</span>
+        <h2 class="mt-2 font-display font-bold text-3xl sm:text-4xl">Reservar una cita no debería ser un dolor de cabeza.</h2>
+        <p class="mt-4 text-muted">Lo de siempre, hasta hoy:</p>
+      </div>
+
+      <div class="mt-12 grid md:grid-cols-3 gap-6">
+        <div class="reveal bg-white p-7 rounded-2xl border border-gray-100 hover:shadow-glow transition">
+          <div class="w-12 h-12 rounded-xl bg-red-50 text-red-500 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0122 16.92z"/></svg>
+          </div>
+          <h3 class="font-display font-semibold text-lg">"No coge nadie"</h3>
+          <p class="mt-2 text-sm text-muted">Llamas en horario de comer, los viernes, los sábados por la mañana… y nadie responde. Acabas yendo sin cita y te toca esperar.</p>
+        </div>
+        <div class="reveal bg-white p-7 rounded-2xl border border-gray-100 hover:shadow-glow transition">
+          <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center mb-4">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          </div>
+          <h3 class="font-display font-semibold text-lg">Cuadrar el horario</h3>
+          <p class="mt-2 text-sm text-muted">Te dicen "el martes a las 18" sin saber si tienes hueco. Cuelgas, miras el calendario, vuelves a llamar… y mientras, el hueco se fue.</p>
+        </div>
+        <div class="reveal bg-white p-7 rounded-2xl border border-gray-100 hover:shadow-glow transition">
+          <div class="w-12 h-12 rounded-xl bg-violet-50 text-primary flex items-center justify-center mb-4">
+            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          </div>
+          <h3 class="font-display font-semibold text-lg">Olvidarse de la cita</h3>
+          <p class="mt-2 text-sm text-muted">Reservas con tres semanas de antelación y, claro, se te olvida. Cuando te acuerdas ya has faltado y la peluquería ha perdido el hueco.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Solución / Wizard ═══════════════════════════ -->
+  <section class="py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto reveal">
+        <span class="text-xs font-semibold text-secondary uppercase tracking-wider">La solución</span>
+        <h2 class="mt-2 font-display font-bold text-3xl sm:text-4xl">Reservar en 4 pasos. Literalmente.</h2>
+        <p class="mt-4 text-muted">El wizard guiado te lleva de la mano. Servicio, peluquero, día y hora. Confirmas y listo.</p>
+      </div>
+
+      <div class="mt-14 grid md:grid-cols-4 gap-6">
+        <div class="reveal text-center">
+          <div class="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center font-display font-bold text-2xl shadow-glow">1</div>
+          <h3 class="mt-4 font-display font-semibold">Elige servicio</h3>
+          <p class="mt-2 text-sm text-muted">Corte, tinte, barba, cejas… catálogo con precio y duración exacta.</p>
+        </div>
+        <div class="reveal text-center">
+          <div class="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center font-display font-bold text-2xl shadow-glow">2</div>
+          <h3 class="mt-4 font-display font-semibold">Elige peluquero</h3>
+          <p class="mt-2 text-sm text-muted">Solo se muestran los disponibles. Los demás aparecen en gris.</p>
+        </div>
+        <div class="reveal text-center">
+          <div class="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center font-display font-bold text-2xl shadow-glow">3</div>
+          <h3 class="mt-4 font-display font-semibold">Día y hora</h3>
+          <p class="mt-2 text-sm text-muted">Festivos, vacaciones y descansos ya filtrados. Si está cerrada, no te deja.</p>
+        </div>
+        <div class="reveal text-center">
+          <div class="mx-auto w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center font-display font-bold text-2xl shadow-glow">4</div>
+          <h3 class="mt-4 font-display font-semibold">Confirma</h3>
+          <p class="mt-2 text-sm text-muted">Resumen claro + nota opcional al peluquero. Tap final y cita guardada.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Capturas con tabs ═══════════════════════════ -->
+  <section id="capturas" class="py-20 bg-gradient-to-b from-gray-50 to-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto reveal">
+        <span class="text-xs font-semibold text-primary uppercase tracking-wider">Capturas reales</span>
+        <h2 class="mt-2 font-display font-bold text-3xl sm:text-4xl">Mira cómo se siente la app.</h2>
+        <p class="mt-4 text-muted">Capturas reales de la aplicación en uso, no mockups.</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="mt-10 flex justify-center gap-2 flex-wrap reveal">
+        <button data-tab="cliente"   class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-primary text-white shadow-glow">Cliente</button>
+        <button data-tab="empleado"  class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-white text-ink border border-gray-200 hover:border-primary">Empleado</button>
+        <button data-tab="admin"     class="tab-btn px-5 py-2.5 rounded-xl font-semibold text-sm transition bg-white text-ink border border-gray-200 hover:border-primary">Administrador</button>
+      </div>
+
+      <!-- Panel Cliente -->
+      <div id="panel-cliente" class="tab-panel mt-10 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 reveal">
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/cliente/01-wizard-servicio.png" alt="Paso 1 — elegir servicio"/><figcaption>1. Elegir servicio</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/cliente/02-wizard-peluquero.png" alt="Paso 2 — elegir peluquero"/><figcaption>2. Elegir peluquero</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/cliente/03-wizard-fecha-hora.png" alt="Paso 3 — día y hora"/><figcaption>3. Día y hora</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/cliente/04-wizard-resumen.png" alt="Paso 4 — resumen"/><figcaption>4. Resumen</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/cliente/05-home.png" alt="Home con cita"/><figcaption>Home con cita</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/cliente/06-historial.png" alt="Historial"/><figcaption>Historial</figcaption></figure>
+      </div>
+
+      <!-- Panel Empleado -->
+      <div id="panel-empleado" class="tab-panel mt-10 hidden grid-cols-1 md:grid-cols-3 gap-4 reveal">
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/empleado/01-agenda.png" alt="Agenda del empleado"/><figcaption>Agenda diaria</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/empleado/02-cambiar-dia.png" alt="Cambiar de día"/><figcaption>Navegar entre días</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/empleado/03-perfil.png" alt="Perfil del empleado"/><figcaption>Perfil personal</figcaption></figure>
+      </div>
+
+      <!-- Panel Admin -->
+      <div id="panel-admin" class="tab-panel mt-10 hidden grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 reveal">
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/admin/01-agenda-global.png" alt="Agenda global"/><figcaption>Agenda global</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/admin/02-estadisticas.png" alt="Métricas y estadísticas"/><figcaption>Métricas del negocio</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/admin/03-gestion-empleados.png" alt="Gestión de empleados"/><figcaption>Gestión de empleados</figcaption></figure>
+        <figure class="screenshot-card"><img loading="lazy" src="assets/screenshots/admin/04-gestion-servicios.png" alt="Gestión de servicios"/><figcaption>Catálogo de servicios</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Roles ═══════════════════════════ -->
+  <section id="roles" class="py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto reveal">
+        <span class="text-xs font-semibold text-primary uppercase tracking-wider">Tres apps en una</span>
+        <h2 class="mt-2 font-display font-bold text-3xl sm:text-4xl">Una solución para todos los roles.</h2>
+        <p class="mt-4 text-muted">Misma app, vista distinta según quién entra.</p>
+      </div>
+
+      <div class="mt-14 grid md:grid-cols-3 gap-6">
+        <!-- Cliente -->
+        <div class="reveal bg-white border border-gray-100 rounded-2xl p-7 hover:shadow-glow transition">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary text-white flex items-center justify-center mb-5">
+            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl">Cliente</h3>
+          <p class="text-sm text-muted mt-1">Reserva sin fricción.</p>
+          <ul class="mt-5 space-y-2 text-sm">
+            <li class="flex gap-2"><span class="text-primary">✓</span> Wizard de 4 pasos guiados</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Próxima cita siempre visible</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Historial completo</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Notificaciones push opcionales</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Recuperación de contraseña por email</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Eliminación de cuenta RGPD</li>
+          </ul>
+        </div>
+
+        <!-- Empleado -->
+        <div class="reveal bg-white border border-gray-100 rounded-2xl p-7 hover:shadow-glow transition">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-secondary to-primary text-white flex items-center justify-center mb-5">
+            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.12 15.88M14.47 14.48L20 20M8.12 8.12L12 12"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl">Empleado</h3>
+          <p class="text-sm text-muted mt-1">Su agenda al día.</p>
+          <ul class="mt-5 space-y-2 text-sm">
+            <li class="flex gap-2"><span class="text-primary">✓</span> Agenda diaria, semanal y mensual</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Estados de cita en tiempo real</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Marcado de "no presentado"</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Walk-ins para clientes presenciales</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Métricas individuales</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Modo "no molestar" configurable</li>
+          </ul>
+        </div>
+
+        <!-- Admin -->
+        <div class="reveal bg-white border border-gray-100 rounded-2xl p-7 hover:shadow-glow transition">
+          <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary via-secondary to-primary text-white flex items-center justify-center mb-5">
+            <svg class="w-7 h-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09a1.65 1.65 0 00-1-1.51 1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09a1.65 1.65 0 001.51-1 1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33h0a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51h0a1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82v0a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-xl">Administrador</h3>
+          <p class="text-sm text-muted mt-1">El control total.</p>
+          <ul class="mt-5 space-y-2 text-sm">
+            <li class="flex gap-2"><span class="text-primary">✓</span> Gestión de empleados y servicios</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Horarios, festivos y cierre anual</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Agenda global del negocio</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Cancelaciones masivas con aviso</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Dashboard de métricas con gráficas</li>
+            <li class="flex gap-2"><span class="text-primary">✓</span> Auditoría de acciones sensibles</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Funcionalidades destacadas ═══════════════════════════ -->
+  <section id="funcionalidades" class="py-20 bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto reveal">
+        <span class="text-xs font-semibold text-secondary uppercase tracking-wider">Por dentro</span>
+        <h2 class="mt-2 font-display font-bold text-3xl sm:text-4xl">Lo que la app hace mejor que un cuaderno.</h2>
+      </div>
+
+      <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="reveal bg-white p-6 rounded-2xl border border-gray-100">
+          <div class="text-3xl">🔔</div>
+          <h3 class="mt-3 font-display font-semibold">Notificaciones push</h3>
+          <p class="mt-1 text-sm text-muted">Confirmación instantánea, recordatorio 24h antes, aviso si se cancela. Bandeja in-app siempre + push opcional vía Firebase.</p>
+        </div>
+        <div class="reveal bg-white p-6 rounded-2xl border border-gray-100">
+          <div class="text-3xl">📅</div>
+          <h3 class="mt-3 font-display font-semibold">Calendario consciente</h3>
+          <p class="mt-1 text-sm text-muted">Festivos locales, cierre de agosto y descansos por empleado integrados. Si la peluquería está cerrada, ni siquiera se ofrece reserva.</p>
+        </div>
+        <div class="reveal bg-white p-6 rounded-2xl border border-gray-100">
+          <div class="text-3xl">🛡️</div>
+          <h3 class="mt-3 font-display font-semibold">Anti doble-reserva</h3>
+          <p class="mt-1 text-sm text-muted">Bloqueo pesimista en backend: si dos clientes intentan la misma franja a la vez, solo uno se la lleva. Sin solapes.</p>
+        </div>
+        <div class="reveal bg-white p-6 rounded-2xl border border-gray-100">
+          <div class="text-3xl">📊</div>
+          <h3 class="mt-3 font-display font-semibold">Métricas en tiempo real</h3>
+          <p class="mt-1 text-sm text-muted">Tasa de asistencia, servicio más solicitado, empleado más reservado, franja horaria estrella. Datos accionables para el dueño.</p>
+        </div>
+        <div class="reveal bg-white p-6 rounded-2xl border border-gray-100">
+          <div class="text-3xl">🔒</div>
+          <h3 class="mt-3 font-display font-semibold">RGPD por diseño</h3>
+          <p class="mt-1 text-sm text-muted">Eliminación de cuenta con anonimización. Contraseñas BCrypt cost-10. Tokens JWT firmados HS256, refresh con SHA-256 en BD.</p>
+        </div>
+        <div class="reveal bg-white p-6 rounded-2xl border border-gray-100">
+          <div class="text-3xl">📲</div>
+          <h3 class="mt-3 font-display font-semibold">Multi-plataforma real</h3>
+          <p class="mt-1 text-sm text-muted">Mismo código en Android, iOS, Web, Windows y Linux gracias a Flutter. Una API REST en Spring Boot para todos ellos.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Descargas ═══════════════════════════ -->
+  <section id="descargas" class="py-20">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="text-center max-w-2xl mx-auto reveal">
+        <span class="text-xs font-semibold text-primary uppercase tracking-wider">Zona de descargas</span>
+        <h2 class="mt-2 font-display font-bold text-3xl sm:text-4xl">Llévatela en tu plataforma favorita.</h2>
+        <p class="mt-4 text-muted">Elige según el dispositivo desde el que vas a usarla. Te marcamos automáticamente la opción recomendada.</p>
+      </div>
+
+      <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <!-- Android -->
+        <a id="card-android" href="https://github.com/KevinFlow-ai/Victorino_Style/releases/download/v1.0.0/VictorinoStyle_v1.0.0.apk"
+           class="download-card group" data-platform="android">
+          <div class="download-icon bg-green-50 text-green-600">
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor"><path d="M17.6 9.48l1.84-3.18a.4.4 0 00-.69-.4l-1.86 3.23a11.5 11.5 0 00-9.78 0L5.25 5.9a.4.4 0 00-.69.4l1.84 3.18A10.85 10.85 0 001 18h22a10.85 10.85 0 00-5.4-8.52zM7 15.5a1 1 0 11.99-1A1 1 0 017 15.5zm10 0a1 1 0 11.99-1 1 1 0 01-.99 1z"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-lg mt-4">Android</h3>
+          <p class="text-xs text-muted mt-1">APK · 79 MB · v1.0.0</p>
+          <span class="download-cta">Descargar APK
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+          </span>
+          <span class="recommended-badge">Recomendado para tu dispositivo</span>
+        </a>
+
+        <!-- Windows -->
+        <a id="card-windows" href="https://github.com/KevinFlow-ai/Victorino_Style/releases/download/v1.0.0/VictorinoStyle_Setup_1.0.0.exe"
+           class="download-card group" data-platform="windows">
+          <div class="download-icon bg-sky-50 text-sky-600">
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0M10.949 1.929L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-lg mt-4">Windows</h3>
+          <p class="text-xs text-muted mt-1">Instalador .exe · v1.0.0</p>
+          <span class="download-cta">Descargar instalador
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/></svg>
+          </span>
+          <span class="recommended-badge">Recomendado para tu dispositivo</span>
+        </a>
+
+        <!-- Linux -->
+        <a id="card-linux" href="https://github.com/KevinFlow-ai/Victorino_Style/releases/tag/v1.0.0"
+           class="download-card group" data-platform="linux">
+          <div class="download-icon bg-amber-50 text-amber-600">
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="currentColor"><path d="M12.504 0c-.155 0-.315.008-.48.021-4.226.333-3.105 4.807-3.17 6.298-.076 1.092-.3 1.953-1.05 3.02-.885 1.051-2.127 2.75-2.716 4.521-.278.832-.41 1.684-.287 2.489a.99.99 0 00-.118.115c-.43.46-.557 1.106-.397 1.624.111.327.345.594.677.789l.014.008c.318.181.722.297 1.144.297.31 0 .613-.064.879-.193.236.139.515.224.819.224.385 0 .748-.137 1.039-.394.108-.094.207-.207.292-.336.058.139.116.275.18.402.193.391.45.711.75.952.302.241.65.392 1.014.392.46 0 .872-.211 1.184-.527.143-.146.27-.316.382-.5.244.262.524.471.836.611.401.179.86.262 1.355.262.398 0 .807-.069 1.225-.21.418-.141.83-.354 1.232-.616.354-.232.703-.508 1.04-.825.36-.338.7-.717 1.014-1.137.358-.485.652-1.022.892-1.61.246-.602.435-1.256.564-1.967.139-.764.205-1.555.205-2.41 0-1.025-.094-2.087-.279-3.182-.213-1.255-.522-2.557-.946-3.901-.34-1.075-.737-2.166-1.205-3.272-.426-1.005-.946-2.013-1.541-3.011a13.46 13.46 0 00-2.34-2.844 8.32 8.32 0 00-2.992-1.726c-.532-.156-1.058-.234-1.582-.234zm-.493 1.038c.396 0 .785.063 1.16.187.797.265 1.557.728 2.236 1.339a12.46 12.46 0 012.16 2.595c.554.926 1.039 1.927 1.444 2.96.397.999.752 2.046 1.054 3.092.354 1.225.633 2.444.815 3.59.156.991.246 1.95.246 2.84 0 .771-.057 1.466-.181 2.099-.114.586-.275 1.116-.488 1.595-.222.514-.473.952-.776 1.32-.275.34-.561.621-.86.853-.27.213-.541.379-.815.502-.275.124-.547.205-.823.243-.227.031-.448.046-.671.046-.396 0-.752-.063-1.054-.184-.302-.121-.563-.291-.778-.51-.135-.137-.252-.299-.355-.475z"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-lg mt-4">Linux</h3>
+          <p class="text-xs text-muted mt-1">Ver en GitHub Releases</p>
+          <span class="download-cta">Ir a Releases
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          </span>
+          <span class="recommended-badge">Recomendado para tu dispositivo</span>
+        </a>
+
+        <!-- Web -->
+        <a id="card-web" href="https://frontendvictorino-style-production.up.railway.app" target="_blank" rel="noopener"
+           class="download-card group" data-platform="web">
+          <div class="download-icon bg-violet-50 text-primary">
+            <svg class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 010 20M12 2a15 15 0 000 20"/></svg>
+          </div>
+          <h3 class="font-display font-bold text-lg mt-4">Navegador</h3>
+          <p class="text-xs text-muted mt-1">Sin instalar nada</p>
+          <span class="download-cta">Abrir la app web
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          </span>
+          <span class="recommended-badge">Recomendado para tu dispositivo</span>
+        </a>
+      </div>
+
+      <!-- Avisos -->
+      <div class="mt-10 grid md:grid-cols-2 gap-4 text-sm">
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
+          <svg class="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+          <p><strong>Aviso APK Android:</strong> Android pedirá permiso para instalar desde "fuentes desconocidas". Es normal: el APK está firmado pero no publicado en Play Store.</p>
+        </div>
+        <div class="bg-violet-50 border border-violet-200 rounded-xl p-4 flex gap-3">
+          <svg class="w-5 h-5 text-primary flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+          <p><strong>Web vs nativo:</strong> la versión web no soporta notificaciones push ni subir fotos de perfil. Para todas las funcionalidades, usa la app nativa.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Sobre el TFG ═══════════════════════════ -->
+  <section id="tfg" class="py-20 bg-gradient-to-br from-primary/5 via-white to-secondary/5">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-12 items-center">
+      <div class="reveal">
+        <span class="text-xs font-semibold text-primary uppercase tracking-wider">Sobre el proyecto</span>
+        <h2 class="mt-2 font-display font-bold text-3xl sm:text-4xl">Un TFG con vocación de producto real.</h2>
+        <p class="mt-4 text-muted">
+          Victorino Style es el Trabajo Fin de Grado del ciclo de <strong>Desarrollo de Aplicaciones Multiplataforma (2DAM)</strong> del curso 2025/2026, desarrollado por <strong>Kevin Flores</strong>.
+        </p>
+        <p class="mt-3 text-muted">
+          No es un prototipo. Está desplegado en producción en Railway, con base de datos MySQL, certificados HTTPS, notificaciones push reales vía Firebase y autenticación JWT con refresh tokens. Pensado para resistir el uso de personas reales.
+        </p>
+        <a href="https://github.com/KevinFlow-ai/Victorino_Style" target="_blank" rel="noopener"
+           class="mt-6 inline-flex items-center gap-2 bg-ink hover:bg-ink/90 text-white font-semibold px-5 py-3 rounded-xl transition">
+          <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.4 3-.405 1.02.005 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>
+          Ver código en GitHub
+        </a>
+      </div>
+
+      <div class="reveal">
+        <h3 class="font-display font-semibold text-lg mb-5">Stack tecnológico</h3>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <div class="stack-pill"><span class="dot bg-[#02569B]"></span>Flutter 3.41</div>
+          <div class="stack-pill"><span class="dot bg-[#0175C2]"></span>Dart 3.11</div>
+          <div class="stack-pill"><span class="dot bg-[#6DB33F]"></span>Spring Boot 4</div>
+          <div class="stack-pill"><span class="dot bg-[#ED8B00]"></span>Java 21</div>
+          <div class="stack-pill"><span class="dot bg-[#4479A1]"></span>MySQL 8</div>
+          <div class="stack-pill"><span class="dot bg-[#FFCA28]"></span>Firebase FCM</div>
+          <div class="stack-pill"><span class="dot bg-[#7C4DFF]"></span>Material 3</div>
+          <div class="stack-pill"><span class="dot bg-[#000000]"></span>JWT HS256</div>
+          <div class="stack-pill"><span class="dot bg-[#FF6B6B]"></span>Railway</div>
+        </div>
+        <div class="mt-6 bg-white border border-gray-100 rounded-2xl p-5">
+          <div class="text-xs font-semibold text-muted uppercase">Curso</div>
+          <div class="font-display font-bold mt-1">2DAM · 2025 / 2026</div>
+          <div class="text-xs font-semibold text-muted uppercase mt-3">Autor</div>
+          <div class="font-display font-bold mt-1">Kevin Flores</div>
+          <a href="https://www.linkedin.com/in/kevin-flores-full-stack-developer" target="_blank" rel="noopener"
+             class="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline">
+            LinkedIn
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M9 7h8v8"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════ Footer ═══════════════════════════ -->
+  <footer class="border-t border-gray-100 bg-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 grid md:grid-cols-4 gap-8 text-sm">
+      <div>
+        <div class="flex items-center gap-2 font-display font-bold">
+          <img src="assets/logo.png" alt="Logo" class="h-8 w-8 object-contain" />
+          Victorino Style
+        </div>
+        <p class="mt-3 text-muted">Tu peluquería, abierta 24/7. Hecho con ♥ para que reservar una cita sea tan simple como un swipe.</p>
+      </div>
+      <div>
+        <h4 class="font-display font-semibold">Producto</h4>
+        <ul class="mt-3 space-y-2 text-muted">
+          <li><a href="#capturas" class="hover:text-primary">Capturas</a></li>
+          <li><a href="#roles" class="hover:text-primary">Roles</a></li>
+          <li><a href="#funcionalidades" class="hover:text-primary">Funcionalidades</a></li>
+          <li><a href="#descargas" class="hover:text-primary">Descargas</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="font-display font-semibold">Recursos</h4>
+        <ul class="mt-3 space-y-2 text-muted">
+          <li><a href="https://github.com/KevinFlow-ai/Victorino_Style" target="_blank" rel="noopener" class="hover:text-primary">Repositorio GitHub</a></li>
+          <li><a href="https://github.com/KevinFlow-ai/Victorino_Style/releases" target="_blank" rel="noopener" class="hover:text-primary">Releases</a></li>
+          <li><a href="https://frontendvictorino-style-production.up.railway.app" target="_blank" rel="noopener" class="hover:text-primary">App web</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="font-display font-semibold">Contacto</h4>
+        <ul class="mt-3 space-y-2 text-muted">
+          <li><a href="mailto:peluqueria.victorinostyle@gmail.com" class="hover:text-primary">peluqueria.victorinostyle@gmail.com</a></li>
+          <li><a href="https://www.linkedin.com/in/kevin-flores-full-stack-developer" target="_blank" rel="noopener" class="hover:text-primary">LinkedIn de Kevin</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="border-t border-gray-100">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 text-xs text-muted flex flex-wrap items-center justify-between gap-2">
+        <span>© <span id="year"></span> Victorino Style — TFG 2DAM 2025/2026.</span>
+        <span>"La tecnología no sirve de nada si no ahorra tiempo y esfuerzo a las personas que la utilizan."</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="js/main.js"></script>
+</body>
+</html>

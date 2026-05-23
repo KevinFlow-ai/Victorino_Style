@@ -1,0 +1,141 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   styles.css — extiende Tailwind con utilidades específicas de la landing.
+   Solo lo que Tailwind no resuelve por defecto (animaciones, componentes
+   compuestos como las tarjetas de descarga y los thumbnails de captura).
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+html { scroll-behavior: smooth; }
+body { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+
+/* ── Animación reveal al hacer scroll ─────────────────────────────────── */
+.reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity .7s ease, transform .7s ease;
+}
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+}
+
+/* ── Tarjetas de descarga ─────────────────────────────────────────────── */
+.download-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1.5rem;
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  border-radius: 1rem;
+  text-decoration: none;
+  color: #1A1A1D;
+  transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+}
+.download-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(124, 77, 255, 0.4);
+  box-shadow: 0 18px 40px -18px rgba(124, 77, 255, .4);
+}
+.download-icon {
+  width: 3.5rem;
+  height: 3.5rem;
+  border-radius: .875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.download-cta {
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  font-weight: 600;
+  font-size: .875rem;
+  color: #7C4DFF;
+}
+.download-card:hover .download-cta { text-decoration: underline; }
+
+.recommended-badge {
+  display: none;
+  position: absolute;
+  top: .75rem;
+  right: .75rem;
+  background: linear-gradient(135deg, #7C4DFF, #00BCD4);
+  color: #fff;
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .03em;
+  padding: .25rem .55rem;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+.download-card.is-recommended {
+  border-color: #7C4DFF;
+  box-shadow: 0 10px 30px -10px rgba(124, 77, 255, .45);
+}
+.download-card.is-recommended .recommended-badge { display: inline-block; }
+
+/* ── Thumbnails de capturas ───────────────────────────────────────────── */
+.screenshot-card {
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-radius: 1rem;
+  overflow: hidden;
+  border: 1px solid #f1f5f9;
+  transition: transform .25s ease, box-shadow .25s ease;
+  margin: 0;
+}
+.screenshot-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -18px rgba(124, 77, 255, .3);
+}
+.screenshot-card img {
+  width: 100%;
+  height: auto;
+  display: block;
+  background: linear-gradient(180deg, #f8fafc, #ffffff);
+}
+.screenshot-card figcaption {
+  padding: .65rem .85rem;
+  font-size: .8rem;
+  font-weight: 500;
+  color: #787885;
+  border-top: 1px solid #f1f5f9;
+}
+
+/* ── Tabs de la sección de capturas ───────────────────────────────────── */
+.tab-btn { cursor: pointer; }
+.tab-panel { display: none; }
+.tab-panel.active { display: grid; }
+
+/* ── Stack pills (sección TFG) ────────────────────────────────────────── */
+.stack-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: #ffffff;
+  border: 1px solid #f1f5f9;
+  padding: .55rem .85rem;
+  border-radius: .75rem;
+  font-size: .85rem;
+  font-weight: 500;
+  color: #1A1A1D;
+}
+.stack-pill .dot {
+  width: .55rem;
+  height: .55rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+/* ── Sutil gradiente animado en el hero (opcional, ligero) ────────────── */
+@keyframes floatY {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-8px); }
+}
+.hero-float { animation: floatY 6s ease-in-out infinite; }
