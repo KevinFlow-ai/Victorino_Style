@@ -13,6 +13,7 @@
 // usuario cancela.
 import 'dart:io';
 
++import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
@@ -36,6 +37,33 @@ class SelectorImagen {
     required BuildContext context,
     bool formaCircular = false,
   }) async {
+    // ─── Limitación conocida en Flutter Web ──────────────────────────────────
+    // El paquete image_cropper NO soporta Flutter Web (solo Android, iOS,
+    // macOS, Windows y Linux), y la clase File de dart:io tampoco funciona
+    // en navegador. Por eso en web mostramos un aviso al usuario y abortamos
+    // la subida sin intentar abrir nada. La app móvil sigue funcionando con
+    // total normalidad.
+    //
+    // Para soportar subida de fotos también en web habría que: (1) sustituir
+    // image_cropper por crop_your_image (sí soporta web), (2) cambiar la
+    // firma de este métodoo para devolver XFile en lugar de File, y (3)
+    // ajustar los repositorios para usar MultipartFile.fromBytes en web.
+    // Pendiente para una versión futura.
+    if (kIsWeb) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'La subida de fotos solo está disponible desde la app móvil. '
+              'Descarga el APK Android para cambiar tu foto.',
+            ),
+            duration: Duration(seconds: 5),
+          ),
+        );
+      }
+      return null;
+    }
+
     // Paso 1: elegir origen (galería o cámara).
     final origen = await _mostrarBottomSheetOrigen(context);
     if (origen == null) return null;

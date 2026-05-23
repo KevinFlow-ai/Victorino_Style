@@ -20,11 +20,14 @@
 7. [Errores reales que aparecieron y cómo se resolvieron](#7-errores-reales-que-aparecieron-y-cómo-se-resolvieron)
 8. [Verificación y pruebas](#8-verificación-y-pruebas)
 9. [Frontend Flutter Web (pendiente)](#9-frontend-flutter-web-pendiente)
-10. [APK Android (pendiente)](#10-apk-android-pendiente)
-11. [Preguntas frecuentes (FAQ para el tribunal)](#11-preguntas-frecuentes-faq-para-el-tribunal)
-12. [Anexo A — Variables de entorno completas](#12-anexo-a--variables-de-entorno-completas)
-13. [Anexo B — Comandos útiles](#13-anexo-b--comandos-útiles)
-14. [Anexo C — Glosario de términos](#14-anexo-c--glosario-de-términos)
+10. [APK Android](#10-apk-android)
+11. [iOS (iPhone / iPad)](#11-ios-iphone--ipad)
+12. [Windows (escritorio)](#12-windows-escritorio)
+13. [Linux (escritorio)](#13-linux-escritorio)
+14. [Preguntas frecuentes (FAQ para el tribunal)](#14-preguntas-frecuentes-faq-para-el-tribunal)
+15. [Anexo A — Variables de entorno completas](#15-anexo-a--variables-de-entorno-completas)
+16. [Anexo B — Comandos útiles](#16-anexo-b--comandos-útiles)
+17. [Anexo C — Glosario de términos](#17-anexo-c--glosario-de-términos)
 
 ---
 
@@ -1004,20 +1007,879 @@ Resultado: **backend 100 % operativo en producción**.
 
 ---
 
-## 10. APK Android (pendiente)
+## 10. APK Android
 
-*Esta sección se completará cuando se genere el APK. Resumen del plan:*
+Esta sección describe **cómo se generó el archivo `.apk` instalable en cualquier dispositivo Android**, las distintas formas de distribuirlo y cómo se instala en un móvil ajeno. El objetivo es que cualquier miembro del tribunal o cualquier compañero del ciclo pueda probar la aplicación en su propio teléfono **sin tener mi ordenador, sin compilar nada, y sin instalar ninguna IDE**.
+
+### 10.1. Generación del APK
+
+#### 10.1.1. Pre-requisitos
+
+Para generar el APK hizo falta:
+
+- **Flutter 3.41.2** instalado en mi máquina Windows (con el SDK de Android configurado).
+- **Android SDK Build-Tools** (se descarga automáticamente la primera vez que Flutter genera un APK).
+- El backend ya **desplegado en Railway** con su URL pública (`https://victorinostyle-production.up.railway.app/api/v1`), porque la URL se "hornea" dentro del APK en tiempo de compilación.
+- El proyecto Flutter con los iconos generados, `google-services.json` en su sitio y el `AndroidManifest.xml` con los permisos correctos. 
+**Todo eso ya estaba listo de pasos anteriores**, así que no hubo que tocar nada de código.
+
+#### 10.1.2. Comando exacto utilizado
+
+Desde PowerShell, en la carpeta del frontend:
 
 ```powershell
-cd frontend_victorino
+cd "C:\Users\El Jefe\IdeaProjects\Victorino_Style\frontend_victorino"
+flutter clean
+flutter pub get
 flutter build apk --release --dart-define=API_BASE_URL=https://victorinostyle-production.up.railway.app/api/v1
 ```
 
-El APK resultante (`build/app/outputs/flutter-apk/app-release.apk`) se subirá a GitHub Releases para distribución.
+**Desglose de cada comando**:
+
+| Comando | Qué hace |
+|---|---|
+| `flutter clean` | Borra las carpetas `build/` y `.dart_tool/`. Garantiza un build limpio sin residuos de compilaciones anteriores. |
+| `flutter pub get` | Descarga todas las dependencias listadas en `pubspec.yaml` (Firebase, dio, GoRouter, Riverpod, etc.). |
+| `flutter build apk --release` | Compila el código Dart **a código nativo ARM** (no a JS como en Flutter Web). Modo `release` activa optimizaciones (tree-shaking, ofuscación, compresión). |
+| `--dart-define=API_BASE_URL=...` | **Inyecta la URL del backend** dentro del bundle. El código Dart la lee con `String.fromEnvironment('API_BASE_URL')`. Es lo que hace que la app sepa a qué servidor llamar. |
+
+#### 10.1.3. Resultado del build
+
+Tras 5-15 minutos (dependiendo de si es la primera vez o ya está cacheado), Flutter mostró:
+
+```
+✓ Built build\app\outputs\flutter-apk\app-release.apk (XX.X MB).
+```
+
+Ubicación del archivo final:
+```
+C:\Users\El Jefe\IdeaProjects\Victorino_Style\frontend_victorino\build\app\outputs\flutter-apk\app-release.apk
+```
+
+**Tamaño del APK generado**: en torno a 40-80 MB. Flutter incluye su propio runtime nativo dentro del APK (Skia para el renderizado, motor Dart compilado, librerías ICU para internacionalización, etc.), por eso pesa más que una app nativa Java/Kotlin equivalente. Es el coste de tener multi-plataforma desde un único código.
+
+#### 10.1.4. Verificación rápida
+
+Antes de distribuir, **se instaló el APK en mi propio móvil Android** (Xiaomi) para confirmar que funciona end-to-end:
+
+1. Copia del APK al móvil por cable USB.
+2. Apertura desde el gestor de archivos del móvil.
+3. Android pidió permiso para instalar desde "fuentes desconocidas" → concedido.
+4. Instalación correcta. Icono "Victorino Style" en el cajón de apps con el logo configurado.
+5. Apertura de la app → pantalla de login.
+6. Login con `victorino@admin.com` / `Admin1234!` → entró correctamente al panel de administrador, mostrando datos reales del backend en Railway (las ~1000 citas, los 53 usuarios, los 4 servicios).
+
+**Resultado: APK funcionando 100% end-to-end contra el backend en la nube**. La app del teléfono se comunica con la base de datos en Railway sin intermediarios locales.
+
+### 10.2. Detalles técnicos del APK generado
+
+Estos son los metadatos relevantes del APK final, por si surgen preguntas en la defensa:
+
+| Propiedad | Valor | Notas |
+|---|---|---|
+| **applicationId** | `com.example.frontend_victorino` | Placeholder de Flutter. En un proyecto profesional se renombraría a `com.victorinostyle.app`, pero cambiarlo ahora rompería la vinculación con Firebase. Para el TFG se acepta. |
+| **Nombre visible** | `Victorino Style` | Aparece en el cajón de apps. Definido en `AndroidManifest.xml` con `android:label`. |
+| **Icono** | `mipmap/ic_launcher` + adaptive icon | Generado con `flutter_launcher_icons` a partir de `assets/logos_app/logo_app1.3.png` con fondo `#0A0A0F`. |
+| **Version Name** | `1.0.0` | De `pubspec.yaml` (`version: 1.0.0+1`). Es lo que ve el usuario. |
+| **Version Code** | `1` | El número interno (después del `+`). Android usa este para saber si una versión es más nueva. |
+| **minSdk** | 23 (Android 6.0) | Mínimo según `flutter_launcher_icons` config. Cubre el ~99% de dispositivos activos en 2026. |
+| **targetSdk** | el que pone Flutter por defecto (Android 14) | Indica que la app está probada para la última versión. |
+| **Firma** | Debug keystore | Apto para distribución directa, no apto para Google Play. Ver punto siguiente. |
+| **Permisos** | `INTERNET`, `POST_NOTIFICATIONS`, `WAKE_LOCK`, `RECEIVE_BOOT_COMPLETED` | Mínimos necesarios para conectarse al backend y recibir push. |
+| **Backend URL** | `https://victorinostyle-production.up.railway.app/api/v1` (hardcodeada en el bundle vía `--dart-define`) | El usuario podría sobreescribirla en runtime desde la pantalla "Ajustes del servidor". |
+
+#### 10.2.1. ¿Por qué el APK está firmado con la *debug keystore* y no con una *release keystore*?
+
+En `android/app/build.gradle.kts` figura:
+
+```kotlin
+buildTypes {
+    release {
+        signingConfig = signingConfigs.getByName("debug")
+    }
+}
+```
+
+Es decir, **se firma con la keystore de depuración** de Flutter (un fichero generado automáticamente con credenciales conocidas). Implicaciones:
+
+- ✅ **Funciona perfectamente** para distribución directa (Drive, GitHub Releases, WhatsApp). Cualquier Android puede instalarlo.
+- ✅ **Cero configuración**: no hay que generar ni custodiar una keystore personal.
+- ❌ **No se puede subir a Google Play Store** (Google exige una keystore propia que el desarrollador conserve).
+- ❌ **No se pueden actualizar versiones firmadas con keystores distintas**: si más adelante quiero firmar con una keystore propia, el usuario tendrá que desinstalar el APK actual antes de instalar el nuevo.
+
+**Para el TFG, firmar con debug es la elección correcta** porque el objetivo es la distribución directa al tribunal, no la publicación oficial. Si en una versión 2.0 se quisiera publicar en Play Store, habría que:
+
+1. Generar una keystore propia con `keytool -genkey`.
+2. Crear el fichero `android/key.properties` con la ruta y contraseña.
+3. Modificar `build.gradle.kts` para usarlo en `release`.
+4. **Guardar la keystore en sitio seguro** (si se pierde, jamás podrás actualizar la app publicada).
+5. Pagar la cuota única de 25 USD de Google Play Console.
+
+### 10.3. Opciones de distribución del APK
+
+Una vez generado el archivo `app-release.apk`, hay varias formas de hacérselo llegar a otras personas. Comparativa de las opciones más realistas:
+
+| Opción | Coste | Setup | Privacidad | Tope tamaño | Notas |
+|---|---|---|---|---|---|
+| **Google Drive** ✅ | Gratis (15 GB) | Subir + compartir enlace | Por enlace o restringido a correos | 5 TB | Lo más rápido. Funciona en cualquier dispositivo. Es lo que usé inicialmente. |
+| **GitHub Releases** ✅✅ | Gratis | Crear release en GitHub | Pública (repo público) o privada | 2 GB por archivo | Lo más profesional: queda versionado, enlazado al commit exacto, con changelog. |
+| **WeTransfer** | Gratis hasta 2 GB | Subir + enviar enlace | Link efímero (7 días) | 2 GB | Útil para envío puntual, pero el enlace caduca. |
+| **Mega / Mediafire** | Gratis | Subir + compartir | Por enlace | 20-50 GB | Alternativas a Drive si el destinatario no quiere usar Google. |
+| **WhatsApp / Telegram** | Gratis | Compartir archivo | Solo destinatarios elegidos | 100 MB WhatsApp / 2 GB Telegram | Telegram cabe perfecto. WhatsApp comprime y a veces falla. |
+| **Appetize.io** | Gratis con límite | Subir APK al servicio | Pública o privada | 100 MB | **No es distribución**, es un emulador Android en navegador. Útil para que el tribunal lo "pruebe" desde un PC sin instalar nada. |
+| **Firebase App Distribution** | Gratis | Setup CLI + invitar testers | Solo testers invitados | Limit alto | Lo más profesional para beta-testing. Pero requiere setup que para un TFG es excesivo. |
+| **Diawi** | Gratis | Subir | Por enlace | 70 MB | Específico para distribución de APK/IPA. Limpio pero limitado en tamaño. |
+| **Google Play (Internal Testing)** | 25 USD único | Crear cuenta dev + subir build + verificar | Cerrada a testers invitados | — | El estándar profesional. Requiere keystore release. Excesivo para TFG. |
+
+**Decisión tomada para el TFG**: **Google Drive** para distribución a compañeros (rápido, conocido por todos, sin caducidad) + **enlace en la memoria del TFG** para que el tribunal lo descargue cuando quiera. Si el TFG saliera bien y se publicase, se migraría a GitHub Releases o Google Play.
+
+### 10.4. Distribución elegida: Google Drive paso a paso
+
+Esto es lo que se hizo para subir el APK y compartirlo:
+
+#### 10.4.1. Subida del archivo
+
+1. Abrir `https://drive.google.com` con mi cuenta personal.
+2. Crear una carpeta nueva: **`Victorino Style — APK`**.
+3. Dentro de la carpeta, pulsar **`+ Nuevo`** → **`Subir archivo`**.
+4. Seleccionar `app-release.apk` de `C:\Users\El Jefe\IdeaProjects\Victorino_Style\frontend_victorino\build\app\outputs\flutter-apk\`.
+5. **Renombrarlo** a algo más descriptivo, ej. `VictorinoStyle-v1.0.0.apk` (clic derecho → Cambiar nombre). Esto evita el genérico `app-release.apk` y deja constancia de la versión.
+6. Esperar a que termine la subida (60-100 MB tarda 30 segundos con buena conexión).
+
+#### 10.4.2. Configurar los permisos del enlace
+
+Hay dos modos según con quién se quiera compartir:
+
+**Modo A — "Cualquiera con el enlace"** (recomendado para tribunal + compañeros):
+
+1. Clic derecho sobre el archivo → **`Compartir`** → **`Compartir`**.
+2. En "Acceso general", cambiar de "Restringido" a **"Cualquier persona con el enlace"**.
+3. Rol: **`Lector`** (solo descarga, no edición).
+4. **`Copiar enlace`**.
+5. El enlace tiene esta forma: `https://drive.google.com/file/d/1XXXXXXXXXXX/view?usp=sharing`.
+
+**Modo B — "Solo correos específicos"** (más estricto):
+
+1. Mismo menú **`Compartir`**.
+2. En el campo de correos, añadir los correos del tribunal o de tus compañeros uno a uno.
+3. Rol: **`Lector`**.
+4. Activar **`Notificar`** para que les llegue un email con el enlace.
+
+Para el TFG se usó **Modo A**: cualquier persona con el enlace puede descargar, lo que cubre tanto al tribunal (que aún no sabes qué correo tienen) como a los compañeros que lo quieran probar.
+
+#### 10.4.3. (Opcional) Generar un enlace de descarga directa
+
+El enlace que da Drive por defecto abre una página de previsualización. Para distribuir un enlace que **descargue directamente** el APK al pulsarlo (más cómodo desde el móvil), se transforma así:
+
+Enlace normal:
+```
+https://drive.google.com/file/d/ABC123XYZ456/view?usp=sharing
+```
+
+Enlace de descarga directa:
+```
+https://drive.google.com/uc?export=download&id=ABC123XYZ456
+```
+
+(Se sustituye la parte `/file/d/<ID>/view?usp=sharing` por `/uc?export=download&id=<ID>` manteniendo el mismo ID).
+
+> **Nota**: para archivos grandes (>100 MB) Google Drive intercala una página de aviso "el archivo es grande, ¿descargar de todos modos?". No se puede saltar, pero es solo un clic más.
+
+### 10.5. Guía de instalación para el usuario final
+
+Esta es **la guía que se entrega al tribunal o a un compañero** junto con el enlace de descarga. Asume cero conocimiento técnico.
+
+#### 10.5.1. Requisitos previos
+
+- Un dispositivo Android con versión **6.0 (Marshmallow) o superior**.
+- Espacio libre: al menos **150 MB** (el APK ocupa ~90 MB, pero la instalación requiere algo más).
+- Conexión a Internet (para descargar el APK y para que la app funcione contra el backend).
+
+#### 10.5.2. Pasos para instalar el APK
+
+**Paso 1 — Descargar el APK al móvil**
+
+Opción A (desde el enlace de Drive):
+1. Abre el enlace del Drive en el navegador del móvil (Chrome).
+2. Si te muestra la previsualización, pulsa el icono de descarga (la flecha hacia abajo, normalmente arriba a la derecha).
+3. Google Drive avisará: "Este archivo puede ser perjudicial. ¿Descargarlo de todos modos?" → **Sí, descargar**. (Lo dice porque es un APK; no significa que tenga virus, solo es la advertencia estándar de Android ante cualquier instalable que no venga de Play Store).
+4. Espera a que la descarga termine. Quedará en la carpeta `Descargas` del móvil.
+
+Opción B (si te lo paso por Telegram/WhatsApp):
+1. Pulsa el archivo en la conversación → "Descargar".
+
+**Paso 2 — Permitir instalación de "fuentes desconocidas"**
+
+Esto es **obligatorio una sola vez** porque el APK no viene de Google Play.
+
+En Android 8+ (la mayoría de móviles modernos):
+1. Abre el gestor de archivos del móvil (o el navegador donde lo descargaste).
+2. Pulsa el archivo `VictorinoStyle-v1.0.0.apk`.
+3. Android dirá: *"Por seguridad, no se permite instalar apps desconocidas desde esta fuente. Puedes cambiarlo en Ajustes"*.
+4. Pulsa **`Ajustes`** en el aviso → activa el interruptor **`Permitir desde esta fuente`**.
+5. Vuelve atrás. Android te volverá a preguntar si quieres instalar.
+
+En Android 7 o anterior:
+1. Ajustes → Seguridad → activar **`Orígenes desconocidos`**. Luego pulsa el APK.
+
+**Paso 3 — Instalar**
+
+1. Android muestra una pantalla con el icono y nombre de la app: **Victorino Style**.
+2. Pulsa **`Instalar`**.
+3. Espera 10-15 segundos.
+4. Pulsa **`Abrir`** cuando termine.
+
+**Paso 4 — Probar la app**
+
+1. Al abrir verás la pantalla de bienvenida / login.
+2. Para hacer login como **administrador** (acceso completo a todas las funciones):
+   - Correo: `victorino@admin.com`
+   - Contraseña: `Admin1234!`
+3. Para hacer login como **empleado** (vista de peluquero):
+   - Correo: `maradona@victorinostyle.com` o `jerson@victorinostyle.com`
+   - Contraseña: `Empleado1234!`
+4. Para hacer login como **cliente** (uno de los 50 ya cargados):
+   - Correo: `andres.lozano@gmail.com` (o cualquiera de los demás)
+   - Contraseña: `Cliente1234!` (para los 10 demos) o `Cliente20!`/`Cliente21!`/... para los rasos.
+
+#### 10.5.3. Permisos que pedirá la app la primera vez
+
+Tras el primer login, la app pedirá algunos permisos según las funciones que se usen:
+
+- **Notificaciones**: para recibir confirmaciones, recordatorios 24h, cancelaciones. → Permitir.
+- **Cámara / Galería**: solo si se intenta cambiar la foto de perfil. → Permitir cuando se pida.
+- **Almacenamiento**: para guardar fotos descargadas. → Permitir cuando se pida.
+
+#### 10.5.4. Desinstalación
+
+Como cualquier otra app: mantener pulsado el icono → **`Desinstalar`**.
+
+### 10.6. Alternativa para quien no quiere instalar nada: Appetize.io
+
+Si algún miembro del tribunal **no quiere instalar la app en su móvil personal**, existe la opción de ejecutarla en un **emulador Android dentro del navegador** vía Appetize.io:
+
+1. Crear cuenta gratuita en `https://appetize.io`.
+2. Subir el archivo `app-release.apk`. Plan gratuito permite hasta 100 MB y 30 minutos de uso al mes.
+3. Appetize genera un enlace único tipo `https://appetize.io/app/<id>` que abre un emulador Android en cualquier navegador.
+4. El tribunal usa la app **sin instalar nada** en su dispositivo.
+
+**Limitaciones**:
+- 30 minutos al mes en el plan gratuito.
+- Las notificaciones push no se reciben en el navegador (Appetize no tiene FCM completo).
+- El rendimiento es menor que en un móvil real.
+
+**Cuándo usarlo**: para una primera impresión rápida o si el tribunal evalúa el TFG desde un PC sin móvil cerca. Para una evaluación realista, instalar en un móvil real sigue siendo lo recomendable.
+
+### 10.7. FAQ específico sobre el APK
+
+**P: ¿Por qué Android me dice "no se permite instalar apps desconocidas"?**
+R: Es una protección de Android. Como el APK no viene de Google Play Store (no he pagado los 25€ y publicado oficialmente porque es un TFG), el sistema lo considera "fuente desconocida". Activar el permiso una sola vez es seguro porque el archivo viene directamente de mí.
+
+**P: ¿Por qué pesa 60 MB si la app no parece tan grande?**
+R: Flutter incluye su propio runtime (motor Skia para renderizar, motor Dart, librerías nativas) dentro de cada APK. Es el coste de hacer multi-plataforma con un único código fuente. Una app nativa equivalente en Kotlin pesaría ~10 MB, pero requeriría mantener un código aparte para iOS.
+
+**P: ¿Funciona en iPhone / iPad?**
+R: No directamente — el APK es exclusivo de Android. Para iOS habría que generar un IPA (`flutter build ios`), pero eso requiere **un Mac, una cuenta de Apple Developer (99 USD/año) y firmar con certificado**. Por coste y tiempo se descartó para el TFG.
+
+**P: ¿Cómo actualizo a una versión nueva si la sacas?**
+R: Mientras se firme con la misma keystore (la debug en este caso), basta con descargar el nuevo APK e instalarlo encima. Android lo detecta como actualización y conserva los datos locales. Si en el futuro cambio de keystore (al migrar a una propia), habrá que desinstalar la versión antigua antes.
+
+**P: ¿La app consume muchos datos móviles?**
+R: Las peticiones HTTP son pequeñas (JSON de pocos KB cada una). Solo las fotos (subir foto de perfil o ver fotos de servicios) usan ancho de banda relevante. Estimación: <5 MB por sesión típica de uso, salvo que se suban muchas fotos.
+
+**P: ¿Funciona sin conexión a Internet?**
+R: No. La app es un cliente que **siempre** necesita hablar con el backend en Railway. Sin Internet sale un error. Una versión futura podría tener caché local con SQLite para algunas vistas, pero no es prioridad.
+
+**P: ¿Se pueden ver los datos personales de los usuarios desde el APK?**
+R: Solo los datos del rol con el que has hecho login. Un cliente ve sus propias citas y los empleados de la peluquería. Un empleado ve su propia agenda. Un administrador ve todo. Spring Security en el backend impone estas restricciones; el frontend solo muestra lo que el backend le devuelve.
+
+**P: ¿Qué pasa con las notificaciones push si tengo el móvil en modo "No molestar"?**
+R: Las notificaciones llegan al móvil (queda registro en la pestaña de notificaciones) pero **no suenan**. Cuando salgas del modo "No molestar" las verás en la bandeja del sistema. Es el comportamiento normal de Android.
+
+**P: ¿Y si Google decide bloquear el APK como "potencialmente peligroso"?**
+R: Puede pasar la primera vez que un usuario lo descarga porque Google Play Protect escanea APKs no firmados por desarrolladores verificados. Suele bastar con pulsar "Instalar de todos modos". Si fuera un problema recurrente, la solución profesional sería pagar la cuota de Google y publicarlo en Play Store, pero excede el alcance del TFG.
 
 ---
 
-## 11. Preguntas frecuentes (FAQ para el tribunal)
+## 11. iOS (iPhone / iPad)
+
+> ⚠️ **Esta sección es teórica**: el TFG no ha generado la versión iOS porque para hacerlo se necesita un Mac físico (Apple solo permite compilar iOS con Xcode, que únicamente existe en macOS) y una cuenta de Apple Developer de pago. Aun así, **el código Flutter ya está preparado** para que, en una máquina con esos requisitos, la compilación funcione sin tocar el código fuente. Esta sección documenta cómo se haría, paso a paso, asumiendo que se parte de un **Mac completamente vacío** sin ningún programa instalado.
+
+### 11.1. Por qué Flutter permite generar iOS desde el mismo código
+
+Flutter es un framework **multi-plataforma**: el código Dart que se ha escrito para la peluquería sirve, sin cambios, para Android, iOS, Web, Windows, 
+Linux y macOS. Cada plataforma se compila a binario nativo de esa plataforma (no es una WebView ni un emulador): la app en iPhone 
+corre tan fluida como una app nativa Swift/Objective-C.
+
+Esto se nota especialmente en:
+- Las animaciones (60 fps nativos).
+- El consumo de memoria (similar al de una app nativa).
+- Acceso a APIs del sistema (cámara, notificaciones push, biometría) a través de plugins oficiales.
+
+**Conclusión clave**: el coste de añadir el soporte iOS al proyecto **es cero en términos de programación**; el coste está en la infraestructura 
+(hardware + cuenta de desarrollador). De ahí la decisión de no hacerlo dentro del alcance del TFG, pero dejarlo "preparado para cuando se quiera".
+
+### 11.2. Requisitos previos (hardware + cuentas)
+
+Para compilar y firmar la app iOS hace falta:
+
+#### 11.2.1. Hardware: un Mac
+
+| Modelo | Coste aprox. | Validez |
+|---|---|---|
+| Mac mini M2 (8 GB RAM, 256 GB SSD) | ~700 € | ✅ Recomendado. Suficiente para compilar Flutter iOS sin problema. |
+| MacBook Air M2 | ~1.200 € | ✅ Si se necesita portabilidad |
+| MacBook Pro M3 | ~1.700 € | ✅ Si se quiere lo mejor, pero excesivo para un TFG |
+| iMac M3 | ~1.500 € | ✅ Si se quiere todo-en-uno |
+| Mac Intel antiguo (2018+) | 300-500 € usado | ⚠️ Compila pero las nuevas versiones de Xcode (16+) ya solo soportan macOS Sonoma 14+ y exigen Apple Silicon o Intel reciente. Revisar compatibilidad antes de comprar. |
+| Cualquier PC con Hackintosh / macOS virtualizado | "gratis" | ❌ **Viola los Términos de Uso de Apple**, no es legalmente válido para distribuir apps. Descartado para un TFG. |
+
+Mi recomendación si alguien quiere replicar el despliegue iOS: **Mac mini M2** (700 € es el precio de entrada más bajo razonable y rinde de sobra).
+
+#### 11.2.2. Cuenta de Apple Developer
+
+Apple obliga a tener una cuenta de desarrollador para:
+- Firmar el APK iOS (en iOS se llama IPA).
+- Distribuir la app a otras personas (sin esto, solo puedes instalarla en tu propio iPhone con un workaround llamado "free provisioning", limitado a 7 días).
+- Subir a TestFlight (beta-testing oficial) o App Store.
+
+Tipos de cuenta:
+
+| Tipo | Coste | Para qué |
+|---|---|---|
+| **Apple ID gratis** | 0 € | Solo instalar en tu propio iPhone con caducidad de 7 días. Cada semana hay que volver a sideloadear desde Xcode. **Para una demo del TFG es viable pero molesto**. |
+| **Apple Developer Program (individual)** | **99 USD/año** (~91 €/año, no es pago único) | Distribución vía TestFlight, App Store, Ad-hoc. Lo que se usaría en serio. |
+| **Apple Developer Enterprise** | 299 USD/año | Solo para empresas, distribución interna. No aplica al TFG. |
+
+**Coste total estimado para una versión iOS distribuible**: ~800 € de entrada (Mac) + 91 €/año (cuenta). En un TFG, esto no compensa frente al APK Android que ya cubre el 70-80% del mercado en España.
+
+### 11.3. Preparación del Mac (desde cero)
+
+Asumimos que el Mac está recién encendido por primera vez, con el sistema operativo de fábrica (macOS Sequoia o equivalente) y nada más.
+
+#### 11.3.1. Actualizar macOS
+
+1. **Apple () → Ajustes del Sistema → General → Actualización de software**.
+2. Si hay actualizaciones pendientes, instalarlas todas. Para Xcode 16 hace falta macOS Sonoma 14+ o Sequoia 15+.
+3. Reiniciar.
+
+#### 11.3.2. Instalar Xcode
+
+Xcode es el IDE oficial de Apple. Es **obligatorio**: contiene el compilador Swift, los simuladores de iPhone, las herramientas de firma, y todo el SDK de iOS.
+
+1. Abrir **App Store** (icono azul con una "A").
+2. Buscar **Xcode**.
+3. **Obtener** → **Instalar**. Pide la contraseña del Apple ID.
+4. **Descarga de ~12 GB**, instalación final de ~40 GB. Tarda **30-90 minutos** según conexión y velocidad del disco.
+5. Una vez instalado, abrir Xcode una vez para que termine de configurar componentes adicionales (CommandLineTools, simuladores, etc.). Aceptar la licencia.
+6. Aceptar la licencia desde terminal también para que otras herramientas (como Flutter) la respeten:
+   ```bash
+   sudo xcodebuild -license accept
+   ```
+
+#### 11.3.3. Instalar Command Line Tools
+
+Aunque Xcode ya incluye las herramientas de línea de comandos, conviene asegurarse:
+
+```bash
+xcode-select --install
+```
+
+Si ya están, dirá "command line tools are already installed". Si no, abre un instalador gráfico.
+
+#### 11.3.4. Instalar Homebrew
+
+Homebrew es el "apt-get" de macOS, el gestor de paquetes que usaremos para instalar Flutter, Git y CocoaPods.
+
+En Terminal:
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+Tras la instalación, **seguir las instrucciones que muestre en pantalla** (suele pedir añadir Homebrew al PATH con dos comandos). En Mac Apple Silicon (M1/M2/M3) son típicamente:
+```bash
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile
+eval "$(/opt/homebrew/bin/brew shellenv)"
+```
+
+Verificación:
+```bash
+brew --version
+```
+
+#### 11.3.5. Instalar Git
+
+```bash
+brew install git
+```
+
+#### 11.3.6. Instalar Flutter SDK
+
+Dos opciones:
+
+**Opción A — vía Homebrew (recomendada)**:
+```bash
+brew install --cask flutter
+```
+
+**Opción B — descarga manual**:
+1. Descargar el SDK de Flutter desde `https://flutter.dev/docs/get-started/install/macos`.
+2. Descomprimir el ZIP en `~/development/flutter`.
+3. Añadir al PATH:
+   ```bash
+   echo 'export PATH="$PATH:$HOME/development/flutter/bin"' >> ~/.zprofile
+   source ~/.zprofile
+   ```
+
+Verificación:
+```bash
+flutter --version
+```
+Debe devolver `Flutter 3.41.2` o similar.
+
+#### 11.3.7. Instalar CocoaPods
+
+CocoaPods es el gestor de dependencias nativas iOS (equivalente a Gradle en Android). Flutter lo usa para Firebase, plugins, etc.
+
+```bash
+sudo gem install cocoapods
+```
+
+Si pide la contraseña del Mac, introducirla. Tarda unos minutos.
+
+#### 11.3.8. Verificación final con `flutter doctor`
+
+```bash
+flutter doctor
+```
+
+Resultado esperado:
+```
+[√] Flutter (3.41.2, on macOS ...)
+[√] Android toolchain  (opcional, solo si también quieres compilar Android desde el Mac)
+[√] Xcode - develop for iOS and macOS (Xcode 16.x)
+[√] Chrome - develop for the web
+[√] Connected device
+```
+
+Si Xcode aparece con ❌ o ⚠️, leer el mensaje: suele faltar `xcodebuild -license accept` o algún componente menor.
+
+### 11.4. Clonar el repositorio y configurar el proyecto iOS
+
+#### 11.4.1. Clonar
+
+```bash
+cd ~
+mkdir -p IdeaProjects
+cd IdeaProjects
+git clone https://github.com/KevinFlow-ai/Victorino_Style.git
+cd Victorino_Style/frontend_victorino
+```
+
+> Si el repositorio es privado, Git pedirá credenciales o token. Recomendado usar `gh auth login` (de la GitHub CLI) o un Personal Access Token.
+
+#### 11.4.2. Instalar dependencias Flutter
+
+```bash
+flutter pub get
+```
+
+#### 11.4.3. Instalar dependencias iOS nativas
+
+```bash
+cd ios
+pod install --repo-update
+cd ..
+```
+
+Esto descarga los pods de Firebase y todas las dependencias nativas iOS. Tarda 5-10 minutos la primera vez.
+
+#### 11.4.4. Configurar Firebase para iOS
+
+El proyecto **ya tiene Firebase configurado para Android** (`google-services.json`). Para iOS hace falta un archivo equivalente llamado 
+**`GoogleService-Info.plist`** que **NO está en el repositorio** (por eso `flutter_launcher_icons` generó iconos iOS pero no se puede compilar todavía).
+
+Para obtenerlo:
+
+1. Ir a la consola Firebase: `https://console.firebase.google.com`.
+2. Entrar al proyecto **`victorino-style`** (el mismo que usa Android).
+3. **Configuración del proyecto** (engranaje) → **General**.
+4. En la sección "Tus apps", pulsar **`Agregar app`** → icono de Apple (iOS+).
+5. Bundle ID: `com.example.frontend_victorino` (debe coincidir EXACTAMENTE con el que Flutter pone por defecto, que figura en `ios/Runner.xcodeproj/project.pbxproj` como `PRODUCT_BUNDLE_IDENTIFIER`).
+6. Nickname: `Victorino Style iOS`.
+7. App Store ID: vacío (no aplica todavía).
+8. **Registrar**.
+9. Firebase ofrece descargar **`GoogleService-Info.plist`**. Descargar.
+10. Mover el archivo a `frontend_victorino/ios/Runner/` (con drag & drop en Xcode para que se incluya en el target Runner correctamente).
+
+#### 11.4.5. Abrir el proyecto en Xcode
+
+```bash
+open ios/Runner.xcworkspace
+```
+
+> ⚠️ **Abrir `.xcworkspace`, no `.xcodeproj`**. La diferencia es importante: `xcworkspace` incluye los pods de CocoaPods; `xcodeproj` solo el proyecto principal y fallará al compilar.
+
+#### 11.4.6. Configurar la firma del código (Signing)
+
+Esto es lo más friccionante. En Xcode:
+
+1. Seleccionar el proyecto **Runner** (icono azul, arriba a la izquierda).
+2. Pestaña **Signing & Capabilities** → target **Runner**.
+3. Marcar **`Automatically manage signing`**.
+4. **Team**: desplegable. Hay que haber iniciado sesión con un Apple ID:
+   - Si es Apple ID gratis (sin Developer Program): aparece como "Free" y permite firmar para "personal use".
+   - Si es Apple ID con Developer Program: aparece tu nombre o el de tu organización, permite distribución.
+5. Xcode genera automáticamente un certificado de firma y un **provisioning profile** asociado al Bundle ID.
+
+Si aparece un error rojo tipo *"No matching profiles found"*:
+- Comprobar que el Apple ID tiene acceso a la cuenta Developer en *Xcode → Settings → Accounts*.
+- O cambiar el Bundle ID a uno único: `com.<tudominio>.victorinostyle`.
+
+#### 11.4.7. Configurar capacidades adicionales
+
+En la misma pestaña **Signing & Capabilities**, pulsar **+ Capability** y añadir:
+
+- **Push Notifications** (para FCM).
+- **Background Modes** → activar `Remote notifications`.
+
+### 11.5. Iconos para iOS (ya generados)
+
+Cuando ejecutamos `dart run flutter_launcher_icons` durante la preparación, **ya se generaron todos los iconos iOS**. Ubicación:
+
+```
+frontend_victorino/ios/Runner/Assets.xcassets/AppIcon.appiconset/
+```
+
+Se generaron 20+ tamaños distintos (iPhone, iPad, Settings, Notifications, Spotlight, App Store), cada uno en sus densidades `@1x`, `@2x`, `@3x`. Algunos ejemplos:
+
+| Archivo | Tamaño | Para qué |
+|---|---|---|
+| `Icon-App-60x60@3x.png` | 180×180 | Icono en pantalla principal del iPhone 6 Plus en adelante |
+| `Icon-App-76x76@2x.png` | 152×152 | Icono en pantalla principal del iPad |
+| `Icon-App-1024x1024@1x.png` | 1024×1024 | App Store marketing icon |
+| `Icon-App-29x29@2x.png` | 58×58 | Icono de Ajustes |
+
+> **Nota técnica**: iOS NO usa adaptive icons como Android. Cada tamaño es una imagen separada, fija, sin transparencias. Por eso en la configuración pusimos `remove_alpha_ios: true` y `background_color_ios: "#0A0A0F"`: el plugin aplana el PNG transparente sobre el fondo oscuro para evitar el rechazo de App Store (Apple no admite iconos con canal alfa).
+
+Resultado: cuando se instale la app en un iPhone aparecerá con el mismo logo que en Android, **sin tocar más código**.
+
+### 11.6. Generación del archivo IPA
+
+Una vez todo configurado, generar el IPA es un solo comando:
+
+```bash
+cd ~/IdeaProjects/Victorino_Style/frontend_victorino
+flutter build ipa --release \
+  --dart-define=API_BASE_URL=https://victorinostyle-production.up.railway.app/api/v1
+```
+
+Resultado en:
+```
+frontend_victorino/build/ios/ipa/frontend_victorino.ipa
+```
+
+Tamaño esperado: 50-90 MB (similar al APK Android).
+
+### 11.7. Distribución del IPA
+
+A diferencia del APK Android, **iOS NO permite instalar IPAs descargados de Internet libremente**. Apple impone canales oficiales. Las opciones son:
+
+| Canal | Coste | Quién puede instalar | Setup |
+|---|---|---|---|
+| **TestFlight** ✅ | Incluido en Developer Program | Hasta 10.000 testers invitados por correo | Subir IPA a App Store Connect → asignar testers → ellos instalan TestFlight desde App Store y abren el invite |
+| **Ad-hoc** | Incluido en Developer Program | Hasta 100 dispositivos cuyos UDID estés registrados | Pedir el UDID a cada tester, registrarlo, regenerar provisioning profile, recompilar IPA, distribuir |
+| **App Store** | Incluido en Developer Program | Cualquiera con un iPhone | Subir IPA → review de Apple (1-7 días) → publicación |
+| **Free Provisioning** | Gratis | Solo tu iPhone, válido 7 días | Conectar iPhone por USB y `flutter run --release` desde Xcode. Se reinstala manualmente cada semana. |
+| **Enterprise** | 299 USD/año, solo empresas | Empleados de la empresa | No aplica al TFG |
+| **Diawi / Installonair** | Gratis con límite | Pocos dispositivos | Sube IPA al servicio, te dan enlace, los testers instalan vía Safari. **Solo funciona con Ad-hoc provisioning** (UDIDs registrados) |
+
+**Para un TFG, lo recomendable sería TestFlight**:
+
+1. Comprar Apple Developer Program (99 USD/año).
+2. Abrir Xcode → Window → Organizer → Distribute App → seleccionar el `.ipa`.
+3. Subirlo a App Store Connect.
+4. En App Store Connect → TestFlight → invitar al tribunal por correo.
+5. Los miembros del tribunal reciben un email, instalan TestFlight en su iPhone desde App Store, abren el invite y descargan tu app.
+
+### 11.8. FAQ específico iOS
+
+**P: ¿Por qué Apple obliga a usar Mac?**
+R: Es una decisión comercial de Apple. Xcode es propietario y solo corre en macOS. No hay alternativa legal: cualquier "Hackintosh" o macOS virtualizado en PC viola los Términos de Uso de Apple y el IPA generado puede ser rechazado por App Store.
+
+**P: ¿Por qué Apple cobra 99 USD/año si Google cobra 25 USD pago único?**
+R: Política comercial. Es un modelo de suscripción que Apple justifica con los servicios incluidos (TestFlight, App Analytics, App Store Connect, etc.). Quien deja de pagar pierde la capacidad de subir actualizaciones, pero la app publicada sigue en App Store hasta el siguiente reset.
+
+**P: ¿Funcionará todo igual que en Android?**
+R: Sí, salvo detalles cosméticos: las notificaciones tienen estilo iOS (no Material), el indicador de carga es el de iOS por defecto, etc. La lógica de negocio y las pantallas son **idénticas** porque Flutter las renderiza con su propio motor (Skia), no usa componentes nativos del sistema.
+
+**P: ¿Las notificaciones push funcionan en iPhone?**
+R: Sí, pero hay un paso extra: hay que generar un **APNs Auth Key** en *https://developer.apple.com → Keys* y subirlo a Firebase Console → Project Settings → Cloud Messaging → Apple app configuration. Tras esto, FCM enruta a APNs automáticamente y el iPhone las recibe.
+
+**P: ¿Se podría hacer el TFG todo desde un Mac y olvidarse de Windows?**
+R: Sí. Flutter funciona idéntico en macOS y Windows. La elección de mi entorno (Windows con WSL para Linux) fue por coste y porque ya tenía el equipo. Un Mac habría permitido cubrir Android + iOS + Web + macOS desde un único equipo, pero supone una inversión inicial que el TFG no justificaba.
+
+---
+
+## 12. Windows (escritorio)
+
+> ⚠️ **Sección teórica**: el TFG no ha generado el ejecutable Windows porque **mi máquina no tiene instalado Visual Studio** y, una vez generado, 
+**la distribución en Windows es menos cómoda que en Android/Web** (no hay tienda equivalente a Play Store que el usuario tipo conozca y use de 
+forma natural). El código Flutter ya está preparado, así que un futuro `flutter build windows` funcionaría tras instalar el toolchain.
+
+### 12.1. ¿Por qué Flutter para Windows?
+
+Flutter 3.x soporta de forma estable la generación de **aplicaciones nativas Windows x64**, no es WebView ni Electron. Comparte el 
+99% del código con Android/iOS/Web y se compila a un `.exe` con varias DLLs adjuntas. Casos de uso típicos:
+
+- Una empresa quiere un cliente "de escritorio" para PCs.
+- El usuario prefiere un programa siempre disponible en la bandeja del sistema, sin pasar por navegador.
+- Funciones específicas de escritorio (atajos de teclado, multiventana).
+
+Para Victorino Style (una peluquería) el caso de uso real es marginal: los clientes usarán móvil, los empleados un móvil o 
+web, y el administrador puede usar la web. Por eso se documenta como "soportable pero no implementado".
+
+### 12.2. Requisitos en una máquina Windows
+
+| Componente | Coste | Notas |
+|---|---|---|
+| Windows 10 / 11 (64 bits) | — | Cualquier máquina moderna lo cumple |
+| Flutter SDK | gratis | El mismo que para Android |
+| **Visual Studio 2022 Community** | gratis | Es **obligatorio** para compilar C++ nativo. La edición Community es gratis para uso personal y proyectos open source / TFG. |
+| Carga "Desktop development with C++" | incluida en VS | Sin esta carga `flutter build windows` falla. Selectable durante la instalación de Visual Studio. |
+| Espacio en disco | ~12 GB | Para Visual Studio + Flutter |
+
+### 12.3. Preparación de la máquina
+
+1. Descargar **Visual Studio Community 2022** de `https://visualstudio.microsoft.com/downloads/`.
+2. Ejecutar el instalador. En la pantalla "Workloads", marcar **`Desktop development with C++`** (todos los componentes por defecto).
+3. Instalar (~5-8 GB de descarga, 30-60 minutos).
+4. Reiniciar la máquina.
+5. Comprobar con:
+   ```powershell
+   flutter doctor
+   ```
+   Debe aparecer:
+   ```
+   [√] Visual Studio - develop Windows apps (Visual Studio Community 2022 17.x.x)
+   ```
+
+### 12.4. Generación del ejecutable
+
+Una vez Visual Studio instalado:
+
+```powershell
+cd "C:\Users\El Jefe\IdeaProjects\Victorino_Style\frontend_victorino"
+flutter clean
+flutter pub get
+flutter build windows --release `
+  --dart-define=API_BASE_URL=https://victorinostyle-production.up.railway.app/api/v1
+```
+
+Tiempo: 3-10 minutos.
+
+Resultado en:
+```
+build\windows\x64\runner\Release\
+├── frontend_victorino.exe         ← el ejecutable principal
+├── flutter_windows.dll
+├── data\
+└── (otras DLLs de plugins)
+```
+
+**El usuario final necesita la carpeta COMPLETA**, no solo el `.exe`. El `.exe` por sí solo no arranca: necesita las DLLs y la carpeta `data/`.
+
+### 12.5. Iconos para Windows (ya generados)
+
+`flutter_launcher_icons` generó:
+```
+frontend_victorino/windows/runner/resources/app_icon.ico
+```
+
+Es un fichero ICO con varios tamaños embebidos (16x16, 32x32, 48x48, 256x256). El `runner.exe` lo embebe automáticamente al compilar, 
+por lo que el `.exe` final muestra el logo de Victorino Style en el explorador de archivos y en la barra de tareas.
+
+### 12.6. Distribución del ejecutable Windows
+
+Las opciones más realistas:
+
+| Opción | Coste | Setup | Notas |
+|---|---|---|---|
+| **ZIP comprimido** ✅ | Gratis | Comprimir la carpeta `Release/` entera y subir a Drive | Lo más simple. El usuario descomprime y ejecuta el `.exe`. Sin instalador. |
+| **Inno Setup** ✅✅ | Gratis | Crear script .iss + compilar | Genera un `setup.exe` real, instala en `Program Files`, crea atajo en menú Inicio. Profesional. |
+| **NSIS** | Gratis | Similar a Inno Setup | Alternativa. Más antigua pero potente. |
+| **MSIX** | Gratis | Empaquetado moderno (requiere certificado) | Formato moderno de Windows 10/11. Permite subir a Microsoft Store. |
+| **Microsoft Store** | 19 USD pago único | Crear cuenta dev + subir MSIX | Distribución oficial. Excesivo para TFG. |
+
+Para el TFG, **ZIP en Drive** es suficiente. Estructura recomendada:
+
+```
+VictorinoStyle-Windows-v1.0.0.zip
+└── VictorinoStyle/
+    ├── frontend_victorino.exe
+    ├── flutter_windows.dll
+    ├── data/
+    ├── LEEME.txt   ← Instrucciones para el usuario
+    └── ...
+```
+
+### 12.7. Guía de instalación para el usuario final Windows
+
+1. Descargar el ZIP del enlace de Drive.
+2. **Extraer todo el contenido** en una carpeta cualquiera (Escritorio, Documentos, etc.). **No ejecutar el `.exe` desde dentro del ZIP comprimido**; algunos antivirus lo bloquean y faltan permisos.
+3. Abrir la carpeta extraída y hacer **doble clic en `frontend_victorino.exe`**.
+4. Windows SmartScreen puede mostrar: *"Windows protegió tu PC"* (porque el .exe no está firmado con certificado).
+5. Pulsar **`Más información`** → **`Ejecutar de todas formas`**.
+6. La app arranca y muestra la pantalla de login.
+
+> Para evitar el SmartScreen habría que firmar el .exe con un certificado de Authenticode (~250 €/año). Innecesario para TFG.
+
+### 12.8. FAQ específico Windows
+
+**P: ¿Por qué necesita Visual Studio si Flutter compila Dart?**
+R: Porque el "shell" nativo de Flutter en Windows está escrito en C++ (incluyendo el bootstrapper del runtime). Visual Studio aporta el compilador 
+MSVC, sin el cual `flutter build windows` no puede generar el .exe final.
+
+**P: ¿Funciona en Windows 7 o 8?**
+R: Oficialmente no. Flutter Windows requiere Windows 10 o superior. Microsoft retiró soporte de Windows 7 hace años.
+
+**P: ¿Por qué la carpeta de salida tiene tantas DLLs?**
+R: Cada plugin nativo Flutter compila su propio DLL. `firebase_messaging`, `flutter_secure_storage`, etc. son DLLs separadas. Son ligeras (pocos KB cada una) y se cargan en runtime.
+
+---
+
+## 13. Linux (escritorio)
+
+> ⚠️ **Sección teórica**: el TFG **no ha generado el binario Linux** porque Flutter exige que la compilación ocurra desde una máquina Linux real. Mi entorno es Windows, y aunque WSL2 permite simular Linux dentro de Windows, instalar todas las dependencias gráficas (GTK, OpenGL) en WSL para compilar Flutter Linux es complejo. Por simplicidad, se documenta el procedimiento teórico.
+
+### 13.1. ¿Por qué Flutter para Linux?
+
+Flutter 3.x permite generar aplicaciones nativas Linux x64 que usan GTK como toolkit de ventanas. Casos de uso:
+
+- Distribuciones populares: Ubuntu, Debian, Fedora, Arch, openSUSE.
+- Para empresas que tienen flotas de PCs con Linux (administración pública española, por ejemplo).
+- Para usuarios que prefieren no usar Windows.
+
+Para el TFG el caso real es marginal, pero **el código ya está listo**: solo falta el toolchain.
+
+### 13.2. Requisitos en una máquina Linux
+
+Lo siguiente es para Ubuntu/Debian, en otras distros los nombres de paquetes cambian ligeramente.
+
+```bash
+sudo apt update
+sudo apt install -y \
+  clang \
+  cmake \
+  ninja-build \
+  pkg-config \
+  libgtk-3-dev \
+  liblzma-dev \
+  libstdc++-12-dev
+```
+
+Además, Flutter SDK (descarga manual o snap):
+```bash
+sudo snap install flutter --classic
+flutter doctor
+```
+
+Resultado esperado en `flutter doctor`:
+```
+[√] Linux toolchain - develop for Linux desktop
+```
+
+### 13.3. Alternativa: WSL2 desde Windows
+
+Si no se tiene una máquina Linux pero sí Windows 10/11, se puede usar **WSL2** (Windows Subsystem for Linux) como Linux virtual:
+
+```powershell
+wsl --install -d Ubuntu
+```
+
+Una vez dentro de Ubuntu en WSL2, los comandos del apartado anterior funcionan. **Peeero**: compilar Flutter Linux desde WSL2 requiere también configurar **WSLg** 
+(las extensiones gráficas) para que GTK pueda enlazar. Es factible pero supera el alcance básico.
+
+### 13.4. Generación del binario Linux
+
+```bash
+cd ~/Victorino_Style/frontend_victorino
+flutter clean
+flutter pub get
+flutter build linux --release \
+  --dart-define=API_BASE_URL=https://victorinostyle-production.up.railway.app/api/v1
+```
+
+Resultado en:
+```
+build/linux/x64/release/bundle/
+├── frontend_victorino       ← el ejecutable
+├── lib/                     ← librerías .so
+├── data/
+└── ...
+```
+
+### 13.5. Iconos para Linux
+
+`flutter_launcher_icons` **no soporta Linux de forma nativa** (Linux usa archivos `.desktop` con icono asociado, no un sistema central como Android/iOS). Lo que se haría:
+
+1. Tomar el `assets/logos_app/logo_app1.3.png` ya redimensionado.
+2. Crear un archivo `.desktop` durante el empaquetado:
+   ```ini
+   [Desktop Entry]
+   Name=Victorino Style
+   Exec=/opt/victorinostyle/frontend_victorino
+   Icon=/opt/victorinostyle/data/flutter_assets/assets/logos_app/logo_app1.3.png
+   Type=Application
+   Categories=Office;
+   ```
+3. Instalar el `.desktop` en `/usr/share/applications/` para que aparezca en el menú de aplicaciones.
+
+### 13.6. Distribución del binario Linux
+
+| Opción | Coste | Quién la usa | Notas |
+|---|---|---|---|
+| **Tarball (`.tar.gz`)** ✅ | Gratis | Cualquiera | Comprimir `bundle/`, el usuario descomprime y ejecuta. Más simple. |
+| **Paquete `.deb`** | Gratis | Debian, Ubuntu, Mint | Profesional. Se instala con `sudo apt install ./victorino.deb`. Hay que crear el control file. |
+| **Snap** | Gratis | Ubuntu y muchas otras | Sandbox automático, autoupdates. Subir a `snapcraft.io`. |
+| **Flatpak** | Gratis | Fedora, Arch y otras | Igual que Snap pero del ecosistema GNOME. |
+| **AppImage** | Gratis | Cualquier distro | Un solo archivo ejecutable, sin instalación. Muy práctico para distribución directa. |
+
+Para el TFG, **tarball en Drive** sería suficiente.
+
+### 13.7. Guía de instalación para el usuario final Linux
+
+Asumiendo distribución por tarball:
+
+```bash
+# Descargar el tarball del enlace de Drive
+wget "https://drive.google.com/uc?export=download&id=ABC123" -O victorino-linux.tar.gz
+
+# Extraer
+tar -xzf victorino-linux.tar.gz
+cd bundle
+
+# Dar permisos de ejecución
+chmod +x frontend_victorino
+
+# Ejecutar
+./frontend_victorino
+```
+
+### 13.8. FAQ específico Linux
+
+**P: ¿Por qué Flutter no permite cross-compile a Linux desde Windows?**
+R: Porque la compilación necesita enlazarse contra GTK, glibc, OpenGL y otras librerías nativas Linux, que no están disponibles en el toolchain Windows. La solución oficial de Flutter es "compila en cada plataforma desde esa plataforma". Hay proyectos comunitarios que cross-compile, pero no son oficiales y dan problemas con plugins.
+
+**P: ¿La app Linux funciona en distros derivadas como Linux Mint o Pop!_OS?**
+R: Sí, todas las basadas en Debian/Ubuntu comparten los mismos binarios. Para distros muy distintas (Arch, NixOS) puede haber pequeños ajustes pero la base funciona.
+
+**P: ¿Y para ARM Linux (Raspberry Pi)?**
+R: Flutter Linux **solo se compila a x86_64 oficialmente**. Para ARM (Raspberry Pi 4/5) habría que hacer un build cruzado con un toolchain ARM, que es experimental.
+
+---
+
+## 14. Preguntas frecuentes (FAQ para el tribunal)
 
 Esta es la parte más importante para la defensa del TFG. Anticipa preguntas que se pueden hacer y prepara una respuesta sólida.
 
@@ -1166,7 +2028,7 @@ R: A nivel de diseño se siguieron prácticas RGPD:
 
 ---
 
-## 12. Anexo A — Variables de entorno completas
+## 15. Anexo A — Variables de entorno completas
 
 Estas son las variables configuradas en Railway en el servicio backend. **Los valores se enmascaran con `***` por seguridad**.
 
@@ -1190,7 +2052,7 @@ Estas son las variables configuradas en Railway en el servicio backend. **Los va
 
 ---
 
-## 13. Anexo B — Comandos útiles
+## 16. Anexo B — Comandos útiles
 
 ### Local
 
@@ -1246,7 +2108,7 @@ SELECT COUNT(*) AS servicios FROM servicio;   -- esperado: 4
 
 ---
 
-## 14. Anexo C — Glosario de términos
+## 17. Anexo C — Glosario de términos
 
 - **PaaS (Platform as a Service)**: servicio cloud que te abstrae la infraestructura (sistema operativo, runtime, servidor web). Solo entregas el código.
 - **IaaS (Infrastructure as a Service)**: servicio cloud que te da máquinas virtuales en bruto (ej. AWS EC2). Tú instalas todo.
