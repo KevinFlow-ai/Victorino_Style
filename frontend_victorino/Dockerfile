@@ -52,17 +52,57 @@ server {
     root   /usr/share/nginx/html;
     index  index.html;
 
+    # ETag automatico para que las revalidaciones (304 Not Modified) funcionen
+    # bien con los archivos de Flutter que comparten nombre entre deploys.
+    etag on;
+
     location / {
         try_files $uri $uri/ /index.html;
     }
 
-    # Cache largo para assets versionados de Flutter (con hash en el nombre).
-    location ~* \.(?:js|css|woff2?|png|jpg|jpeg|gif|svg|webp|ico)$ {
+    # ─── Archivos de Flutter con nombre FIJO entre deploys ────────────────────
+    # main.dart.js (~4 MB), flutter_bootstrap.js, etc. mantienen el mismo
+    # nombre cada vez que se hace `flutter build web`, pero su contenido
+    # CAMBIA con cada despliegue. Si los marcamos como "immutable" el
+    # navegador se queda con la version antigua hasta 30 dias.
+    #
+    # Solucion: "no-cache, must-revalidate". El navegador conserva la caché
+    # pero envia un If-None-Match con el ETag al servidor antes de usarla.
+    # - Si el archivo no cambio: nginx responde 304 Not Modified (~100 bytes)
+    #   y el navegador usa la cache. Practicamente igual de rapido que
+    #   "immutable" (un round-trip diminuto).
+    # - Si el archivo cambio: nginx envia la version nueva.
+    location ~* ^/(main\.dart\.js|flutter_bootstrap\.js|flutter\.js|flutter_service_worker\.js|manifest\.json|version\.json)$ {
+        expires off;
+        add_header Cache-Control "public, no-cache, must-revalidate";
+    }
+
+    # ─── Assets versionados o estables (fuentes, imagenes embebidas) ─────────
+    # Los archivos bajo /assets/ son los recursos compilados por Flutter:
+    # FontManifest.json, AssetManifest.bin.json, fuentes Material/Cupertino/
+    # FontAwesome, imagenes en assets/imagenes/ y assets/logos_app/, etc.
+    # Cambian solo cuando se modifican los assets fuente, no en cada deploy
+    # rutinario → cachear 30 dias como immutable es seguro y muy rapido.
+    location ~* ^/assets/ {
         expires 30d;
         add_header Cache-Control "public, immutable";
     }
 
-    # index.html nunca cacheado, para que los despliegues se vean al instante.
+    # ─── Iconos PWA (manifest.json los referencia) ───────────────────────────
+    location ~* ^/icons/ {
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+    }
+
+    # ─── favicon ─────────────────────────────────────────────────────────────
+    location = /favicon.png {
+        expires 7d;
+        add_header Cache-Control "public, max-age=604800";
+    }
+
+    # ─── index.html ──────────────────────────────────────────────────────────
+    # Nunca cachear el punto de entrada: ası el navegador siempre carga el
+    # bootstrap mas reciente y a partir de ahi revalida los JS de Flutter.
     location = /index.html {
         add_header Cache-Control "no-store, no-cache, must-revalidate";
     }
