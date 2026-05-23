@@ -206,7 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           ),
 
           // ── Icono de ajustes del servidor (esquina superior derecha) ────────
-          Positioned(
+          /*Positioned(
             top: 0,
             right: 4,
             child: SafeArea(
@@ -223,6 +223,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
             ),
           ),
+
+
+           */
+
         ],
       ),
     );
