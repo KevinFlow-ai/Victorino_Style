@@ -2632,7 +2632,39 @@ Para cada riesgo de nivel **Alto** se define:
 | **S1** Secretos en historial git | (1) Repositorio PRIVADO en GitHub. (2) `.gitignore` actualizado para que no vuelva a ocurrir. (3) Decisión documentada: aceptar el riesgo en el TFG. | (1) Si se filtra el repo, **rotar inmediatamente**: cambiar app password de Gmail, regenerar JWT secret, generar nueva clave de Firebase. (2) Actualizar las 3 variables en Railway. (3) Forzar logout global desde la BD: `DELETE FROM refresh_token;`. | **30 min** | 0 |
 | **S2** TCP Proxy MySQL abierto | (1) Contraseña root MySQL de 32+ caracteres (la genera Railway). (2) Monitorizar logs de conexiones fallidas. | (1) Cerrar el TCP Proxy desde Railway (sub-apartado 14.4) si no se necesita acceso administrativo. (2) Si se detecta intento de fuerza bruta, cambiar la contraseña MySQL desde Railway. | **2 min** (cerrar el proxy) | 0 |
 
-Para los riesgos de nivel **Medio** y **Bajo**, las medidas preventivas son las descritas en el resto de la guía (HTTPS automático, BCrypt, JWT, etc.) y no requieren acción especial.
+#### 15.3.1. Estrategias para riesgos de nivel Medio
+
+Aunque su score es menor, conviene documentar también la respuesta para que el plan esté completo.
+
+| Riesgo | Medida preventiva | Medida reactiva | RTO | RPO |
+|---|---|---|---|---|
+| **T2** Caída del MySQL | (1) Railway gestiona la BD con alta disponibilidad básica del propio plugin. (2) HikariCP reintenta conexiones perdidas. (3) Snapshots diarios del volumen MySQL. | (1) Railway intenta reiniciar el contenedor MySQL automáticamente. (2) Si tarda, comprobar el estado de Railway. (3) Si se confirma corrupción del volumen, restaurar del último snapshot (ver Runbook 15.5.2). | **15 min** | 24 h (entre snapshots automáticos) |
+| **T5** Corrupción de datos | (1) Hibernate parametriza queries (previene SQL injection). (2) Las constraints (FK, CHECK, NOT NULL) del schema impiden estados inválidos. (3) `@Transactional` garantiza atomicidad de operaciones complejas. | (1) Parar el backend para evitar más escrituras. (2) Restaurar desde el último backup limpio. (3) Replay manual de transacciones legítimas perdidas si se identifican. | **30 min** | 24 h |
+| **T7** Build fallido tras push | (1) `./mvnw compile` en local antes de pushear. (2) Si el build falla en Railway, el servicio anterior sigue corriendo (rolling deploys). | (1) Revisar Build Logs en Railway para identificar el error. (2) `git revert` + push de la corrección. (3) Mientras tanto, los usuarios siguen usando la versión anterior. | **10 min** | 0 |
+| **T8** Saturación de RAM (OOM) | (1) `JAVA_TOOL_OPTIONS` limita el heap a 400 MB. (2) Monitorización en pestaña Metrics. (3) HikariCP con pool de conexiones acotado. | (1) Railway mata el proceso y lo reinicia automáticamente. (2) Si persiste, ajustar `-Xmx` a un valor más bajo o subir al plan Pro con más RAM. | **5 min** | 0 |
+| **P2** Credenciales en cuenta personal | (1) 2FA activado en Google, Railway, GitHub. (2) Contraseñas únicas guardadas en gestor de contraseñas. (3) Esta guía documenta qué cuenta es responsable de qué. | (1) En caso de pérdida de acceso, usar opciones de recuperación de Google/GitHub/Railway. (2) Si se pierden todas las cuentas, recurrir al `mysqldump` local y `.env.example` para reconstruir el sistema. | **2-7 días** (recuperación de cuentas) | Variable |
+| **O1** Railway sube precios | (1) Toda la configuración está parametrizada por variables de entorno. (2) Código portable entre PaaS (Render, Fly.io, Heroku). | (1) Evaluar el cambio y decidir si compensa migrar. (2) Si se migra, seguir el plan documentado en 15.5.4 (paso 3). | **4 h** (migración a otro PaaS) | 24 h |
+| **S3** JWT secret comprometido | (1) Secret de 88 caracteres base64 (256+ bits de entropía). (2) Solo Railway lo conoce; no aparece en logs. | (1) Rotar el secret (ver Runbook 15.5.3). (2) `DELETE FROM refresh_token;` para invalidar sesiones. (3) Forzar relogin a todos los usuarios. | **30 min** | 0 |
+| **S4** App password Gmail comprometida | (1) No es la contraseña real de Gmail, es una app password específica que se puede revocar sin perder la cuenta. (2) Gmail tiene rate limiting y monitorización de actividad. | (1) Revocar la app password y crear una nueva. (2) Actualizar `SPRING_MAIL_PASSWORD` en Railway. (3) Si Gmail detectó abuso, esperar a que levante el bloqueo o migrar a SendGrid (ver Runbook 15.5.5). | **15 min** | 0 |
+
+#### 15.3.2. Estrategias para riesgos de nivel Bajo
+
+Estos riesgos son aceptables sin acciones especiales, pero conviene tener una respuesta documentada por si suceden.
+
+| Riesgo | Medida preventiva | Medida reactiva | RTO |
+|---|---|---|---|
+| **T3** Caída frontend nginx | nginx alpine es muy estable; Railway reinicia automáticamente. | El APK Android sigue funcionando contra el backend mientras el frontend se reinicia (~10 s). | 1 min |
+| **T6** Pérdida volumen uploads | El `UploadsSeederRunner` repuebla las 7 fotos seed al arrancar. | (1) Reiniciar el backend → se restauran las fotos seed automáticamente. (2) Las fotos subidas por usuarios sí se pierden; restaurar del último snapshot del volumen si lo hubiera. | 5 min |
+| **T9** Saturación disco MySQL | Solo se hacen INSERTs de citas/notificaciones; el crecimiento es predecible (~1 KB por cita). El plan Hobby permite varios GB. | Borrar manualmente notificaciones antiguas (>1 año) desde MySQL Workbench. Si crece mucho, subir al plan Pro con más espacio. | 30 min |
+| **O2** Incidente global Railway | Status page de Railway monitorizada. | Esperar. Comunicar a los usuarios. Si se alarga >24h, considerar migración temporal a otro PaaS (Runbook 15.5.4). | Variable |
+| **O3** Firebase cambia condiciones | Mantenerse informado vía blog oficial de Firebase. | Implementar un proveedor alternativo de push (OneSignal, AWS SNS) que es estructuralmente similar. | 2 días |
+| **O4** Gmail bloquea cuenta | Volúmenes bajos de envío (recuperación de contraseña es ocasional). No usar Gmail como remitente masivo. | Crear cuenta Gmail nueva o migrar a SendGrid/Brevo (Runbook 15.5.5). | 1 h |
+| **O5** GitHub suspende cuenta | No subir contenido que viole TOS. Tener copia local del repo. | Restaurar el repo en GitLab o Bitbucket desde la copia local. Reconectar Railway al nuevo origen. | 2 h |
+| **O6** Dominio Railway caduca | Railway gestiona los dominios `.up.railway.app`, no se renuevan manualmente. | Regenerar el dominio público en Settings → Networking. Actualizar `VICTORINO_CORS_ORIGENES_EXTRA` y recompilar APK + frontend con la nueva URL. | 30 min |
+| **S5** DDoS | Railway proxy edge tiene protección DDoS básica. | Si el ataque persiste, poner Cloudflare delante (gratis hasta cierto volumen). | 1 h |
+| **S6** Inyección SQL | Hibernate parametriza queries automáticamente. No hay queries nativas en el código. | Si se identifica una query vulnerable, parchar y desplegar. Auditar BD por daños. | 30 min |
+| **S7** XSS | Flutter escapa automáticamente el output de texto. No se renderiza HTML del usuario. | Si se introduce una vulnerabilidad, sanitizar el campo afectado y desplegar. | 30 min |
+| **S8** CSRF | Mitigado por JWT en header (no cookies). CORS restrictivo. | No requiere acción específica. | — |
 
 ### 15.4. Roles y responsabilidades
 
@@ -2883,6 +2915,73 @@ El plan de contingencia **no es un documento estático**. Hay que revisarlo y ac
 | Anualmente | Revisión completa del documento. |
 
 **Última revisión de este plan**: mayo de 2026 (versión inicial del TFG).
+
+### 15.9. FAQ específico del plan de contingencia
+
+Preguntas y respuestas cortas pensadas para responder en directo durante la defensa.
+
+**P: ¿Qué pasa exactamente si el backend Spring Boot se cae?**
+R: Railway detecta el crash a los pocos segundos (el proceso devuelve un exit code distinto de 0), mata el contenedor y arranca uno nuevo automáticamente. Tiempo total de recuperación medido: **10-15 segundos**. Durante ese intervalo los usuarios ven un error "Failed to fetch"; al recargar ya funciona.
+
+**P: ¿Y si el contenedor MySQL se cae?**
+R: Lo mismo: Railway lo reinicia solo. **Los datos NO se pierden** porque viven en el `mysql-volume` (disco persistente que es independiente del contenedor). Cuando el contenedor nuevo arranca, monta el mismo volumen con todos los datos intactos. Tiempo típico: 20-30 segundos.
+
+**P: ¿Cómo se entera Railway de que un servicio está caído?**
+R: Por dos vías: (1) si el proceso del contenedor termina, Railway lo detecta al instante; (2) si el proceso está vivo pero no responde, Railway hace *health checks* HTTP periódicos. Si fallan repetidamente, mata y reinicia el contenedor.
+
+**P: ¿Cuánto datos puedo perder en el peor caso?**
+R: Como **máximo 24 horas** (RPO), porque ese es el intervalo entre snapshots automáticos del volumen MySQL. En la práctica, una caída no causa pérdida de datos: los datos confirmados con `COMMIT` están en el volumen persistente. Solo se perderían transacciones a medio escribir, y MySQL las descarta limpiamente al reiniciarse.
+
+**P: ¿Tienes backups? ¿Cuán frecuentes?**
+R: Sí, dos niveles: (1) **Snapshots automáticos diarios** del volumen MySQL gestionados por Railway (retención 7 días); (2) **Backups manuales con `mysqldump`** que hago antes de cambios sensibles y mensualmente como rutina, guardados en mi Drive personal.
+
+**P: ¿Y si Railway entero se cae globalmente?**
+R: Es muy raro (varios meses entre incidentes serios). Si pasa, esperar y comunicar. Si el incidente supera las 24h, ejecutar el Runbook 15.5.4 que describe la migración a otro PaaS (Render o Fly.io) en ~4 horas, gracias a que toda la configuración está parametrizada por variables de entorno.
+
+**P: ¿Y si me roban el JWT secret?**
+R: Rotación inmediata: generar nuevo secret con `openssl rand -base64 64`, actualizarlo en Railway, y ejecutar `DELETE FROM refresh_token` para invalidar todas las sesiones. Todos los usuarios tendrán que volver a hacer login pero el sistema queda seguro en 30 minutos.
+
+**P: ¿Y si me roban la base de datos entera?**
+R: Las contraseñas son hashes BCrypt cost 10, **prácticamente imposibles de revertir** (un ataque por fuerza bruta tomaría siglos). El daño real sería el de los datos personales (nombres, correos, teléfonos) que tendría que notificar a la AEPD por RGPD en menos de 72 horas.
+
+**P: ¿Cómo te enteras tú de que está pasando algo malo?**
+R: De varias formas: (1) usuarios que avisan por correo; (2) revisión periódica de las métricas de Railway (CPU/RAM/Network) — si veo picos raros, investigo; (3) Railway envía emails automáticos cuando un deploy falla; (4) en una v1.1 se añadiría monitorización con Sentry/Healthchecks.io que avisaría al instante.
+
+**P: ¿Cuánto tardas en restaurar un backup?**
+R: Con un `mysqldump` de ~5 MB (lo que ocupa nuestra BD actual), **5-10 minutos** de extremo a extremo: 1 min para activar el TCP Proxy, 2 min para restaurar el dump, 2 min para reiniciar el backend.
+
+**P: ¿Qué pasa si tú (Kevin) no estás disponible durante una crisis?**
+R: Es el riesgo P4 de la matriz. Mitigado parcialmente por: (1) el sistema se autorrecupera ante la mayoría de incidentes sin intervención; (2) esta guía permite que otra persona técnica resuelva incidencias siguiendo los runbooks; (3) las credenciales están en un gestor de contraseñas con acceso documentado para personas de confianza.
+
+**P: ¿Qué hago si la app deja de responder de repente sin razón aparente?**
+R: Seguir el Runbook 15.5.1 paso a paso: (1) verificar estado en Railway → (2) si está caído, ver logs → (3) si es bug reciente, hacer Redeploy del commit anterior → (4) restaurar versión "buena".
+
+**P: ¿Y si Gmail bloquea la cuenta de correo?**
+R: Runbook 15.5.5: generar nueva app password (suele bastar). Si Google bloquea la cuenta entera, crear una nueva o migrar a SendGrid/Brevo cambiando solo dos variables de entorno en Railway. **No requiere tocar código**.
+
+**P: ¿Puedo cambiar de proveedor cloud si Railway sube precios?**
+R: Sí, en ~4 horas. El código no depende de Railway en absoluto. Lo único que cambia entre proveedores es: (1) dónde se ponen las variables de entorno; (2) cómo se gestiona el volumen persistente; (3) la sintaxis de Dockerfile/Procfile que casi todos los PaaS aceptan tal cual.
+
+**P: ¿Hay rate limiting o protección DDoS?**
+R: A nivel de plataforma, Railway tiene **protección DDoS básica en su edge proxy**. A nivel de aplicación todavía no hay rate limiting (mejora pendiente para v1.1 con Bucket4j). Para producción real se pondría Cloudflare delante (gratis), que añade rate limiting + protección WAF + DDoS más robusta.
+
+**P: ¿Qué pasa con las sesiones de usuario si reinicio el backend?**
+R: Las sesiones **NO se pierden** porque son JWT *stateless*: el token vive en el cliente (Flutter), no en memoria del servidor. Al reiniciar, el backend vuelve a validar tokens existentes con la misma clave secreta y los acepta. Para el usuario es transparente: como mucho ve una petición que falla y se reintenta sola.
+
+**P: ¿Y si la base de datos se queda sin espacio?**
+R: Es el riesgo T9 (probabilidad baja porque cada cita ocupa ~1 KB y nuestro volumen tiene varios GB libres). Si pasara: borrar manualmente notificaciones antiguas (>1 año), o subir al plan Pro de Railway con más espacio. Migración transparente al usuario.
+
+**P: ¿Cómo se hace un rollback a una versión anterior?**
+R: Railway → servicio → pestaña **Deployments** → buscar el último deploy verde → menú **⋮** → **Redeploy**. En **3 minutos** el servicio anterior está activo otra vez. La BD no se toca durante el rollback (a menos que el commit malo incluyera migraciones de schema, que es un caso especial).
+
+**P: ¿Cómo notificas a los usuarios cuando hay un incidente?**
+R: Plantillas predefinidas en la sub-sección 15.7.1 (detección, en curso, restaurado, postmortem). Canales: correo masivo desde `peluqueria.victorinostyle@gmail.com`, banner en la app web, notificación push (si la BD sigue operativa). Para incidentes menores, simplemente respondemos al correo del usuario que avisa.
+
+**P: ¿Has probado el plan alguna vez?**
+R: Sí, los simulacros del apartado 15.6: he reiniciado manualmente el backend para medir tiempos de recuperación, he probado restaurar un backup en un proyecto de pruebas, y he validado que el redeploy de versiones anteriores funciona. Pendientes simulacros de rotación de secretos y de deploy roto (los haré antes de la defensa).
+
+**P: ¿Y si pierdo todas mis cuentas (Google, GitHub, Railway) a la vez?**
+R: Es el escenario peor. Mitigaciones: (1) 2FA con códigos de recuperación impresos guardados físicamente; (2) `mysqldump` reciente guardado en Drive personal Y en disco externo local; (3) repositorio clonado en local. Reconstruir el sistema desde cero llevaría ~1 día asumiendo que tengo el código y un dump fresco.
 
 ---
 
