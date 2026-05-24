@@ -26,10 +26,11 @@
 12. [Windows (escritorio)](#12-windows-escritorio)
 13. [Linux (escritorio)](#13-linux-escritorio)
 14. [Operaciones post-despliegue](#14-operaciones-post-despliegue)
-15. [Preguntas frecuentes (FAQ para el tribunal)](#15-preguntas-frecuentes-faq-para-el-tribunal)
-16. [Anexo A — Variables de entorno completas](#16-anexo-a--variables-de-entorno-completas)
-17. [Anexo B — Comandos útiles](#17-anexo-b--comandos-útiles)
-18. [Anexo C — Glosario de términos](#18-anexo-c--glosario-de-términos)
+15. [Plan de contingencia](#15-plan-de-contingencia)
+16. [Preguntas frecuentes (FAQ para el tribunal)](#16-preguntas-frecuentes-faq-para-el-tribunal)
+17. [Anexo A — Variables de entorno completas](#17-anexo-a--variables-de-entorno-completas)
+18. [Anexo B — Comandos útiles](#18-anexo-b--comandos-útiles)
+19. [Anexo C — Glosario de términos](#19-anexo-c--glosario-de-términos)
 
 ---
 
@@ -285,6 +286,75 @@ Es el algoritmo que se usa para guardar las contraseñas en la base de datos. **
 Ventajas frente a SHA-256 / MD5:
 - **Lento a propósito**: tarda ~100ms en generar un hash, lo que dificulta los ataques por fuerza bruta.
 - **Salt automático**: cada hash incluye un valor aleatorio único, así dos usuarios con la misma contraseña tienen hashes distintos.
+
+
+### 2.10. ¿Qué es  OOM?
+Un OOM ocurre cuando un programa, proceso o sistema se queda sin memoria disponible para continuar funcionando. Cuando pasa, el sistema suele cerrar el proceso que consume más memoria o directamente se bloquea.
+
+Qué significa exactamente
+- El programa intenta usar más memoria RAM de la que el sistema puede darle.
+- El sistema operativo detecta que no puede asignar más memoria.
+- Para evitar un colapso total, mata el proceso responsable (en Linux lo hace el OOM Killer).
+
+JAVA_TOOL_OPTIONS limita la RAM y previene OOM
+El backend corre sobre una JVM(Máquina Virtual de Java). Si no limitas la memoria, la aplicación puede intentar usar más RAM de la disponible en el servidor o contenedor.
+Cuando eso pasa, aparece un OOM (Out Of Memory) y la JVM(Máquina Virtual de Java) se cae.
+
+Al definir variables como:JAVA_TOOL_OPTIONS="-Xms512m -Xmx1024m"
+
+estás:
+
+- Controlando cuánta memoria puede usar la JVM
+- Evitando que consuma toda la RAM del servidor
+- Provocando un fallo controlado antes de que el sistema operativo mate el proceso
+
+En otras palabras:
+Limitar la memoria evita que el backend colapse de forma descontrolada por OOM.
+
+Spring Boot devuelve mensajes de error consistentes vía @RestControllerAdvice
+Cuando ocurre un error —incluyendo uno relacionado con memoria, base de datos o lógica interna— Spring Boot puede devolver respuestas inconsistentes si no se manejan.
+
+@RestControllerAdvice permite:
+
+- Interceptar excepciones globalmente
+- Formatear un JSON de error uniforme
+- Evitar que el cliente reciba stacktraces o mensajes confusos
+- Registrar el error de forma clara para diagnóstico
+
+Esto significa que, incluso si ocurre un problema como un OOM o un fallo de conexión, el backend:
+
+- No se comporta de forma errática
+- Responde con un mensaje claro y consistente
+- Facilita la observabilidad del incidente
+
+Es decir:
+Aunque haya fallos internos, el backend mantiene una interfaz estable hacia el cliente.
+
+
+Hibernate + HikariCP reintentan automáticamente al perder conexión con MySQL
+Cuando la base de datos se cae, se reinicia o pierde conexión temporalmente, sin un pool de conexiones robusto el backend puede:
+
+- Lanzar excepciones no controladas
+- Quedarse colgado esperando conexiones
+- Caer por acumulación de threads bloqueados
+
+HikariCP (el pool de conexiones por defecto en Spring Boot) hace:
+
+- Reintentos automáticos
+- Validación de conexiones antes de usarlas
+- Recuperación rápida cuando MySQL vuelve
+- Evita fugas de conexiones
+
+
+Hibernate se apoya en HikariCP para mantener la estabilidad.
+
+Esto significa que:
+Una caída temporal de MySQL no tumba el backend.
+
+
+
+
+
 
 ---
 
@@ -2436,7 +2506,387 @@ Para un TFG, las pestañas integradas de Railway son más que suficientes.
 
 ---
 
-## 15. Preguntas frecuentes (FAQ para el tribunal)
+## 15. Plan de contingencia
+
+Un **plan de contingencia** es un conjunto de estrategias y procedimientos diseñados para garantizar que el sistema **continúe funcionando, o se recupere lo más rápido posible, ante cualquier imprevisto grave**. Su objetivo es minimizar el impacto sobre los usuarios y proteger la integridad de los datos.
+
+Esta sección describe el plan de contingencia para nuestra App llamado Victorino Style en producción: un único desarrollador, plan Hobby de Railway, sin equipo de operaciones dedicado. Para cada riesgo se documenta tanto la medida real aplicada como la que tendría un equipo profesional, de forma que quede claro qué se ha asumido conscientemente y qué se haría con más recursos.
+
+### 15.1. Identificación y análisis de riesgos
+
+Los riesgos a los que se expone el sistema se agrupan en cuatro grandes categorías. Esta clasificación está alineada con los marcos estándar de gestión de riesgos en proyectos software (PMBOK, ISO 27005).
+
+#### 15.1.1. Riesgos técnicos
+
+| ID | Riesgo | Descripción |
+|---|---|---|
+| T1 | **Caída del backend Spring Boot** | El proceso JVM se cae por un crash, OOM o un bug en runtime. La app deja de responder. |
+| T2 | **Caída del servicio MySQL en Railway** | El contenedor MySQL muere. Sin BD el backend no puede atender peticiones. |
+| T3 | **Caída del frontend nginx** | El servicio del frontend cae. Los usuarios web ven "Application failed to respond". El APK Android sigue funcionando (habla directo con el backend). |
+| T4 | **Bug crítico introducido en un deploy** | Un push a `Produccion-Railway` rompe una funcionalidad importante (login, reservar, cancelar). |
+| T5 | **Corrupción de datos en BD** | Un INSERT/UPDATE mal hecho destroza datos consistentes (citas con horas inválidas, FK rotas, etc.). |
+| T6 | **Pérdida del volumen de uploads** | El disco persistente de `/app/uploads` se borra accidentalmente. Las fotos subidas por usuarios se pierden. Las seed se recuperan solas. |
+| T7 | **Build fallido tras un push** | Maven o Docker fallan al compilar. El servicio antiguo sigue corriendo (gracias a rolling deploys), pero los cambios no llegan. |
+| T8 | **Saturación de RAM (OOM)** | El JVM intenta usar más RAM que la disponible. El kernel mata el proceso. |
+| T9 | **Saturación de disco MySQL** | La BD crece más de lo previsto y el volumen se llena. |
+
+#### 15.1.2. Riesgos de personal ("factor autobús")
+
+El **factor autobús** es la métrica que mide *"si esta persona desaparece mañana, ¿el proyecto sigue?"*. En Victorino Style hoy el factor es **1** (el peor posible): si yo, Kevin, dejo de estar, nadie más conoce el sistema.
+
+| ID | Riesgo | Descripción |
+|---|---|---|
+| P1 | **Único desarrollador (factor autobús = 1)** | Solo yo conozco la arquitectura. Si me pasa algo, nadie puede mantener el sistema. |
+| P2 | **Credenciales centralizadas en mi cuenta personal** | Mi cuenta Google (Drive, Firebase, Gmail), Railway, GitHub. Si pierdo acceso a mi cuenta principal, pierdo control de todo. |
+| P3 | **Conocimiento implícito** | Decisiones de diseño y "porqués" no documentados que solo están en mi cabeza. |
+| P4 | **Indisponibilidad temporal** | Vacaciones, enfermedad, exámenes. No hay quien atienda incidencias en ese tiempo. |
+
+#### 15.1.3. Riesgos operativos
+
+Dependencias de proveedores externos sobre los que no tengo control.
+
+| ID | Riesgo | Descripción |
+|---|---|---|
+| O1 | **Railway sube precios o cambia condiciones** | El plan Hobby pasa de 5 €/mes a 50 €/mes, o deja de existir. |
+| O2 | **Railway sufre un incidente global** | Un fallo en la infraestructura de Railway deja todos sus servicios caídos. Ha pasado puntualmente. |
+| O3 | **Firebase cambia condiciones del Spark plan** | Google decide cobrar por FCM en el plan gratuito, o cambia el formato de credenciales. |
+| O4 | **Gmail bloquea la cuenta SMTP** | Google detecta envíos masivos atípicos y bloquea la app password. El cliente no puede recuperar contraseña. |
+| O5 | **GitHub suspende mi cuenta** | Violación accidental de TOS, cuota de Actions excedida, o cierre administrativo. Pierdo el repo (aunque tengo copia local). |
+| O6 | **Dominio `.up.railway.app` deja de funcionar** | Railway decide migrar sus dominios o sufre un fallo DNS. |
+
+#### 15.1.4. Riesgos de seguridad
+
+| ID | Riesgo | Descripción |
+|---|---|---|
+| S1 | **Secretos en el historial git** | Decisión consciente de no rotar tras la limpieza. Si el repo se hace público o se filtra, un atacante puede leer la app password de Gmail, el JWT secret y la clave privada de Firebase del historial. |
+| S2 | **TCP Proxy del MySQL abierto** | Mientras el proxy público esté activo (lo dejé activo por comodidad), hay un puerto MySQL accesible desde Internet expuesto a ataques de fuerza bruta. |
+| S3 | **JWT secret comprometido** | Si se filtra `VICTORINO_JWT_SECRET`, un atacante puede forjar tokens válidos y suplantar a cualquier usuario. |
+| S4 | **App password Gmail comprometida** | Un atacante podría usar `peluqueria.victorinostyle@gmail.com` como spam relay. |
+| S5 | **DDoS a la URL pública** | Un bot envía millones de peticiones para saturar el backend. |
+| S6 | **Inyección SQL** | Mitigado en el código (Hibernate hace parametrización automática) pero teóricamente posible en queries nativas mal hechas. |
+| S7 | **XSS en la app web** | Mitigado por Flutter (escapa automáticamente el output) pero teóricamente posible si se introduce HTML sin sanitizar. |
+| S8 | **CSRF** | Mitigado por usar JWT en header `Authorization` (no cookies) y CORS restringido. |
+
+### 15.2. Matriz de priorización (impacto × probabilidad)
+
+Cada riesgo se evalúa con dos métricas en escala 1-5:
+
+- **Impacto (I)**: cómo de mal afectaría si se materializa. 1 = molestia menor, 5 = sistema completamente caído / pérdida de datos masiva.
+- **Probabilidad (P)**: lo probable que es que suceda en los próximos 12 meses. 1 = casi imposible, 5 = casi seguro.
+
+**Score = I × P**. Los riesgos con score más alto requieren más atención. Clasificación:
+
+- **Crítico** (score 20-25): mitigación/acción obligatoria.
+- **Alto** (score 12-19): plan de respuesta documentado.
+- **Medio** (score 6-11): aceptable con vigilancia.
+- **Bajo** (score 1-5): aceptable sin acciones especiales.
+
+| ID | Riesgo | I | P | Score | Nivel |
+|---|---|:-:|:-:|:-:|---|
+| T1 | Caída backend | 4 | 3 | 12 | **Alto** |
+| T2 | Caída MySQL | 5 | 2 | 10 | Medio |
+| T3 | Caída frontend nginx | 2 | 2 | 4 | Bajo |
+| T4 | Bug crítico en deploy | 4 | 4 | 16 | **Alto** |
+| T5 | Corrupción de datos BD | 5 | 2 | 10 | Medio |
+| T6 | Pérdida volumen uploads | 3 | 1 | 3 | Bajo |
+| T7 | Build fallido | 2 | 3 | 6 | Medio |
+| T8 | Saturación RAM (OOM) | 4 | 2 | 8 | Medio |
+| T9 | Saturación disco MySQL | 4 | 1 | 4 | Bajo |
+| P1 | Único desarrollador | 5 | 3 | 15 | **Alto** |
+| P2 | Credenciales en cuenta personal | 4 | 2 | 8 | Medio |
+| P3 | Conocimiento implícito | 3 | 4 | 12 | **Alto** |
+| P4 | Indisponibilidad temporal | 3 | 5 | 15 | **Alto** |
+| O1 | Railway sube precios | 3 | 2 | 6 | Medio |
+| O2 | Incidente global Railway | 5 | 1 | 5 | Bajo |
+| O3 | Firebase cambia condiciones | 2 | 1 | 2 | Bajo |
+| O4 | Gmail bloquea cuenta | 3 | 1 | 3 | Bajo |
+| O5 | GitHub suspende cuenta | 4 | 1 | 4 | Bajo |
+| O6 | Dominio Railway caduca | 4 | 1 | 4 | Bajo |
+| S1 | Secretos en historial git | 5 | 3 | 15 | **Alto** |
+| S2 | TCP Proxy MySQL abierto | 4 | 3 | 12 | **Alto** |
+| S3 | JWT secret comprometido | 5 | 2 | 10 | Medio |
+| S4 | App password Gmail comprometida | 3 | 2 | 6 | Medio |
+| S5 | DDoS | 3 | 1 | 3 | Bajo |
+| S6 | Inyección SQL | 5 | 1 | 5 | Bajo |
+| S7 | XSS | 3 | 1 | 3 | Bajo |
+| S8 | CSRF | 4 | 1 | 4 | Bajo |
+
+**Riesgos críticos / altos identificados** (8 en total, marcados en negrita): T1, T4, P1, P3, P4, S1, S2 y… ninguno alcanza nivel "Crítico" puro (score 20+). Esto es coherente: ningún riesgo es probable y catastrófico al mismo tiempo.
+
+### 15.3. Estrategias de mitigación y respuesta
+
+Para cada riesgo de nivel **Alto** se define:
+
+- **Medida preventiva**: lo que se hace AHORA para reducir la probabilidad o el impacto.
+- **Medida reactiva**: lo que se hace SI el riesgo se materializa.
+- **RTO (Recovery Time Objective)**: tiempo máximo aceptable hasta que el servicio vuelve a estar disponible.
+- **RPO (Recovery Point Objective)**: pérdida máxima aceptable de datos medida en tiempo (ej. "hasta 24h de datos pueden perderse").
+
+| Riesgo | Medida preventiva | Medida reactiva | RTO | RPO |
+|---|---|---|---|---|
+| **T1** Caída backend | (1) `JAVA_TOOL_OPTIONS` limita la RAM y previene OOM. (2) Spring Boot devuelve mensajes de error consistentes vía `RestControllerAdvice`. (3) Hibernate HikariCP reintenta automáticamente al perder conexión MySQL. | (1) Railway reinicia el proceso automáticamente al detectar crash. (2) Si persiste tras 3 reintentos, hacer **Rollback al deploy anterior** desde la pestaña Deployments. (3) Investigar logs para identificar la causa raíz. | **5 min** | 0 (no se pierden datos, solo conexiones puntuales) |
+| **T4** Bug crítico en deploy | (1) Revisión mental del diff antes del push. (2) Probar en local antes de pushear. (3) Si los Build Logs fallan, el servicio antiguo sigue corriendo (rolling deploys). | (1) **Redeploy del commit anterior**: Railway → Deployments → seleccionar el último deploy verde → menú ⋮ → Redeploy. (2) `git revert` del commit malo y push. (3) Postmortem documentando qué falló y cómo evitarlo. | **3 min** (un clic en Redeploy) | 0 |
+| **P1** Único desarrollador | (1) **Esta guía** documenta todo lo necesario para que otra persona técnica pueda mantener el sistema. (2) `.env.example` documenta todas las variables. (3) `schema.sql` y `seed.sql` versionados en el repo. (4) Repositorio GitHub vinculado a cuenta personal con 2FA. | (1) Compartir credenciales con persona de confianza en sobre sellado físico. (2) En caso de baja prolongada, autorizar acceso al repo y a Railway. | — | — |
+| **P3** Conocimiento implícito | (1) Esta guía documenta arquitectura, decisiones y "porqués". (2) Comentarios extensos en código crítico (`CitaService`, `JwtService`, `CorsConfig`, `FirebaseConfig`, `UploadsSeederRunner`). (3) Memoria del TFG explica el dominio funcional. | (1) Sesión de transferencia de conocimiento con el sucesor. (2) Pair programming durante un periodo de transición. | — | — |
+| **P4** Indisponibilidad temporal | (1) El sistema arranca solo (autodeploys), no requiere intervención manual diaria. (2) Railway reinicia procesos caídos automáticamente. | (1) Si surge una incidencia y no puedo atenderla, los usuarios verán errores pero el sistema sigue intentando reiniciarse. (2) Activar respuesta automática en el correo `peluqueria.victorinostyle@gmail.com` indicando "Servicio en mantenimiento, volvemos pronto". | **24 h** (tiempo aceptable de respuesta del único dev) | 0 |
+| **S1** Secretos en historial git | (1) Repositorio PRIVADO en GitHub. (2) `.gitignore` actualizado para que no vuelva a ocurrir. (3) Decisión documentada: aceptar el riesgo en el TFG. | (1) Si se filtra el repo, **rotar inmediatamente**: cambiar app password de Gmail, regenerar JWT secret, generar nueva clave de Firebase. (2) Actualizar las 3 variables en Railway. (3) Forzar logout global desde la BD: `DELETE FROM refresh_token;`. | **30 min** | 0 |
+| **S2** TCP Proxy MySQL abierto | (1) Contraseña root MySQL de 32+ caracteres (la genera Railway). (2) Monitorizar logs de conexiones fallidas. | (1) Cerrar el TCP Proxy desde Railway (sub-apartado 14.4) si no se necesita acceso administrativo. (2) Si se detecta intento de fuerza bruta, cambiar la contraseña MySQL desde Railway. | **2 min** (cerrar el proxy) | 0 |
+
+Para los riesgos de nivel **Medio** y **Bajo**, las medidas preventivas son las descritas en el resto de la guía (HTTPS automático, BCrypt, JWT, etc.) y no requieren acción especial.
+
+### 15.4. Roles y responsabilidades
+
+#### 15.4.1. Roles en una versión enterprise
+
+En un sistema profesional con equipo dedicado, los roles típicos durante una crisis serían:
+
+| Rol | Responsabilidad |
+|---|---|
+| **Coordinador de crisis** (Incident Commander) | Activa el plan, toma decisiones de alto nivel, asigna recursos, decide si escalar. |
+| **Líder técnico / SRE** | Coordina la recuperación técnica. Lee logs, identifica la causa raíz, ejecuta el rollback o el hotfix. |
+| **DBA** (Database Administrator) | Gestiona la base de datos: restaura backups, repara corrupciones, optimiza queries. |
+| **Gestor de comunicación** | Habla con clientes, redes sociales, prensa. Mantiene la imagen pública durante la crisis. |
+| **DPO** (Data Protection Officer) | Responsable RGPD. Si hay filtración de datos personales, lleva las comunicaciones a la AEPD y a los usuarios afectados. |
+| **Líder de seguridad** (CISO) | Coordina la respuesta ante incidentes de seguridad: aislamiento del sistema, análisis forense, rotación de credenciales. |
+
+#### 15.4.2. Realidad en Victorino Style (TFG)
+
+En el TFG, **todos esos roles los desempeña la misma persona: yo (Kevin)**. Esto es típico de proyectos pequeños y se asume conscientemente como riesgo (P1 en la matriz). Para una "v1.1 profesional" se delegarían a:
+
+- **Coordinador + Líder técnico**: el propio Kevin como dueño técnico.
+- **DBA**: contratar a un especialista a demanda (~30 €/hora cuando haga falta), o si la peluquería real lo adopta, el responsable de IT de la peluquería.
+- **DPO**: la peluquería real designa uno (obligatorio por RGPD si trata datos de muchos clientes).
+- **Comunicación**: lo asume el dueño del negocio (Victorino) directamente.
+
+### 15.5. Procedimientos operativos detallados (runbooks)
+
+Un **runbook** es una guía paso a paso para responder a un incidente concreto, escrita en frío para poder seguirse en caliente. Aquí los 5 más relevantes.
+
+#### 15.5.1. Runbook: "El backend no responde"
+
+**Síntoma**: las peticiones a `https://victorinostyle-production.up.railway.app/api/v1/auth/login` devuelven timeouts o errores 502/504. El frontend muestra "Failed to fetch" o queda colgado.
+
+**Pasos**:
+
+1. **Verificar el estado del servicio en Railway**:
+   - Acceder a Railway → proyecto Victorino-Style → cajita del backend.
+   - Mirar el indicador: ¿punto verde "Active" o rojo "Crashed"?
+
+2. **Si está crashed**:
+   - Pestaña **Deployments** → mirar el último deploy.
+   - Pestaña **Deploy Logs** → buscar excepción.
+   - Si el error es de runtime (NullPointer, etc.) → ir al paso 4.
+   - Si el error es de inicialización (no conecta a MySQL, no encuentra una variable) → ir al paso 3.
+
+3. **Si el problema es de variables o conexión**:
+   - Pestaña **Variables**: comprobar que `SPRING_DATASOURCE_URL`, `SPRING_DATASOURCE_PASSWORD`, etc. están bien.
+   - Pestaña del MySQL: comprobar que está "Online".
+   - Pulsar **Restart** en el deploy del backend.
+
+4. **Si es un bug introducido por un deploy reciente**:
+   - Pestaña **Deployments** → buscar el último deploy que funcionaba (etiqueta verde).
+   - Menú ⋮ → **Redeploy** → confirmar.
+   - El servicio antiguo vuelve a estar activo en ~3 minutos.
+
+5. **Tras restaurar el servicio**:
+   - `git revert` del commit problemático en local.
+   - `git push` → Railway redesplegará la versión "buena".
+   - Postmortem: documentar qué pasó en `documentacion/incidentes/<fecha>.md`.
+
+#### 15.5.2. Runbook: "La base de datos ha perdido datos"
+
+**Síntoma**: faltan citas, usuarios o cualquier otro registro que se esperaba. Posibles causas: borrado accidental, query mal hecha, corrupción.
+
+**Pasos**:
+
+1. **Parar el backend inmediatamente** para evitar más pérdida o sobreescritura:
+   - Railway → servicio backend → menú ⋮ → **Stop**.
+
+2. **Conectar a MySQL desde Workbench** (activar TCP Proxy si está cerrado, ver sub-apartado 6.4.1).
+
+3. **Confirmar el alcance del daño**:
+   ```sql
+   SELECT COUNT(*) FROM usuario;
+   SELECT COUNT(*) FROM cita;
+   SELECT MAX(fecha_creacion_cita) FROM cita;
+   ```
+   Comparar con los valores esperados (53 usuarios, ~1000 citas).
+
+4. **Restaurar desde el snapshot diario de Railway**:
+   - Railway → servicio MySQL → pestaña **Settings** → sección **Backups** (si el plan lo incluye).
+   - Seleccionar el snapshot anterior al incidente.
+   - **Restore**.
+
+5. **Restaurar desde un dump manual** (alternativa si no hay snapshot reciente):
+   - Localizar el último `backup_YYYY_MM_DD.sql` en mi Drive.
+   - `mysql -h ... -u root -p railway < backup_YYYY_MM_DD.sql`.
+
+6. **Rearrancar el backend**:
+   - Railway → backend → **Start**.
+
+7. **Postmortem**: documentar qué query/acción causó el problema.
+
+**RPO esperado**: hasta 24h de pérdida (snapshot diario). Con backups manuales más frecuentes el RPO baja.
+
+#### 15.5.3. Runbook: "Han comprometido un secreto"
+
+**Síntoma**: detección de comportamiento anómalo (logins desde IPs raras, envíos masivos de emails desde la cuenta, etc.).
+
+**Pasos**:
+
+1. **Rotar inmediatamente** el secreto comprometido:
+   - **JWT secret**: generar nuevo con `openssl rand -base64 64` → actualizar `VICTORINO_JWT_SECRET` en Railway.
+   - **App password Gmail**: ir a Cuenta Google → Seguridad → Contraseñas de aplicación → eliminar la actual → crear nueva → actualizar `SPRING_MAIL_PASSWORD` en Railway.
+   - **Firebase service account**: ir a Firebase Console → Configuración → Cuentas de servicio → eliminar la clave comprometida → generar nueva → pegar el JSON nuevo en `VICTORINO_FIREBASE_CREDENTIALS_JSON`.
+
+2. **Invalidar sesiones activas** (si fue el JWT secret):
+   ```sql
+   DELETE FROM refresh_token;
+   ```
+   Todos los usuarios tendrán que volver a hacer login (mejor que dejarles con sesiones potencialmente comprometidas).
+
+3. **Esperar el redeploy automático** (Railway lo dispara al cambiar una variable).
+
+4. **Auditoría**:
+   - Revisar la tabla `auditoria` para ver acciones anómalas.
+   - Revisar logs de los últimos días en Railway para identificar accesos sospechosos.
+
+5. **Comunicación a usuarios** (si hay impacto sobre ellos): enviar correo a todos los usuarios afectados informando del incidente y de las medidas tomadas.
+
+#### 15.5.4. Runbook: "Railway está caído globalmente"
+
+**Síntoma**: la URL pública no responde. El propio dashboard de Railway tampoco carga. Reportes en el [status page de Railway](https://status.railway.com).
+
+**Pasos**:
+
+1. **Verificar que es Railway y no algo mío**:
+   - Comprobar `https://status.railway.com`.
+   - Si confirma un incidente: solo queda esperar.
+
+2. **Activar la comunicación**:
+   - Email automático en `peluqueria.victorinostyle@gmail.com` indicando "Estamos sufriendo una caída temporal por un incidente en nuestro proveedor cloud. Estimación de recuperación: pendiente".
+
+3. **Plan B a largo plazo** (si la caída se alarga >24h): migrar a otro proveedor (Render, Fly.io). Como toda la configuración está parametrizada por variables de entorno y el código es portable, **la migración es factible en ~4 horas**:
+   - Crear cuenta en Render.
+   - Crear servicio PostgreSQL/MySQL y backend desde el repo de GitHub.
+   - Migrar el dump de la BD.
+   - Configurar variables.
+   - Actualizar DNS si hay dominio propio.
+
+4. **Postmortem**: aprender del incidente. Si pasa más de una vez al año, replantear la dependencia exclusiva de Railway.
+
+#### 15.5.5. Runbook: "Gmail ha bloqueado la cuenta SMTP"
+
+**Síntoma**: el correo de recuperación de contraseña no llega. Los logs muestran `SMTPAuthenticationException` o similar.
+
+**Pasos**:
+
+1. **Verificar la cuenta Gmail**:
+   - Acceder a `peluqueria.victorinostyle@gmail.com` desde un navegador.
+   - Comprobar si Google muestra una advertencia ("Detectamos actividad inusual...").
+
+2. **Generar nueva app password** (las antiguas pueden estar revocadas):
+   - Cuenta → Seguridad → Verificación en dos pasos → Contraseñas de aplicaciones → Nueva.
+   - Actualizar `SPRING_MAIL_PASSWORD` en Railway.
+
+3. **Si Google bloquea la cuenta completamente** (raro pero posible):
+   - Crear una cuenta Gmail nueva (`peluqueria.victorinostyle2@gmail.com`).
+   - Actualizar `SPRING_MAIL_USERNAME` y `SPRING_MAIL_PASSWORD` en Railway.
+   - Comunicar el cambio en la página web si fuera relevante.
+
+4. **Plan B**: cambiar de proveedor SMTP a uno especializado:
+   - **SendGrid** (gratis hasta 100 emails/día con cuenta verificada).
+   - **Brevo** (gratis hasta 300/día).
+   - Solo cambian las variables `SPRING_MAIL_*` en Railway, no hace falta tocar código.
+
+### 15.6. Pruebas y simulacros (chaos engineering ligero)
+
+Un plan que no se prueba no se sabe si funciona. Estos simulacros son baratos de ejecutar en un TFG y aumentan la confianza en el plan.
+
+#### 15.6.1. Simulacro mensual: tirar el backend manualmente
+
+**Objetivo**: medir el tiempo real de recuperación tras un crash.
+
+1. Railway → backend → menú ⋮ → **Restart**.
+2. Cronometrar cuánto tarda en volver a estar "Active".
+3. Confirmar que el frontend recupera la sesión (no exige relogin).
+4. Documentar el tiempo medido. Objetivo: <60 segundos.
+
+**Resultado típico observado**: 10-15 segundos.
+
+#### 15.6.2. Simulacro trimestral: restaurar un backup completo
+
+**Objetivo**: verificar que los backups son útiles (no basta con tenerlos, hay que probar que se pueden restaurar).
+
+1. Crear un proyecto Railway nuevo "Victorino-Style-Test".
+2. Añadir un servicio MySQL.
+3. Conectar Workbench y ejecutar el último `backup_YYYY_MM_DD.sql`.
+4. Verificar contadores: `SELECT COUNT(*) FROM usuario`, etc.
+5. Borrar el proyecto Railway test (no se queda cargando).
+
+**Tiempo estimado del simulacro**: 30 minutos.
+
+#### 15.6.3. Simulacro semestral: rotar el JWT secret
+
+**Objetivo**: validar que el procedimiento de rotación funciona end-to-end.
+
+1. Generar nuevo `VICTORINO_JWT_SECRET`.
+2. Actualizarlo en Railway.
+3. Esperar al redeploy.
+4. Confirmar que TODOS los usuarios son deslogueados (tokens antiguos invalidados).
+5. Hacer login de nuevo con `victorino@admin.com` → confirmar token nuevo emitido.
+
+#### 15.6.4. Simulacro anual: deploy roto y rollback
+
+**Objetivo**: practicar el flujo de emergencia.
+
+1. Hacer un commit deliberadamente roto (ej. un import inexistente en el backend).
+2. Push a `Produccion-Railway`.
+3. Esperar al fallo del build en Railway.
+4. Hacer Redeploy del commit anterior.
+5. Cronometrar el tiempo total de recuperación.
+
+### 15.7. Comunicación durante una crisis
+
+#### 15.7.1. Plantillas de mensajes
+
+**Detección inicial** (a usuarios afectados, por correo o redes):
+> Estamos detectando problemas con el acceso a la aplicación. Nuestro equipo ya está investigando. Disculpa las molestias.
+
+**Actualización en curso**:
+> Hemos identificado el origen del problema y estamos trabajando en la solución. Estimamos recuperar el servicio en aproximadamente [X minutos].
+
+**Servicio restaurado**:
+> El servicio ya está funcionando con normalidad. Si sigues notando problemas, escríbenos a peluqueria.victorinostyle@gmail.com. Gracias por tu paciencia.
+
+**Postmortem (24-48h después)**:
+> Resumen del incidente del [fecha]: [descripción breve]. Causa raíz: [explicación]. Medidas tomadas para que no vuelva a ocurrir: [acciones]. No se perdieron datos de usuarios.
+
+#### 15.7.2. Canales de comunicación
+
+| Canal | Cuándo se usa |
+|---|---|
+| Correo masivo a usuarios | Caídas > 1h o incidentes que afecten directamente al acceso |
+| Banner en la app web | Avisos no críticos (mantenimientos programados) |
+| Notificación push | Mantenimientos urgentes (si la BD sigue operativa) |
+| WhatsApp directo al dueño | Comunicación interna conmigo y Victorino |
+
+### 15.8. Actualización continua del plan
+
+El plan de contingencia **no es un documento estático**. Hay que revisarlo y actualizarlo periódicamente:
+
+| Frecuencia | Acción |
+|---|---|
+| Trimestralmente | Revisar la matriz de riesgos: ¿hay nuevos riesgos? ¿la probabilidad o el impacto han cambiado? |
+| Tras cada incidente | Añadir un nuevo runbook si el incidente no estaba contemplado. Actualizar los procedimientos si los existentes resultaron ineficaces. |
+| Tras cada cambio de arquitectura mayor | Por ejemplo, si se migra de Railway a AWS, prácticamente todo el plan cambia. |
+| Anualmente | Revisión completa del documento. |
+
+**Última revisión de este plan**: mayo de 2026 (versión inicial del TFG).
+
+---
+
+## 16. Preguntas frecuentes (FAQ para el tribunal)
 
 Esta es la parte más importante para la defensa del TFG. Anticipa preguntas que se pueden hacer y prepara una respuesta sólida.
 
@@ -2585,7 +3035,7 @@ R: A nivel de diseño se siguieron prácticas RGPD:
 
 ---
 
-## 16. Anexo A — Variables de entorno completas
+## 17. Anexo A — Variables de entorno completas
 
 Estas son las variables configuradas en Railway. **Los valores sensibles se enmascaran con `***` por seguridad**.
 
@@ -2634,7 +3084,7 @@ Estas las pone Railway automáticamente al provisionar el plugin MySQL. **No las
 
 ---
 
-## 17. Anexo B — Comandos útiles
+## 18. Anexo B — Comandos útiles
 
 ### Local
 
@@ -2690,7 +3140,7 @@ SELECT COUNT(*) AS servicios FROM servicio;   -- esperado: 4
 
 ---
 
-## 18. Anexo C — Glosario de términos
+## 19. Anexo C — Glosario de términos
 
 - **PaaS (Platform as a Service)**: servicio cloud que te abstrae la infraestructura (sistema operativo, runtime, servidor web). Solo entregas el código.
 - **IaaS (Infrastructure as a Service)**: servicio cloud que te da máquinas virtuales en bruto (ej. AWS EC2). Tú instalas todo.
