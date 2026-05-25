@@ -1,0 +1,163 @@
+# =====================================================================
+# Docker Compose para Victorino Style (entorno LOCAL de desarrollo / TFG)
+#
+# Levanta los 3 servicios necesarios para que la app funcione en
+# cualquier ordenador con Docker Desktop o Docker Engine:
+#
+#   - mysql:    MySQL 8 con la BD ya cargada (schema + seed automaticos)
+#   - backend:  Spring Boot 4 + JDK 21 + JAR ejecutable
+#   - frontend: Flutter Web compilado + servidor nginx
+#
+# Pre-requisito: copiar .env.example a .env y rellenar credenciales.
+#
+# Uso basico:
+#   docker compose up --build      # primera vez (20-30 min)
+#   docker compose up              # arranques siguientes (~1 min)
+#   docker compose down            # parar (conserva datos)
+#   docker compose down -v         # parar y borrar todo (BD incluida)
+#
+# URLs tras el arranque:
+#   Frontend:  http://localhost:8081
+#   Backend:   http://localhost:8080/api/v1
+#   Swagger:   http://localhost:8080/api/v1/swagger-ui.html
+# =====================================================================
+
+services:
+
+  # ===================================================================
+  # Servicio MySQL.
+  # La imagen oficial ejecuta automaticamente cualquier .sql que encuentre
+  # en /docker-entrypoint-initdb.d/ DURANTE EL PRIMER ARRANQUE (cuando el
+  # volumen mysql_data esta vacio). Por eso montamos la carpeta de
+  # scripts del backend ahi: schema_railway.sql y seed_railway.sql.
+  # ===================================================================
+  mysql:
+    image: mysql:8.0
+    container_name: victorino-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: railway
+      # Zona horaria espanola para que las fechas coincidan con Madrid.
+      TZ: Europe/Madrid
+    ports:
+      # Expuesto al host por si el profesor quiere conectarse con
+      # MySQL Workbench desde fuera del contenedor. No es obligatorio.
+      - "3306:3306"
+    volumes:
+      # Volumen persistente: la BD sobrevive a reinicios y rebuilds.
+      - mysql_data:/var/lib/mysql
+      # Scripts de inicializacion: schema_railway.sql crea las tablas,
+      # seed_railway.sql carga ~53 usuarios + ~1000 citas + servicios.
+      # Se ordenan alfabeticamente, asi que poner 01- y 02- garantiza
+      # que schema vaya antes que seed.
+      - ./Backend_Victorino/src/main/resources/db/schema_railway.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./Backend_Victorino/src/main/resources/db/seed_railway.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      # Permite que el backend espere a que MySQL acepte conexiones
+      # antes de intentar arrancar Hibernate.
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks:
+      - victorino-net
+
+  # ===================================================================
+  # Servicio backend (Spring Boot 4 + JDK 21).
+  # Se construye desde Backend_Victorino/Dockerfile (multi-stage).
+  # ===================================================================
+  backend:
+    build:
+      context: ./Backend_Victorino
+      dockerfile: Dockerfile
+    container_name: victorino-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        # No arranca hasta que el healthcheck de MySQL pase.
+        condition: service_healthy
+    environment:
+      # ----- Conexion BD -----
+      # "mysql" es el nombre del servicio: el DNS interno de Docker lo
+      # resuelve a la IP del contenedor MySQL automaticamente.
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/railway?useSSL=false&serverTimezone=Europe/Madrid&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: "root"
+      SPRING_DATASOURCE_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
+
+      # ----- JWT -----
+      VICTORINO_JWT_SECRET: "${VICTORINO_JWT_SECRET}"
+
+      # ----- Gmail SMTP -----
+      SPRING_MAIL_USERNAME: "${SPRING_MAIL_USERNAME}"
+      SPRING_MAIL_PASSWORD: "${SPRING_MAIL_PASSWORD}"
+
+      # ----- Admin demo -----
+      VICTORINO_ADMIN_PRUEBA_ACTIVO: "true"
+      VICTORINO_ADMIN_PRUEBA_PASSWORD: "${VICTORINO_ADMIN_PRUEBA_PASSWORD}"
+
+      # ----- Uploads (volumen persistente) -----
+      VICTORINO_UPLOADS_DIRECTORIO: "/app/uploads"
+
+      # ----- CORS para el frontend -----
+      # El frontend se sirve en http://localhost:8081 desde el navegador
+      # del profesor, por eso ese es el origen que abrimos.
+      VICTORINO_CORS_ORIGENES_EXTRA: "http://localhost:8081"
+
+      # ----- Firebase (push notifications) -----
+      VICTORINO_FIREBASE_PROJECT_ID: "victorino-style"
+      VICTORINO_FIREBASE_CREDENTIALS_JSON: "${VICTORINO_FIREBASE_CREDENTIALS_JSON}"
+    ports:
+      - "8080:8080"
+    volumes:
+      # Volumen persistente para fotos subidas. El UploadsSeederRunner
+      # copiara aqui las 7 fotos seed la primera vez que arranque.
+      - backend_uploads:/app/uploads
+    networks:
+      - victorino-net
+
+  # ===================================================================
+  # Servicio frontend (Flutter Web + nginx).
+  # Se construye desde frontend_victorino/Dockerfile, que ya existe y
+  # acepta API_BASE_URL como build arg para hornear la URL del backend
+  # en el bundle JavaScript final.
+  # ===================================================================
+  frontend:
+    build:
+      context: ./frontend_victorino
+      dockerfile: Dockerfile
+      args:
+        # Desde el navegador del profesor, las peticiones van al host,
+        # no a la red interna de Docker. Por eso usamos localhost:8080
+        # y no http://backend:8080.
+        API_BASE_URL: "http://localhost:8080/api/v1"
+    container_name: victorino-frontend
+    restart: unless-stopped
+    ports:
+      # nginx escucha en el 8080 dentro del contenedor; lo mapeamos al
+      # 8081 del host para no colisionar con el backend (que tambien
+      # escucha en 8080 del host).
+      - "8081:8080"
+    networks:
+      - victorino-net
+
+# ---------------------------------------------------------------------
+# Red privada compartida por los 3 servicios. Docker le pone DNS
+# automatico: dentro de la red, "mysql" resuelve al contenedor de MySQL,
+# "backend" al del backend, etc.
+# ---------------------------------------------------------------------
+networks:
+  victorino-net:
+    driver: bridge
+
+# ---------------------------------------------------------------------
+# Volumenes persistentes (sobreviven a docker compose down sin -v).
+# - mysql_data: contiene los datos de la BD.
+# - backend_uploads: contiene las fotos subidas y las seed.
+# ---------------------------------------------------------------------
+volumes:
+  mysql_data:
+    name: victorino_mysql_data
+  backend_uploads:
+    name: victorino_backend_uploads

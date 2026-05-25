@@ -26,8 +26,10 @@ RUN flutter pub get
 COPY . .
 
 # La URL del backend se inyecta en tiempo de compilacion via --dart-define.
-# Si no se pasa, cae al default definido en lib/core/api/api_endpoints.dart.
-ARG API_BASE_URL
+# El default `http://localhost:8080/api/v1` es el que usa el docker-compose
+# local (entrega del TFG al tribunal). En el build de Railway se pasa la
+# URL publica con `--build-arg API_BASE_URL=https://...`.
+ARG API_BASE_URL=http://localhost:8080/api/v1
 RUN flutter build web --release \
     --dart-define=API_BASE_URL=${API_BASE_URL}
 

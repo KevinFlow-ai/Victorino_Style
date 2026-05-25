@@ -1,0 +1,43 @@
+# Excluye del contexto de Docker todoo lo que no necesita el build.
+# Reduce drasticamente el tiempo de "docker build" y evita filtrar
+# secretos accidentalmente.
+
+# Outputs de Maven (se regeneran en el build dentro del contenedor)
+target/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+.kiro/
+.agents/
+
+# Carpeta de uploads en disco (las imagenes seed estan en
+# src/main/resources/uploads-seed/, no aqui). Esta carpeta solo
+# contiene .gitkeep y los archivos subidos por usuarios en runtime
+# durante desarrollo local.
+uploads/
+
+# Variables de entorno locales (NUNCA subir al contenedor)
+.env
+.env.*
+!.env.example
+
+# Logs y temporales
+*.log
+HELP.md
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentacion interna (no necesaria en el contenedor)
+documentacion_backend/
+
+# El propio Dockerfile (no se incluye recursivamente)
+Dockerfile
+.dockerignore
+
+# Scripts de Windows (.bat) que no se usan dentro del contenedor Linux
+*.bat
