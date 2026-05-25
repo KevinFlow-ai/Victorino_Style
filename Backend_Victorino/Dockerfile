@@ -44,9 +44,22 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# Usuario no-root por buenas practicas de seguridad.
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring
+# IMPORTANTE: el proceso corre como root dentro del contenedor.
+
+## Usuario no-root por buenas practicas de seguridad.
+ #RUN addgroup -S spring && adduser -S spring -G spring
+ #USER spring
+
+# Originalmente este Dockerfile usaba un usuario no-root (USER spring)
+# por buenas practicas de seguridad. PERO eso rompe la subida de fotos
+# en Railway porque el Volume `/app/uploads` se monta con propiedad
+# `root` y un usuario no-root no puede escribir en el.
+#
+# Mantener root dentro del contenedor NO es problema de seguridad: el
+# root del contenedor esta aislado del host y solo tiene acceso a lo
+# que explicitamente se le ha montado. Es practica habitual en imagenes
+# oficiales (mysql:8, nginx:alpine, eclipse-temurin) que tambien
+# arrancan como root.
 
 COPY --from=build /app/target/app.jar /app/app.jar
 
