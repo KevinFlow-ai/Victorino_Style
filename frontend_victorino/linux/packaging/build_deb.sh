@@ -23,9 +23,8 @@ mkdir -p "$DEB_STAGE/opt/victorino-style"
 mkdir -p "$DEB_STAGE/usr/share/applications"
 mkdir -p "$DEB_STAGE/usr/share/icons/hicolor"
 # Copiar bundle completo (binario + librerías + flutter_assets)
+# El icono de la ventana se carga desde data/flutter_assets/assets/logos_app/logo_app1.3.png
 cp -r "$BUNDLE/." "$DEB_STAGE/opt/victorino-style/"
-# Asegurar que el icono de runtime está en el bundle
-cp "$ROOT/linux/runner/my_app_icon.png" "$DEB_STAGE/opt/victorino-style/"
 # ── 3. Iconos XDG (hicolor) ──────────────────────────────────────────────────
 echo "==> [3/5] Instalando iconos XDG hicolor (9 tamanios)"
 ICON_SRC="$ROOT/linux/packaging/icons"

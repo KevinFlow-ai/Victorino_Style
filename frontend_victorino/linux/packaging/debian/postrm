@@ -1,10 +1,24 @@
 ﻿#!/bin/sh
 set -e
+
 # Actualizar cache de iconos tras desinstalar
 if [ -x /usr/bin/gtk-update-icon-cache ]; then
     gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
 fi
+
 if [ -x /usr/bin/update-desktop-database ]; then
     update-desktop-database /usr/share/applications || true
 fi
+
+# ── Eliminar accesos directos del Escritorio de cada usuario ─────────────────
+getent passwd | while IFS=: read -r username _ uid _ _ homedir _; do
+    if [ "$uid" -ge 1000 ] && [ -d "$homedir" ]; then
+        for desktop_dir in "$homedir/Escritorio" "$homedir/Desktop"; do
+            if [ -f "$desktop_dir/victorino-style.desktop" ]; then
+                rm -f "$desktop_dir/victorino-style.desktop"
+            fi
+        done
+    fi
+done
+
 exit 0
