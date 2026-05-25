@@ -25,6 +25,14 @@ flutter_launcher_icons:
     background_color: "#0A0A0F"
     theme_color: "#0A0A0F"
 
+  # ── Windows ──────────────────────────────────────────────────────────────
+  # Genera app_icon.ico en windows/runner/resources/
+  # Fuente original 1024x1024 para máxima calidad sin degradación
+  windows:
+    generate: true
+    image_path: "assets/logos_app/logo_app1.3.png"
+    icon_size: 256
+
   # ── Linux ────────────────────────────────────────────────────────────────
   # Requiere que exista el directorio linux/ (flutter create --platforms=linux .)
   linux:

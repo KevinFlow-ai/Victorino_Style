@@ -24,3 +24,11 @@ target_link_libraries(${BINARY_NAME} PRIVATE flutter)
 target_link_libraries(${BINARY_NAME} PRIVATE PkgConfig::GTK)
 
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
+
+# Instala el icono fuente 1024x1024 junto al ejecutable.
+# El código C++ (my_application.cc) lo carga y genera las resoluciones
+# 16/32/48/64/128/256 px en memoria usando GDK_INTERP_HYPER (máxima calidad).
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/my_app_icon.png"
+  DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
+

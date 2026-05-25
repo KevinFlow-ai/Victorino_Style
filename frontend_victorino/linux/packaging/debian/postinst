@@ -1,0 +1,11 @@
+﻿#!/bin/sh
+set -e
+# Actualizar cache de iconos GTK
+if [ -x /usr/bin/gtk-update-icon-cache ]; then
+    gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+fi
+# Registrar el archivo .desktop
+if [ -x /usr/bin/update-desktop-database ]; then
+    update-desktop-database /usr/share/applications || true
+fi
+exit 0

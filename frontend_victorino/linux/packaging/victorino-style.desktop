@@ -1,0 +1,9 @@
+﻿[Desktop Entry]
+Name=Victorino Style
+Comment=Gestion de barberia Victorino Style
+Exec=/opt/victorino-style/frontend_victorino
+Icon=victorino_style
+Terminal=false
+Type=Application
+Categories=Office;Utility;
+StartupWMClass=frontend_victorino
