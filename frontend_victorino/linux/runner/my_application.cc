@@ -63,7 +63,10 @@ static void my_application_activate(GApplication* application) {
     gchar* exe_path = g_file_read_link("/proc/self/exe", nullptr);
     if (exe_path) {
       gchar* exe_dir = g_path_get_dirname(exe_path);
-      gchar* icon_path = g_build_filename(exe_dir, "my_app_icon.png", nullptr);
+      // El logo está en los Flutter assets, siempre presentes junto al binario.
+      gchar* icon_path = g_build_filename(exe_dir, "data", "flutter_assets",
+                                          "assets", "logos_app",
+                                          "logo_app1.3.png", nullptr);
 
       GError* icon_error = nullptr;
       GdkPixbuf* source = gdk_pixbuf_new_from_file(icon_path, &icon_error);
