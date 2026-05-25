@@ -23,6 +23,9 @@ WORKDIR /app
 COPY pom.xml .
 COPY .mvn ./.mvn
 COPY mvnw mvnw.cmd ./
+# En Windows el bit de ejecucion no se preserva al hacer commit, asi que
+# lo forzamos aqui para que el script funcione dentro del contenedor Linux.
+RUN chmod +x mvnw
 RUN ./mvnw dependency:go-offline -B
 
 # Ahora si copiamos el codigo fuente y empaquetamos.
