@@ -2322,6 +2322,17 @@ R: Flutter Linux **solo se compila a x86_64 oficialmente**. Para ARM (Raspberry 
 Esta sección recopila las operaciones de **mantenimiento y mejoras opcionales** que se pueden hacer una vez que el despliegue inicial 
 funciona. Sirve para responder en la defensa "¿y si mañana quiero X?" sin tener que improvisar, y como referencia futura si el proyecto evoluciona.
 
+Apartados:
+
+- **14.1.** Renombrar un servicio en Railway
+- **14.2.** Dominio propio (custom domain)
+- **14.3.** Limitaciones conocidas por plataforma
+- **14.4.** Cerrar el TCP Proxy del MySQL cuando ya no se necesita
+- **14.5.** Backups manuales de la base de datos
+- **14.6.** Actualizar la app sin downtime
+- **14.7.** Monitorizar y diagnosticar problemas
+- **14.8.** Actualización automática por plataforma (qué se actualiza solo y qué no)
+
 ### 14.1. Renombrar un servicio en Railway
 
 Mi servicio frontend se llamó por defecto `frontend_Victorino-Style` y produjo el dominio `frontendvictorino-style-production.up.railway.app`. 
@@ -2503,6 +2514,237 @@ Si quisieras llevar la monitorización a nivel profesional (alertas, dashboards 
 - **Healthchecks.io** para uptime monitoring (gratis 20 checks).
 
 Para un TFG, las pestañas integradas de Railway son más que suficientes.
+
+### 14.8. Actualización automática por plataforma (qué se actualiza solo y qué no)
+
+Una pregunta que surge en cuanto el proyecto lleva un tiempo desplegado es: **"si hago un cambio en el código, ¿se actualiza solo en todas las plataformas, o tengo que regenerar y redistribuir los binarios?"**. La respuesta corta es **depende de la plataforma**, y conviene tenerlo claro tanto para el día a día como para defenderlo ante el tribunal.
+
+#### 14.8.1. Situación actual del proyecto
+
+Tenemos **tres servicios en Railway** (ver sección 3 para el diagrama de arquitectura):
+
+| Servicio en Railway | Qué es | ¿Auto-update al hacer `git push`? |
+|---|---|---|
+| `Victorino_Style` | Backend Spring Boot (API REST) | ✅ **Sí**. Railway detecta el push, recompila y redepliega. Rolling deploy sin downtime. ✅ se actualiza solo |
+| `MySQL` | Base de datos | — (los datos persisten en el volumen; nada que actualizar) |
+| `frontend_Victorino-Style` | Build web de Flutter (HTML/JS/WASM) | ✅ **Sí**. Mismo mecanismo: push → Railway reconstruye y publica. El usuario refresca el navegador y ve la versión nueva. |
+
+Pero **los binarios nativos no están en Railway** — son ficheros que el usuario instala en su dispositivo:
+
+| Plataforma | Tipo de binario | ¿Auto-update? | Por qué |
+|---|---|---|---|
+| **Web** (navegador) | Estáticos servidos por Railway | ✅ **Sí** | Cada refresco del navegador descarga la versión nueva (gracias al `Cache-Control: no-store` del `index.html`). |
+| **Android** | `.apk` | ❌ No | El APK es un binario nativo con el código Dart compilado dentro. Para que el usuario tenga la versión nueva, hay que regenerar el APK y reinstalarlo. |
+| **iOS** | `.ipa` | ❌ No | Igual que Android. Requiere Mac + cuenta de Apple Developer para regenerar. |
+| **Windows** | `.exe` | ❌ No | Binario nativo Win64. Hay que regenerar y redistribuir. |
+| **Linux** | bundle / AppImage / .deb | ❌ No | Binario nativo. Hay que regenerar y redistribuir. |
+
+
+Railway (en la nube, auto-update on git push):
+   └── Backend Spring Boot  ✅ se actualiza solo
+
+NO está en Railway:
+   ├── App Android (.apk)        ← binario estático en el dispositivo del usuario
+   ├── App iOS (.ipa)            ← binario estático en el dispositivo del usuario
+   ├── App Windows (.exe)        ← binario estático en el ordenador del usuario
+   ├── App Linux (AppImage/deb)  ← binario estático en el ordenador del usuario
+
+   **El .exe y el binario Linux NO se actualizan solos. Son binarios nativos compilados que contienen todo el código Dart en ese momento. Funcionan exactamente igual que un programa de toda la vida: si cambias el código, tienes que volver a compilar y volver a distribuir el ejecutable nuevo**.
+
+## Tabla de tipos de cambio y necesidad de recompilación
+
+| Tipo de cambio                                   | ¿Hay que recompilar la app? |
+|--------------------------------------------------|------------------------------|
+| **Cambio solo en el backend (Spring Boot)**      | **NO.** Railway redespliega el backend automáticamente al hacer `git push`. La app `.exe` sigue funcionando porque continúa llamando al mismo `https://...railway.app/api/v1`, ahora con la lógica nueva. |
+| **Cambio en el frontend (Dart, widgets, MarcoMovil, etc.)** | **SÍ.** Hay que volver a compilar cada plataforma que distribuyas: Windows, Linux, Android, iOS. Luego debes entregar el binario actualizado a los usuarios. |
+| **Cambio en el contrato API (endpoint, DTO)**    | **AMBOS.** Backend (Railway lo redepliega) + frontend (recompilar y redistribuir). |
+
+#### 14.8.2. Cómo afecta cada tipo de cambio
+
+| Cambio | Backend Railway | Frontend Web Railway | APK / .exe / Linux instalados |
+|---|---|---|---|
+| **Backend solo** (Service, Repository, lógica de negocio, fix SMTP/Brevo, etc.) | ✅ Actualiza | — | ✅ "Funciona" porque llaman a la API actualizada, pero el código Dart sigue siendo el viejo. Si el cambio era de comportamiento del backend, los usuarios ven el efecto sin reinstalar. |
+| **Frontend solo** (Dart, widgets, `MarcoMovil`, textos, colores, navegación) | — | ✅ Actualiza | ❌ NO se ven los cambios. Los binarios entregados están "congelados" en el commit con el que se compilaron. Hay que regenerar y redistribuir. |
+| **Contrato de API** (nuevo endpoint, cambio en DTO) | ✅ Actualiza | ✅ Actualiza | ❌ Hay que regenerar binarios; mientras tanto pueden romperse (peticiones a campos que ya no existen, etc.). |
+| **Migración de BD** | Migrar **antes** del push del backend (ver 14.6) | — | — |
+
+**Confusión típica que conviene aclarar**: cuando alguien ve que "el APK funciona" tras un cambio, suele ser porque el cambio era de **backend** y el APK simplemente está consumiendo la API actualizada. El código de la pantalla dentro del APK sigue siendo el de cuando se compiló. La prueba inequívoca es cambiar algo puramente visual (un texto, un color, el `MarcoMovil`) y comprobar si el APK ya instalado lo refleja sin reinstalar — **no lo hace**.
+
+#### 14.8.3. Comandos para regenerar cada binario
+
+Cada `flutter build` debe ejecutarse **en el sistema operativo destino** (no se puede cross-compilar `.exe` desde Linux sin pipelines especiales).
+
+```bash
+cd frontend_victorino
+
+# Android — desde cualquier SO con SDK Android
+flutter build apk --release
+# Salida: build/app/outputs/flutter-apk/app-release.apk
+
+# iOS — solo en macOS con Xcode
+flutter build ipa --release
+# Salida: build/ios/ipa/
+
+# Windows — solo en Windows con Visual Studio 2022 (carga C++)
+flutter build windows --release
+# Salida: build/windows/x64/runner/Release/
+
+# Linux — solo en una distro Linux con dependencias GTK
+flutter build linux --release
+# Salida: build/linux/x64/release/bundle/
+
+# Web — ya se hace solo en Railway, pero para tener una copia local:
+flutter build web --release
+# Salida: build/web/
+
+
+```
+## Estado de cada plataforma y qué hacer si cambias el frontend
+
+| Plataforma     | ¿Lo tienes ya construido?            | Qué hacer si cambias el frontend |
+|----------------|--------------------------------------|----------------------------------|
+| **Web (URL de Railway)** | ✅ Sí, autoupdate | Nada. `git push` actualiza automáticamente. |
+| **Android APK** | El que generaste manualmente | Ejecutar `flutter build apk --release` y entregar el `.apk` nuevo. |
+| **Windows .exe** | El que generaste manualmente | Ejecutar `flutter build windows --release` y entregar el `.exe` nuevo. |
+| **Linux** | El que generaste manualmente | Ejecutar `flutter build linux --release` y entregar el bundle nuevo. |
+| **iOS .ipa** | Solo si lo generaste en Mac | Ejecutar `flutter build ipa --release`. |
+
+
+Tras cada `build`, hay que **redistribuir el binario** a los usuarios (Drive, Telegram, USB, etc.). El usuario tiene que desinstalar el viejo e instalar el nuevo, salvo que se monte alguno de los mecanismos del siguiente sub-apartado.
+
+#### 14.8.4. Opciones para conseguir auto-update también en binarios nativos
+
+Si se quisiera que un cambio en Dart llegase también a los `.apk` / `.exe` / Linux ya instalados sin que el usuario tenga que reinstalar, hay opciones. Ordenadas de menos a más esfuerzo:
+
+## Para Android
+
+| Solución | Esfuerzo | Coste | Cómo funciona |
+|---|---|---|---|
+| **Shorebird** ✅ recomendada | Bajo | Gratis (tier free) | OTA real para Flutter. Cambias Dart, ejecutas shorebird release + shorebird patch, y los APK ya instalados descargan el código nuevo silenciosamente al abrirse. Es lo más "wow" para el tribunal. |
+| **Google Play Store** (track interno) | Medio | 25 € pago único | Subes el AAB, todos los usuarios reciben actualización automática como cualquier app del store. |
+| **Firebase App Distribution** | Bajo | Gratis | Subes el APK, los testers reciben notificación. Tienen que tocar "instalar" — no es totalmente silencioso. |
+| **Updater casero**  | Alto |Gratis | Endpoint /api/v1/version en el backend. App al arrancar lo consulta; si hay versión nueva, descarga el .apk y lo instala. Requiere "fuentes desconocidas" y código nativo. Hacky. |
+
+## Opciones para distribuir iOS (.ipa)
+
+| Solución     | Esfuerzo | Coste                         | Cómo funciona |
+|--------------|----------|-------------------------------|----------------|
+| **Shorebird** | Bajo     | Gratis (tier free)            | Igual que en Android: también soporta iOS y permite actualizaciones OTA. |
+| **TestFlight** | Medio    | 99 €/año (Apple Developer)     | Distribución beta oficial. Los testers reciben la app actualizada automáticamente. |
+| **App Store** | Alto     | 99 €/año + tiempo de revisión | La opción más profesional. Apple revisa cada release (1–3 días). |
+
+## Para Windows
+
+| Solución | Esfuerzo | Coste | Cómo funciona |
+|---|---|---|---|
+| **MSIX con AppInstaller** | Medio | Gratis | Empaquetas como MSIX y configuras un fichero `.appinstaller` apuntando a Railway. Windows comprueba periódicamente y actualiza solo. |
+| **Microsoft Store** | Medio | ~16 € pago único | Lo subes y los usuarios reciben actualizaciones como cualquier app de la Store. |
+| **Updater casero** | Alto | Gratis | Tu app consulta `/api/v1/version`, descarga el `.exe` nuevo de Railway y lanza el instalador. Funciona pero requiere código. |
+
+## Para Linux
+
+| Solución | Esfuerzo | Coste | Cómo funciona |
+|---|---|---|---|
+| **AppImage + AppImageUpdate** | Bajo | Gratis | Formato single-file, mecanismo de update basado en zsync. |
+| **Snap Store** | Medio | Gratis | Empaquetas como `.snap`, `snapd` actualiza automáticamente. |
+| **Flatpak / Flathub** | Medio | Gratis | Igual con `.flatpak`. Más popular en distros modernas. |
+
+#### 14.8.5. Shorebird en detalle (recomendado para Android/iOS en TFG)
+
+Shorebird es la única solución que da **OTA real para Flutter** sin pasar por una store, y tiene un tier gratuito suficiente para un TFG. Funciona así:
+
+1. Empaqueta el APK/IPA con una **runtime de Flutter modificada** que, al arrancar, consulta los servidores de Shorebird.
+2. Si hay un "patch" (parche con código Dart nuevo) disponible para esa release, lo descarga y lo aplica antes de pintar la primera pantalla.
+3. El binario nativo no cambia, pero el código Dart sí — así que cualquier cambio puramente Flutter (widgets, lógica de presentación, estado…) llega al usuario sin reinstalar.
+
+##### Limitaciones que hay que conocer antes de adoptarlo
+
+- **No parchea cambios en plugins nativos** ni en código Kotlin/Swift. Si se añade un plugin nuevo (p.ej. otro `firebase_*` package) eso sí exige rebuild completo y reinstalación.
+- **Tier free** tiene un límite mensual de patches (suficiente para un TFG con pocos usuarios).
+- **Solo Android e iOS**. No cubre Windows ni Linux.
+- Añade una dependencia externa: si Shorebird desaparece, las apps siguen funcionando pero pierden el OTA.
+
+##### Pasos para integrarlo en este proyecto
+
+```bash
+# 1. Instalar el CLI (una sola vez en la máquina)
+dart pub global activate shorebird_cli
+
+# 2. Login (abre el navegador con OAuth)
+shorebird login
+
+# 3. Inicializar el proyecto Flutter (añade shorebird.yaml al repo)
+cd frontend_victorino
+shorebird init
+
+# 4. Primera release Android (sustituye al flutter build apk --release)
+shorebird release android
+# Salida: build/app/outputs/flutter-apk/app-release.apk + sube metadatos a Shorebird
+
+# 5. Distribuir ese APK como siempre (Drive, USB, Telegram…). Es el binario base.
+
+# --- A partir de aquí, cada cambio puramente Dart se publica como patch: ---
+
+# 6. Editas código Dart (p.ej. MarcoMovil, texto de un botón, etc.)
+git commit -am "..."
+
+# 7. Generar y subir el patch
+shorebird patch android
+# Los APK ya instalados detectarán el patch al abrirse y se actualizarán silenciosamente.
+
+# 8. Para iOS (solo en macOS):
+shorebird release ios
+shorebird patch ios
+```
+
+##### Lo que hay que documentar en la memoria si se adopta
+
+- Que existe una dependencia con Shorebird (servicio externo).
+- Que el flujo de release tiene **dos verbos**: `release` (cuando hay cambios nativos o plugins nuevos) y `patch` (cuando solo cambia Dart).
+- Que el RGPD queda intacto: Shorebird solo recibe el código Dart compilado, no datos de usuarios.
+
+#### 14.8.6. Estrategia recomendada para el TFG
+
+Honestamente, montar auto-update para **todas** las plataformas en un TFG es sobrecualificación y consume tiempo que no suma en la rúbrica. La rúbrica valora *que la app funcione, esté desplegada y sea accesible*, no que cada binario tenga OTA propio.
+
+La estrategia equilibrada (la que aplico en este proyecto) es:
+
+| Plataforma | Estrategia | Justificación |
+|---|---|---|
+| **Web** (Railway) | Auto-update vía Railway. **Entrega principal** para la defensa. | Ya está. Cero coste, siempre actualizada, el tribunal abre la URL y ve la última versión. |
+| **Android (.apk)** | (Opcional) Shorebird para OTA Dart | Free, se monta en una tarde, punto destacable de arquitectura en la memoria. Si no se monta, se entrega el APK final como "snapshot" y listo. |
+| **iOS** | Sáltatelo salvo que tengas Mac + Apple Developer | La web cubre iOS perfectamente desde Safari. |
+| **Windows / Linux** | Sin auto-update | Generar el binario una vez antes de la entrega final y meterlo en el USB del TFG. Defendible: "para escritorio se recomienda usar la versión web; los binarios nativos son una entrega congelada de la versión final". |
+
+#### 14.8.7. Workflow real día a día (resumen)
+
+```
+Cambio en el código
+        │
+        ▼
+   ¿Qué cambió?
+        │
+   ┌────┴───────────────────────────┬──────────────────────────────┐
+   ▼                                ▼                              ▼
+Backend Java                  Frontend Dart                  Contrato API
+   │                                │                              │
+git push                       git push                        git push
+   │                                │                              │
+   ▼                                ▼                              ▼
+Railway redepliega           Railway redepliega              Railway redepliega
+backend (1-3 min).           frontend web (1-3 min).         backend + frontend.
+   │                                │                              │
+   ▼                                ▼                              ▼
+APK / .exe / Linux           APK / .exe / Linux              APK / .exe / Linux
+funcionan con la             NO ven el cambio.               pueden romperse.
+API nueva sin más.           Hay que regenerar y             Hay que regenerar
+                             redistribuir.                   y redistribuir.
+                             (Salvo Shorebird en             Coordinar el orden
+                              Android/iOS, que                de despliegue
+                              parchea OTA.)                   (BD → backend → frontend).
+```
+
+En condiciones normales del desarrollo del TFG, el ciclo es: **edito código → `git push` → en 2-3 minutos la web está actualizada → refresco el navegador → veo el cambio**. Los binarios nativos solo se regeneran en hitos importantes (defensa, entrega final, demo a cliente).
 
 ---
 
