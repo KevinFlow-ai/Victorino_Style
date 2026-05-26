@@ -15,13 +15,14 @@ import java.util.Properties;
 /**
  * Servicio de envío de correo.
  *
- * <p>Construye un {@link JavaMailSenderImpl} dinámicamente con los datos SMTP
- * guardados en la base de datos (tabla {@code peluqueria}).
- * Si aún no se han configurado, cae como fallback al
- * {@link JavaMailSender} auto-configurado desde {@code application.properties}.
- *
- * <p>Compatible con cualquier proveedor SMTP:
- * Gmail, Outlook/Hotmail, educaMadrid, Yahoo, servidores propios…
+ * <p>Dos modos de envío según {@code victorino.mail.provider}:
+ * <ul>
+ *   <li>{@code smtp} (por defecto): usa el SMTP de BD si está configurado,
+ *       en caso contrario el de {@code application.properties}.
+ *       Funciona en local (Gmail, educaMadrid, Outlook...).</li>
+ *   <li>{@code brevo}: usa la API HTTP de Brevo a través de {@link BrevoEmailClient}.
+ *       Imprescindible en Railway u otros PaaS que bloquean SMTP saliente.</li>
+ * </ul>
  */
 @Slf4j
 @Service
@@ -31,22 +32,21 @@ public class MailService {
     /** Sender fallback: auto-configurado desde application.properties. */
     private final JavaMailSender defaultMailSender;
     private final PeluqueriaRepository peluqueriaRepository;
+    private final BrevoEmailClient brevoEmailClient;
 
     /** Dirección remitente por defecto (spring.mail.username en application.properties). */
     @Value("${spring.mail.username:}")
     private String defaultFromAddress;
 
+    /** Proveedor activo: "smtp" (defecto) o "brevo". */
+    @Value("${victorino.mail.provider:smtp}")
+    private String provider;
+
     // ------------------------------------------------------------------------
 
     public void enviarCodigoRecuperacion(String destinatario, String codigo) {
-        // Determinar sender y dirección "from" en un solo acceso a BD.
-        final SenderInfo info = resolverSender();
-
-        SimpleMailMessage mensaje = new SimpleMailMessage();
-        mensaje.setFrom(info.from);   // OBLIGATORIO: sin "from" muchos servidores rechazan el email
-        mensaje.setTo(destinatario);
-        mensaje.setSubject("Recuperación de contraseña - Victorino Style");
-        mensaje.setText("""
+        String asunto = "Recuperación de contraseña - Victorino Style";
+        String cuerpo = """
                 Hola,
 
                 Has solicitado recuperar tu contraseña en Victorino Style.
@@ -60,35 +60,56 @@ public class MailService {
                 Si no has solicitado este cambio, puedes ignorar este correo.
 
                 Victorino Style
-                """.formatted(codigo));
+                """.formatted(codigo);
 
-        info.sender.send(mensaje);
+        enviar(destinatario, asunto, cuerpo);
     }
 
     /**
-     * Envía un correo de prueba al administrador para verificar la configuración SMTP.
+     * Envía un correo de prueba al administrador para verificar la configuración.
      * Lanza {@link org.springframework.mail.MailException} si el envío falla,
      * que el {@code GlobalExceptionHandler} convierte en HTTP 503 con el motivo exacto.
      */
     public void enviarCorreoPrueba(String destinatario) {
-        final SenderInfo info = resolverSender();
-
-        SimpleMailMessage mensaje = new SimpleMailMessage();
-        mensaje.setFrom(info.from);
-        mensaje.setTo(destinatario);
-        mensaje.setSubject("✅ Prueba de correo - Victorino Style");
-        mensaje.setText("""
+        String from = isBrevo() ? brevoEmailClient.getFromEmail() : resolverSender().from;
+        String asunto = "Prueba de correo - Victorino Style";
+        String cuerpo = """
                 ¡Funciona correctamente!
 
                 Este es un correo de prueba de Victorino Style.
-                La configuración SMTP está activa y enviando correos sin problema.
+                La configuración de envío está activa.
 
-                Servidor: %s
+                Proveedor: %s
                 Remitente: %s
 
                 Victorino Style
-                """.formatted(info.from, info.from));
+                """.formatted(provider, from);
 
+        enviar(destinatario, asunto, cuerpo);
+        log.info("Correo de prueba enviado a {} (provider={})", destinatario, provider);
+    }
+
+    // ------------------------------------------------------------------------
+    //  ENRUTAMIENTO INTERNO
+    // ------------------------------------------------------------------------
+
+    private boolean isBrevo() {
+        return "brevo".equalsIgnoreCase(provider);
+    }
+
+    private void enviar(String destinatario, String asunto, String cuerpo) {
+        if (isBrevo()) {
+            brevoEmailClient.enviarTexto(destinatario, asunto, cuerpo);
+            return;
+        }
+
+        // Camino SMTP clásico (local y servidores que permiten 587/465).
+        final SenderInfo info = resolverSender();
+        SimpleMailMessage mensaje = new SimpleMailMessage();
+        mensaje.setFrom(info.from);
+        mensaje.setTo(destinatario);
+        mensaje.setSubject(asunto);
+        mensaje.setText(cuerpo);
         info.sender.send(mensaje);
         log.info("Correo de prueba enviado a {} desde {}", destinatario, info.from);
     }
@@ -100,7 +121,7 @@ public class MailService {
     private record SenderInfo(JavaMailSender sender, String from) {}
 
     /**
-     * Resuelve qué sender y qué dirección "from" usar.
+     * Resuelve qué sender SMTP y qué dirección "from" usar:
      * <ul>
      *   <li>Si la peluquería tiene SMTP configurado en BD → lo usa.</li>
      *   <li>Si no → fallback a application.properties.</li>
