@@ -117,7 +117,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: Column(
                         children: [
                           Text(
-                            'Bienvenido de nuevo',
+                            'Bienvenido de nuevoSSSS',
                             style: GoogleFonts.poppins(
                               fontSize: 26,
                               fontWeight: FontWeight.bold,
