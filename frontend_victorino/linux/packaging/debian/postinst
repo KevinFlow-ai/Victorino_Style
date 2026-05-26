@@ -1,0 +1,36 @@
+﻿#!/bin/sh
+set -e
+
+# Actualizar cache de iconos GTK
+if [ -x /usr/bin/gtk-update-icon-cache ]; then
+    gtk-update-icon-cache -f -t /usr/share/icons/hicolor || true
+fi
+
+# Registrar el archivo .desktop en el menú de aplicaciones
+if [ -x /usr/bin/update-desktop-database ]; then
+    update-desktop-database /usr/share/applications || true
+fi
+
+# ── Acceso directo en el Escritorio de cada usuario ──────────────────────────
+DESKTOP_FILE="/usr/share/applications/victorino-style.desktop"
+
+# Recorre todos los usuarios con directorio home real (uid >= 1000)
+getent passwd | while IFS=: read -r username _ uid _ _ homedir _; do
+    # Solo usuarios normales (uid >= 1000) con home existente
+    if [ "$uid" -ge 1000 ] && [ -d "$homedir" ]; then
+        # Buscar la carpeta Escritorio / Desktop (depende del idioma del sistema)
+        for desktop_dir in "$homedir/Escritorio" "$homedir/Desktop"; do
+            if [ -d "$desktop_dir" ]; then
+                cp "$DESKTOP_FILE" "$desktop_dir/victorino-style.desktop"
+                chmod +x "$desktop_dir/victorino-style.desktop"
+                chown "$username" "$desktop_dir/victorino-style.desktop" || true
+                # Marcar como "trusted" en GNOME (evita el candado gris)
+                if [ -x /usr/bin/gio ]; then
+                    su - "$username" -c "gio set '$desktop_dir/victorino-style.desktop' metadata::trusted true" 2>/dev/null || true
+                fi
+            fi
+        done
+    fi
+done
+
+exit 0

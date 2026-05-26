@@ -16,6 +16,8 @@ class ApiEndpoints {
     'API_BASE_URL',
     defaultValue: 'http://10.0.2.2:8080/api/v1',
 
+    // defaultValue: 'https://victorinostyle-production.up.railway.app/api/v1',
+
     /*
     Comandos para generar la APK
     flutter build apk --release --dart-define=

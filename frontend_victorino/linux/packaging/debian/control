@@ -1,0 +1,11 @@
+﻿Package: victorino-style
+Version: 1.0.0
+Section: misc
+Priority: optional
+Architecture: amd64
+Maintainer: Victorino Style <soporte@victorino-style.es>
+Depends: libgtk-3-0, libglib2.0-0, libgdk-pixbuf2.0-0, libpango-1.0-0, libcairo2, libstdc++6, libc6
+Description: Victorino Style - Gestion de barberia
+ Aplicacion de gestion de citas, servicios y empleados
+ para la barberia Victorino Style.
+Homepage: https://victorino-style.es

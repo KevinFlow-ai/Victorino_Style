@@ -52,6 +52,45 @@ static void my_application_activate(GApplication* application) {
     gtk_window_set_title(window, "VictorinoStyle");
   }
 
+  // Icono oficial — método 1: nombre XDG (cuando el .deb está instalado y
+  // gtk-update-icon-cache ha registrado victorino_style en el tema hicolor).
+  gtk_window_set_icon_name(window, "victorino_style");
+
+  // Icono oficial — método 2: carga desde el directorio del binario como
+  // fallback para ejecución directa del bundle sin instalar.
+  {
+    // Obtener la ruta del ejecutable para construir la ruta absoluta del icono
+    gchar* exe_path = g_file_read_link("/proc/self/exe", nullptr);
+    if (exe_path) {
+      gchar* exe_dir = g_path_get_dirname(exe_path);
+      // El logo está en los Flutter assets, siempre presentes junto al binario.
+      gchar* icon_path = g_build_filename(exe_dir, "data", "flutter_assets",
+                                          "assets", "logos_app",
+                                          "logo_app1.3.png", nullptr);
+
+      GError* icon_error = nullptr;
+      GdkPixbuf* source = gdk_pixbuf_new_from_file(icon_path, &icon_error);
+      if (source) {
+        const int icon_sizes[] = {16, 32, 48, 64, 128, 256};
+        GList* icon_list = nullptr;
+        for (int sz : icon_sizes) {
+          GdkPixbuf* scaled = gdk_pixbuf_scale_simple(
+              source, sz, sz, GDK_INTERP_HYPER);  // máxima calidad
+          if (scaled) icon_list = g_list_append(icon_list, scaled);
+        }
+        gtk_window_set_icon_list(window, icon_list);
+        g_list_free_full(icon_list, g_object_unref);
+        g_object_unref(source);
+      } else if (icon_error) {
+        g_clear_error(&icon_error);
+      }
+
+      g_free(icon_path);
+      g_free(exe_dir);
+      g_free(exe_path);
+    }
+  }
+
   gtk_window_set_default_size(window, 1280, 720);
 
   g_autoptr(FlDartProject) project = fl_dart_project_new();
