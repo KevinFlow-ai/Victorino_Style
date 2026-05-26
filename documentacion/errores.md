@@ -5,6 +5,221 @@
 
 ---
 
+## 2026-05-26 · Backend / Despliegue — Recuperación de contraseña no funcionaba en Railway (SMTP saliente bloqueado)
+
+### Síntoma
+
+En **local** el "olvidé mi contraseña" funcionaba perfecto: el usuario recibía el código de 6 dígitos en su correo, vía Gmail SMTP (`smtp.gmail.com:587` con la contraseña de aplicación de Google).
+
+En **Railway**, el mismo flujo daba error 503 al cliente y este stacktrace en los logs:
+
+```
+ERROR o.v.exception.GlobalExceptionHandler : Error SMTP en /api/v1/auth/forgot-password:
+Mail server connection failed. Failed messages:
+org.eclipse.angus.mail.util.MailConnectException:
+Couldn't connect to host, port: smtp.gmail.com, 587; timeout -1;
+```
+
+### Diagnóstico
+
+El mensaje `Couldn't connect to host ... timeout -1` significa que **el socket TCP nunca llega a establecerse**: el paquete 
+sale del contenedor pero no alcanza Gmail. No es un problema de credenciales (Gmail ni siquiera ve el intento), ni de bloqueo 
+de cuenta, ni de la contraseña de aplicación.
+
+Causa real: **Railway (y la mayoría de PaaS: Heroku, Render, Fly.io en plan gratuito) bloquean por defecto los puertos SMTP salientes (25, 465, 587)** 
+para evitar que las apps desplegadas se usen como spammers. Solo se desbloquea pasando al plan **Pro** (≈20 USD/mes), lo cual no compensa para un TFG.
+
+Es de Railway bloqueando el puerto SMTP saliente. Esto está documentado por Railway: SMTP saliente solo está disponible 
+en el plan Pro (≈20 USD/mes); en Hobby/Trial está bloqueado.  
+En local seguirás usando Gmail SMTP, en Railway 
+usarás la API HTTP de Brevo (atraviesa el firewall sin problema).
+
+
+
+
+
+#### Comprobación que hicimos
+
+Antes de migrar, intentamos confirmar el diagnóstico forzando el puerto 465 con SSL directo. Se añadieron temporalmente estas variables en Railway:
+
+| Variable | Valor |
+|---|---|
+| `SPRING_MAIL_PORT` | `465` |
+| `SPRING_MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE` | `true` |
+| `SPRING_MAIL_PROPERTIES_MAIL_SMTP_STARTTLS_ENABLE` | `false` |
+
+(Spring Boot mapea estas variables de entorno con `_` mayúsculas a las propiedades `.` minúsculas equivalentes en `application.properties`.)
+
+Resultado: mismo error con puerto 465. **Confirmado** que Railway bloquea SMTP saliente. Tocaba cambiar de transporte.
+
+### Solución adoptada: API HTTP de Brevo
+
+En lugar de SMTP (que va por puerto TCP propietario y está bloqueado), usamos la **API transaccional HTTP de Brevo**, que viaja por HTTPS estándar (puerto 443) y por tanto sí sale del contenedor de Railway sin problema.
+
+**Por qué Brevo y no otros:**
+
+- 300 correos/día gratis (más que suficiente para una peluquería ficticia).
+- **Servidores en la UE** → mejor argumento de RGPD ante el tribunal del TFG.
+- Registro sin tarjeta de crédito.
+- API simple: un único `POST /v3/smtp/email` con cabecera `api-key`.
+
+Otras opciones consideradas: Resend (100/día gratis, servidores EEUU, requiere dominio propio verificado para producción) y Mailgun (gratis solo 3 meses).
+
+### Arquitectura del envío de correo (post-cambio)
+
+El backend decide en tiempo de arranque qué proveedor usar según la variable `victorino.mail.provider`:
+
+- **`smtp`** (defecto): camino clásico con `JavaMailSender`. Se usa el SMTP de la BD si la peluquería lo tiene configurado (panel de admin), si no el de `application.properties` (Gmail con contraseña de aplicación). **Este es el camino activo en local.**
+- **`brevo`**: se llama a la API HTTP de Brevo vía `BrevoEmailClient`. **Este es el camino activo en Railway.**
+
+El cliente Flutter no se entera de nada — el endpoint `/auth/forgot-password` sigue siendo exactamente igual.
+
+### Pasos en el panel de Brevo (registro y verificación)
+
+1. **Registro** en [brevo.com](https://www.brevo.com) (sin tarjeta).
+2. **Verificar el remitente** — sin esto la API rechaza los envíos con 400 "sender not allowed":
+   - Menú izquierdo → **Remitentes, dominios y direcciones IP dedicadas → Remitentes**.
+   - Botón **"Agregar remitente"**.
+   - Nombre: `Victorino Style`. Email: `peluqueria.victorinostyle@gmail.com`.
+   - Brevo envía un correo de verificación a esa dirección con un enlace; al pulsarlo, el remitente queda como **Verificado** (estado verde).
+3. **Generar la API key v3** — **OJO con la pestaña**, hay dos tipos de clave y son distintas:
+   - Menú izquierdo → **SMTP y API**.
+   - Pestaña **"Claves API y MCP"** (NO la pestaña "SMTP", ver sección de "Tropiezos" más abajo).
+   - **"+ Generar una nueva clave API"** → nombre `victorino_style_api_v3` → crear.
+   - **Copiar el valor entero** que aparece (empieza por `xkeysib-...`, ~80-90 caracteres). Solo se ve una vez.
+
+### Variables de entorno nuevas en Railway
+
+Tres variables nuevas (y se eliminan las temporales del intento de puerto 465):
+
+| Variable | Valor | Propósito |
+|---|---|---|
+| `VICTORINO_MAIL_PROVIDER` | `brevo` | Activa el camino HTTP en lugar del SMTP |
+| `VICTORINO_MAIL_BREVO_API_KEY` | `xkeysib-...` (la generada en el paso 3) | Autenticación contra la API de Brevo |
+| `VICTORINO_MAIL_BREVO_FROM_EMAIL` | `peluqueria.victorinostyle@gmail.com` | Remitente. **Tiene que coincidir con el verificado en Brevo.** |
+
+Opcionalmente `VICTORINO_MAIL_BREVO_FROM_NAME` (por defecto `Victorino Style`).
+
+En **local NO se define ninguna** de estas — el defecto `smtp` arranca y se sigue usando Gmail.
+
+### Archivos modificados / creados
+
+**Nuevo** — `Backend_Victorino/src/main/java/org/victorino_style/service/BrevoEmailClient.java`
+
+Componente Spring (`@Component`) que encapsula la llamada HTTP a Brevo:
+
+- Construye un `RestClient` (dependencia `spring-boot-starter-restclient` ya estaba en el `pom.xml`).
+- Hace `POST https://api.brevo.com/v3/smtp/email` con cabecera `api-key: <KEY>` y cuerpo JSON:
+  ```json
+  {
+    "sender":  { "name": "Victorino Style", "email": "peluqueria.victorinostyle@gmail.com" },
+    "to":      [ { "email": "destinatario@dominio.com" } ],
+    "subject": "Recuperación de contraseña - Victorino Style",
+    "textContent": "...código..."
+  }
+  ```
+- Cualquier respuesta 4xx/5xx o error de red se convierte en `org.springframework.mail.MailSendException` para que el `GlobalExceptionHandler` global devuelva 503 igual que con el camino SMTP. El `RestController` no necesita saber qué proveedor está activo.
+- Valida que `api-key` y `from-email` no estén vacíos en arranque; si falta alguno lanza `MailSendException` con un mensaje claro.
+
+**Modificado** — `Backend_Victorino/src/main/java/org/victorino_style/service/MailService.java`
+
+- Inyecta `BrevoEmailClient` (además del `JavaMailSender` y el `PeluqueriaRepository` que ya tenía).
+- Nueva propiedad inyectada: `@Value("${victorino.mail.provider:smtp}") private String provider`.
+- Se extrae el armado de mensaje (`asunto`, `cuerpo`) a un método privado `enviar(destinatario, asunto, cuerpo)` que enruta:
+  - Si `provider="brevo"` → `brevoEmailClient.enviarTexto(...)`.
+  - Si no → camino SMTP de siempre (incluye fallback BD → `application.properties`).
+- Los métodos públicos `enviarCodigoRecuperacion` y `enviarCorreoPrueba` mantienen la misma firma (no hay que tocar nada en el `PasswordRecoveryController`).
+
+**Modificado** — `Backend_Victorino/src/main/resources/application.properties`
+
+Bloque nuevo añadido después de la configuración SMTP existente:
+
+```properties
+# Proveedor de envio: "smtp" (defecto, local) o "brevo" (API HTTP).
+victorino.mail.provider=${VICTORINO_MAIL_PROVIDER:smtp}
+victorino.mail.brevo.api-key=${VICTORINO_MAIL_BREVO_API_KEY:}
+victorino.mail.brevo.from-email=${VICTORINO_MAIL_BREVO_FROM_EMAIL:}
+victorino.mail.brevo.from-name=${VICTORINO_MAIL_BREVO_FROM_NAME:Victorino Style}
+```
+
+Todas leen variable de entorno con valor por defecto vacío excepto el `provider` (defecto `smtp`) y el `from-name` (defecto `Victorino Style`).
+
+### Tropiezo intermedio: clave SMTP vs clave API v3
+
+La primera prueba en Railway falló con:
+
+```
+ERROR o.v.service.BrevoEmailClient : Brevo HTTP 401 UNAUTHORIZED ->
+  {"message":"Key not found","code":"unauthorized"}
+```
+
+**Causa**: en Brevo, dentro de **SMTP y API** hay **dos pestañas** con dos tipos de claves distintos:
+
+| Pestaña | Formato | Para qué sirve |
+|---|---|---|
+| **SMTP** | `xsmtpsib-...` | Autenticarse en `smtp-relay.brevo.com:587` (SMTP relay) |
+| **Claves API y MCP** | `xkeysib-` + 64 chars | API HTTP v3 (lo que usa nuestro `BrevoEmailClient`) |
+
+Habíamos generado la primera (SMTP) por error. La API HTTP v3 no la reconoce — devuelve 401 "Key not found". Generando la correcta (pestaña "Claves API y MCP") y actualizando `VICTORINO_MAIL_BREVO_API_KEY` en Railway, el envío funcionó.
+
+La clave SMTP de Brevo se **borró** después (nadie la usa en el código y reduce superficie de ataque).
+
+### Cómo funciona ahora extremo a extremo
+
+#### En local (desarrollo)
+
+```
+Cliente Flutter
+    → POST /api/v1/auth/forgot-password { correo }
+        → PasswordRecoveryController
+            → PasswordRecoveryService.crearCodigoRecuperacion()   [genera 6 dígitos en BD]
+            → MailService.enviarCodigoRecuperacion()
+                → provider="smtp" (defecto)
+                → resolverSender() lee BD → si no hay SMTP en BD, usa application.properties
+                → JavaMailSender.send() → smtp.gmail.com:587 con contraseña de aplicación
+```
+
+Funciona porque la red local no bloquea el 587.
+
+#### En Railway (producción)
+
+```
+Cliente Flutter
+    → POST /api/v1/auth/forgot-password { correo }
+        → PasswordRecoveryController
+            → PasswordRecoveryService.crearCodigoRecuperacion()   [genera 6 dígitos en BD]
+            → MailService.enviarCodigoRecuperacion()
+                → provider="brevo" (variable de entorno)
+                → BrevoEmailClient.enviarTexto()
+                → RestClient POST https://api.brevo.com/v3/smtp/email   (HTTPS:443, no bloqueado)
+                → Brevo entrega el correo al destinatario
+```
+
+### Verificación final
+
+Log de éxito en Railway tras la corrección:
+
+```
+INFO o.v.service.PasswordRecoveryService : Código de recuperación generado para usuario id=67
+INFO o.v.service.BrevoEmailClient        : Brevo OK (201) destinatario=... from=peluqueria.victorinostyle@gmail.com
+```
+
+El correo llega al inbox del usuario con el código de 6 dígitos. El usuario lo introduce, `/auth/verify-otp` lo valida, `/auth/reset-password` cambia la contraseña. Flujo completo verificado.
+
+### Lecciones / cosas a recordar
+
+1. **PaaS gratuitos bloquean SMTP saliente**. Para producción, siempre planificar usar una API HTTP (Brevo, Resend, Mailgun, SendGrid…) en lugar de SMTP directo. SMTP solo es viable en local o en VPS propios.
+2. **No mantener dos vías** activas en producción: el `victorino.mail.provider` es un único conmutador y eso simplifica el debugging — si algo va mal, el log dice exactamente qué camino se tomó.
+3. **El controlador no debe saber qué proveedor está activo**. Toda la lógica de enrutamiento vive en `MailService`. El `PasswordRecoveryController` no cambió ni una línea.
+4. **Las claves de Brevo son dos**, no una. Si aparece 401 "Key not found" → estás usando la SMTP donde toca la v3 (o al revés).
+5. **NUNCA pegar claves en `application.properties` ni siquiera como comentario** — el fichero está en git. Las claves solo en variables de entorno (Railway o `.env` local listado en `.gitignore`).
+
+### Costes
+
+Cero. Plan gratuito de Brevo (300 correos/día) es más que suficiente para el volumen de un TFG con una sola peluquería ficticia.
+
+---
+
 ## 2026-05-19 · Frontend Empleado — La franja gris del descanso no aparecía en la agenda del empleado
 
 **Síntoma**: en la agenda del **administrador** se ve perfectamente la franja gris del descanso de cada empleado, pero 
