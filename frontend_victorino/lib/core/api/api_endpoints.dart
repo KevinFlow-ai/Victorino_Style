@@ -14,7 +14,11 @@ class ApiEndpoints {
   // (compatible con Android Emulator que es el caso de uso por defecto).
   static const baseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:8080/api/v1',
+    defaultValue: 'https://victorinostyle-production.up.railway.app/api/v1', // en producción
+
+    //defaultValue: 'http://10.0.2.2:8080/api/v1', // Android emulador
+
+
 
     // defaultValue: 'https://victorinostyle-production.up.railway.app/api/v1',
 
