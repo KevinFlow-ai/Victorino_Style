@@ -105,29 +105,11 @@ class _VictorinoAppState extends ConsumerState<VictorinoApp>
 
       routerConfig: router, // Configuración del router: navegación declarativa con GoRouter.
 
-
-
-
-
-      /*
-
-      // DESCOMENTAR ESTE CÓDIGO, SI SE QUIRE ACTIVAR EL RESPONSIVE EN WEB ESTE Y EN EL marco_movil.DART TAMBIÉN
-
       // Marco móvil automático: en pantallas grandes (web escritorio, tablet,
-      // TV) la app se limita a 430 px de ancho y se centra con fondo oscuro.
+      // TV) la app se adapta en ancho según el viewport y se centra con fondo oscuro.
       // En móviles reales (ancho < 600 px) no se nota, se ve a pantalla completa.
       // Ver core/layout/marco_movil.dart para los parámetros.
-
-      // 👉 👉 builder: (context, child) => MarcoMovil(child: child ?? const SizedBox.shrink()),
-
-
-
-
-       */
-
-
-
-
+      builder: (context, child) => MarcoMovil(child: child ?? const SizedBox.shrink()),
     );
   }
 }

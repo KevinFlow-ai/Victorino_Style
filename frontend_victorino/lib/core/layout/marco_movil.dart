@@ -1,11 +1,3 @@
-/*
-
-👉👉 DESCOMENTAR ESTE CÓDIGO, SI SE QUIRE ACTIVAR EL RESPONSIVE EN WEB
-
-👉👉 ESTE Y EN EL APP.DART TAMBIÉN
-
-
-
 import 'package:flutter/material.dart';
 
 import '../theme/app_colores.dart';
@@ -101,6 +93,3 @@ class MarcoMovil extends StatelessWidget {
     );
   }
 }
-
-
- */
