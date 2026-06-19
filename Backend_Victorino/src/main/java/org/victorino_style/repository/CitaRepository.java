@@ -3,11 +3,13 @@ package org.victorino_style.repository;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.victorino_style.entity.Cita;
 import org.victorino_style.entity.enums.EstadoCita;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
@@ -412,5 +414,60 @@ public interface CitaRepository extends JpaRepository<Cita, Long> {
             @Param("fechaHasta") LocalDate fechaHasta,
             @Param("horaHasta") LocalTime horaHasta,
             @Param("estado") EstadoCita estado
+    );
+
+    // ------------------------------------------------------------------------
+    // Transiciones automáticas de estado (CompletadaScheduler).
+    //
+    // Las citas avanzan automáticamente con el reloj:
+    //   CONFIRMADA  → EN_PROCESO   cuando llega hora_inicio
+    //   EN_PROCESO  → COMPLETADA   cuando pasa hora_fin
+    //
+    // Los bulk UPDATE saltan el control de @Version, por lo que incrementamos
+    // version_cita manualmente para que cualquier transacción concurrente que
+    // tenga la cita cargada falle con OptimisticLockException al guardar.
+    // ------------------------------------------------------------------------
+
+    // Pasa a COMPLETADA cualquier cita CONFIRMADA o EN_PROCESO cuyo hora_fin
+    // ya haya quedado en el pasado. El scheduler la invoca antes que la de
+    // EN_PROCESO para evitar doble salto en una misma ejecución.
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+           UPDATE Cita c
+              SET c.estadoCita = org.victorino_style.entity.enums.EstadoCita.COMPLETADA,
+                  c.fechaModificacionCita = :ahora,
+                  c.versionCita = c.versionCita + 1
+            WHERE c.estadoCita IN (
+                    org.victorino_style.entity.enums.EstadoCita.CONFIRMADA,
+                    org.victorino_style.entity.enums.EstadoCita.EN_PROCESO
+                  )
+              AND (
+                    c.fechaCita < :hoy
+                    OR (c.fechaCita = :hoy AND c.horaFinCita <= :horaActual)
+                  )
+           """)
+    int marcarComoCompletadas(
+            @Param("hoy") LocalDate hoy,
+            @Param("horaActual") LocalTime horaActual,
+            @Param("ahora") Instant ahora
+    );
+
+    // Pasa a EN_PROCESO las citas CONFIRMADA cuyo hora_inicio ya pasó pero
+    // hora_fin sigue en el futuro (es decir, están ahora mismo en curso).
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+           UPDATE Cita c
+              SET c.estadoCita = org.victorino_style.entity.enums.EstadoCita.EN_PROCESO,
+                  c.fechaModificacionCita = :ahora,
+                  c.versionCita = c.versionCita + 1
+            WHERE c.estadoCita = org.victorino_style.entity.enums.EstadoCita.CONFIRMADA
+              AND c.fechaCita = :hoy
+              AND c.horaInicioCita <= :horaActual
+              AND c.horaFinCita > :horaActual
+           """)
+    int marcarComoEnProceso(
+            @Param("hoy") LocalDate hoy,
+            @Param("horaActual") LocalTime horaActual,
+            @Param("ahora") Instant ahora
     );
 }

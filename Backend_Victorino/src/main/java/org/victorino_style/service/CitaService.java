@@ -336,9 +336,13 @@ public class CitaService {
 
         Period periodo = Period.between(inicio, LocalDate.now());
 
-        String experiencia = String.format("%d años y %d meses", periodo.getYears(), periodo.getMonths());
-        if (periodo.getYears() == 0) {
-            experiencia = periodo.getMonths() + " meses";
+        String experiencia;
+        if (periodo.getYears() == 0 && periodo.getMonths() == 0) {
+            experiencia = "Menos de 1 mes";
+        } else if (periodo.getYears() == 0) {
+            experiencia = periodo.getMonths() + (periodo.getMonths() == 1 ? " mes" : " meses");
+        } else {
+            experiencia = String.format("%d años y %d meses", periodo.getYears(), periodo.getMonths());
         }
 
         return new EmpleadoPerfilResumenDTO(
