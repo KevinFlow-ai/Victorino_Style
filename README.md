@@ -34,7 +34,7 @@
 
 ## ✨ ¿Qué es Victorino Style?
 
-Una app multiplataforma — **Android, iOS. Linux, Windows y web** — que digitaliza por completo la experiencia de una peluquería: desde que el cliente reserva hasta que el peluquero confirma que ha terminado el servicio.
+Una app multiplataforma — **Android, iOS, Linux, Windows y web** — que digitaliza por completo la experiencia de una peluquería: desde que el cliente reserva hasta que el peluquero confirma que ha terminado el servicio.
 
 No es solo "una app de citas". Es el **sistema operativo completo del negocio**: catálogo de servicios, plantilla, agenda en tiempo real, métricas, notificaciones y todo lo necesario para que la peluquería deje de gestionarse a mano.
 
