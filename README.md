@@ -46,6 +46,7 @@ Cuenta con 3 roles: Administrador, Empleado y Cliente.
 
 </div>
 
+Landing del proyecto: https://landing-victorino-style.up.railway.app/
 ---
 
 ## 🎯 El problema → 💡 La solución
